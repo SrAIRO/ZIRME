@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZIRME - Zoom-In Resizing & Mastering Editor</title>
-  <link rel="icon" href="favicon.png" type="image/x-icon">
+  <title>ZIRME — Zoom-In Resizing & Mastering Editor</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="icon" href="favicon.png" type="image/png" sizes="256x256">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -26,7 +27,7 @@
     ::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 3px; }
 
     /* ── Cell ── */
-    .cell-wrap { position: relative; background: #202020; border-radius: 8px; overflow: hidden; border: 2px solid #282828; transition: border-color .15s; cursor: crosshair; }
+    .cell-wrap { position: relative; background: #202020; border-radius: 8px; overflow: hidden; border: 2px solid #282828; transition: border-color .15s; cursor: crosshair; break-inside: avoid; }
     .cell-wrap:hover { border-color: #383838; }
     .cell-wrap.selected { border-color: #7c5cff; }
     .cell-wrap .hover-btns { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; pointer-events: none; z-index: 2; }
@@ -82,6 +83,120 @@
 <script type="text/babel">
 const { useState, useRef, useEffect, useCallback } = React;
 let _uid = 0;
+
+/* ── i18n ────────────────────────────────────────────────────────────── */
+const STRINGS = {
+  en: {
+    subtitle:        "Zoom-In Resizing & Mastering Editor",
+    undo:            "Undo",
+    undoCount:       n=>`Undo (${n})`,
+    saveCurrent:     "↓ Save Image",
+    zipBtn:          n=>`↓ ZIP (${n})`,
+    zipGenerating:   "Generating ZIP…",
+    add:             "+ Add",
+    dropLabel:       "Drop your images here",
+    dropFormats:     "JPEG · PNG · WebP · any amount",
+    emptyHint:       "Drop images anywhere",
+    emptySub:        "or use the + Add button above",
+    addMore:         "Add more",
+    noCrop:          "no crop",
+    editBtn:         "✎ Edit",
+    back:            "← Back",
+    cropTool:        "✂ Crop",
+    blurTool:        "🖌 Blur Brush",
+    autoCropBtn:     "Auto Crop",
+    clearCropBtn:    "Clear Crop",
+    rightClickHint:  "Right-click = pan view",
+    secThumbs:       "Thumbnail View",
+    thumbSize:       n=>`Size: ${n}px`,
+    secOutput:       "Output Size",
+    widthLbl:        "Width (px)",
+    heightLbl:       "Height (px)",
+    ratioLbl:        "Ratio",
+    modeLbl:         "Mode",
+    modeFill:        "Fill — crop to fit",
+    modeFit:         "Fit — letterbox",
+    modeStretch:     "Stretch — distort",
+    secBlur:         "Blur Brush",
+    sizeLbl:         n=>`Size: ${n}px`,
+    strengthLbl:     n=>`Strength: ${n}`,
+    hardnessLbl:     n=>`Hardness: ${n}%`,
+    opacityLbl:      n=>`Opacity: ${n}%`,
+    secBatch:        "Batch",
+    totalLbl:        "Total",
+    withCropLbl:     "Cropped",
+    noCropLbl:       "Not cropped",
+    autoCropAll:     "⊠ Auto Crop All",
+    clearAllCrops:   "✕ Clear All Crops",
+    deleteAll:       "🗑 Delete All Images",
+    secExport:       "Export",
+    formatLbl:       "Format",
+    qualityLbl:      n=>`Quality: ${n}%`,
+    secHowTo:        "How to use",
+    howTo:           ["Drag on image → new crop","White handles → resize","Inside crop → move","✎ Edit → zoom + blur brush","Right-click in edit → pan","Ctrl+Z → undo"],
+    toastZipReady:   n=>`✓ ZIP ready · ${n} images`,
+    toastZipErr:     "Error generating ZIP",
+    toastNoUndo:     "Nothing to undo",
+    toastAutoCrop:   n=>`✂ Auto crop applied to ${n} images`,
+    toastCropsClear: "All crops cleared",
+    langLabel:       "EN",
+  },
+  es: {
+    subtitle:        "Zoom-In Resizing & Mastering Editor",
+    undo:            "Deshacer",
+    undoCount:       n=>`Deshacer (${n})`,
+    saveCurrent:     "↓ Imagen actual",
+    zipBtn:          n=>`↓ ZIP (${n})`,
+    zipGenerating:   "Generando ZIP…",
+    add:             "+ Añadir",
+    dropLabel:       "Suelta tus imágenes aquí",
+    dropFormats:     "JPEG · PNG · WebP · cualquier cantidad",
+    emptyHint:       "Arrastra imágenes a cualquier parte",
+    emptySub:        "o usa el botón + Añadir en la parte superior",
+    addMore:         "Añadir más",
+    noCrop:          "sin recorte",
+    editBtn:         "✎ Editar",
+    back:            "← Volver",
+    cropTool:        "✂ Recortar",
+    blurTool:        "🖌 Pincel de desenfoque",
+    autoCropBtn:     "Recorte automático",
+    clearCropBtn:    "Limpiar recorte",
+    rightClickHint:  "Clic derecho = mover vista",
+    secThumbs:       "Vista de miniaturas",
+    thumbSize:       n=>`Tamaño: ${n}px`,
+    secOutput:       "Tamaño de salida",
+    widthLbl:        "Ancho (px)",
+    heightLbl:       "Alto (px)",
+    ratioLbl:        "Ratio",
+    modeLbl:         "Modo",
+    modeFill:        "Relleno — recortar al llenar",
+    modeFit:         "Ajuste — encajar con bordes",
+    modeStretch:     "Estirar — deformar",
+    secBlur:         "Pincel de desenfoque",
+    sizeLbl:         n=>`Tamaño: ${n}px`,
+    strengthLbl:     n=>`Intensidad: ${n}`,
+    hardnessLbl:     n=>`Dureza: ${n}%`,
+    opacityLbl:      n=>`Opacidad: ${n}%`,
+    secBatch:        "Lote",
+    totalLbl:        "Total",
+    withCropLbl:     "Con recorte",
+    noCropLbl:       "Sin recorte",
+    autoCropAll:     "⊠ Recorte Automático",
+    clearAllCrops:   "✕ Limpiar todos los recortes",
+    deleteAll:       "🗑 Eliminar todas las imágenes",
+    secExport:       "Exportar",
+    formatLbl:       "Formato",
+    qualityLbl:      n=>`Calidad: ${n}%`,
+    secHowTo:        "Cómo usar",
+    howTo:           ["Arrastrar imagen → nuevo recorte","Tiradores blancos → redimensionar","Dentro del recorte → mover","✎ Editar → zoom + pincel de desenfoque","Clic derecho en edición → mover vista","Ctrl+Z → deshacer"],
+    toastZipReady:   n=>`✓ ZIP listo · ${n} imágenes`,
+    toastZipErr:     "Error al generar ZIP",
+    toastNoUndo:     "No hay pasos para deshacer",
+    toastAutoCrop:   n=>`✂ Recorte automático aplicado a ${n} imágenes`,
+    toastCropsClear: "Recortes eliminados",
+    langLabel:       "ES",
+  },
+};
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -186,7 +301,7 @@ function hitHandle(px, py, cr, sc, offX, offY) {
 }
 
 /* ── ImageCell ───────────────────────────────────────────────────────── */
-function ImageCell({ file, isSelected, settings, cellH, onSelect, onCropChange, onUndoPush, onRemove, onEdit, tick }) {
+function ImageCell({ file, isSelected, settings, cellH, t, onSelect, onCropChange, onUndoPush, onRemove, onEdit, tick }) {
   const canvasRef = useRef(null);
   // drag state: mode = "none"|"new"|"move"|"handle"
   const drag = useRef({ mode:"none", startImg:null, cropOrig:null, handleIdx:-1 });
@@ -194,10 +309,9 @@ function ImageCell({ file, isSelected, settings, cellH, onSelect, onCropChange, 
   const getT = useCallback(() => {
     const c = canvasRef.current; if (!c) return null;
     const W=c.width, H=c.height, img=file.ec;
-    // Cover: image fills cell, no black bars
-    const sc = Math.max(W/img.width, H/img.height);
-    const dW=img.width*sc, dH=img.height*sc;
-    return { sc, offX:(W-dW)/2, offY:(H-dH)/2, dW, dH, W, H };
+    // Pixel-perfect: image stretched to fill W×H exactly
+    const sc = W / img.width;
+    return { sc, offX:0, offY:0, dW:W, dH:H, W, H };
   }, [file]);
 
   const evToCanvas = useCallback((e) => {
@@ -215,21 +329,21 @@ function ImageCell({ file, isSelected, settings, cellH, onSelect, onCropChange, 
   // Draw
   useEffect(() => {
     const c = canvasRef.current; if (!c) return;
-    const w = c.offsetWidth; if (w>0) c.width=w;
-    c.height = cellH;
-    const ctx = c.getContext("2d");
     const img = file.ec;
+    // Use explicit pixel dimensions from justified layout
+    const cw = c.offsetWidth; if (cw > 0) c.width = cw;
+    c.height = cellH; // cellH is now the exact pixel height for this cell
     const W = c.width, H = c.height;
+    const ctx = c.getContext("2d");
 
-    // 2. Cover fill: image fills cell completely (no black bars)
-    const sc = Math.max(W/img.width, H/img.height);
-    const dW = img.width*sc, dH = img.height*sc;
-    const offX = (W-dW)/2, offY = (H-dH)/2;
+    // Image fills 100% of cell — scale = W/imgW = H/imgH
+    const sc = W / img.width;
+    const offX = 0, offY = 0;
 
     ctx.fillStyle = "#202020"; ctx.fillRect(0,0,W,H);
-    ctx.drawImage(img, offX, offY, dW, dH);
+    ctx.drawImage(img, 0, 0, W, H);
 
-    // Crop overlay — adjust getT-equivalent for cover scale
+    // Crop overlay
     const cr = file.crop;
     if (cr?.w>2) drawCropShadow(ctx, cr, sc, offX, offY, img.width, img.height);
 
@@ -239,14 +353,14 @@ function ImageCell({ file, isSelected, settings, cellH, onSelect, onCropChange, 
     const nm=file.name.length>38?file.name.slice(0,36)+"…":file.name;
     ctx.fillText(nm,6,H-7);
 
-    // 1. Top bar: only crop resolution
+    // Top bar: crop resolution
     ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(0,0,W,22);
     ctx.font="500 10px Inter,sans-serif";
     if (cr?.w>2) {
       const cropRes=`✂ ${Math.round(cr.w)}×${Math.round(cr.h)}px`;
       ctx.fillStyle="#a78bfa"; ctx.fillText(cropRes, 6, 15);
     } else {
-      ctx.fillStyle="#444"; ctx.fillText("sin recorte", 6, 15);
+      ctx.fillStyle="#444"; ctx.fillText(t?.noCrop||"no crop", 6, 15);
     }
   }, [file, file.crop, cellH, tick]);
 
@@ -333,21 +447,107 @@ function ImageCell({ file, isSelected, settings, cellH, onSelect, onCropChange, 
   const onMouseUp = useCallback(()=>{ drag.current.mode="none"; }, []);
 
   return (
-    <div className={`cell-wrap${isSelected?" selected":""}`} style={{ height:cellH }}>
-      <canvas ref={canvasRef} style={{ display:"block", width:"100%", height:cellH+"px" }}
+    <div className={`cell-wrap${isSelected?" selected":""}`} style={{}}>
+      <canvas ref={canvasRef} style={{ display:"block", width:"100%" }}
         onMouseDown={onMouseDown} onMouseMove={onMouseMove}
         onMouseUp={onMouseUp} onMouseLeave={onMouseUp} />
       <div className="hover-btns">
-        <button className="hbtn hbtn-edit" onClick={e=>{e.stopPropagation();onEdit(file.id);}}>✎ Editar</button>
+        <button className="hbtn hbtn-edit" onClick={e=>{e.stopPropagation();onEdit(file.id);}}>{t?.editBtn||"✎ Edit"}</button>
         <button className="hbtn hbtn-del"  onClick={e=>{e.stopPropagation();onRemove(file.id);}}>×</button>
       </div>
-      {(file.history||[]).length>0&&<div style={{ position:"absolute",bottom:26,right:6,background:"rgba(0,0,0,0.5)",color:"#555",fontSize:9,borderRadius:3,padding:"2px 5px" }}>↩{file.history.length}</div>}
     </div>
   );
 }
 
-/* ── EditOverlay ─────────────────────────────────────────────────────── */
-function EditOverlay({ file, settings, blurCfg, onClose, onCropChange, onUndoPush }) {
+/* ── buildRows: justified layout (Google Photos style) ──────────────── */
+// Given files array, target row height, and container width,
+// returns array of rows: each row = [{file, w, h}, ...]
+function buildRows(files, targetH, containerW, gap) {
+  if (!files.length || !containerW) return [];
+  const rows = [];
+  let row = [];
+  let rowRatioSum = 0;
+
+  for (const f of files) {
+    const iW = f.ec?.width  || 1;
+    const iH = f.ec?.height || 1;
+    const ratio = iW / iH;
+    row.push({ file: f, ratio });
+    rowRatioSum += ratio;
+
+    // Total width this row would take at targetH
+    const totalW = rowRatioSum * targetH + gap * (row.length - 1);
+    if (totalW >= containerW) {
+      // Scale down so row fills exactly containerW
+      const scale = (containerW - gap * (row.length - 1)) / (rowRatioSum * targetH);
+      const h = Math.round(targetH * scale);
+      rows.push(row.map(item => ({
+        file: item.file,
+        w: Math.round(item.ratio * h),
+        h,
+      })));
+      row = [];
+      rowRatioSum = 0;
+    }
+  }
+
+  // Last incomplete row: don't stretch, just use targetH
+  if (row.length) {
+    rows.push(row.map(item => ({
+      file: item.file,
+      w: Math.round(item.ratio * targetH),
+      h: targetH,
+    })));
+  }
+
+  return rows;
+}
+
+/* ── JustifiedGrid ───────────────────────────────────────────────────── */
+function JustifiedGrid({ files, cellH, settings, selId, t, tick,
+    onSelect, onCropChange, onUndoPush, onRemove, onEdit, loadFiles }) {
+  const containerRef = useRef(null);
+  const [containerW, setContainerW] = useState(0);
+  const GAP = 10;
+
+  useEffect(() => {
+    const el = containerRef.current; if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      setContainerW(entries[0].contentRect.width);
+    });
+    ro.observe(el);
+    setContainerW(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  const rows = containerW > 0 ? buildRows(files, cellH, containerW, GAP) : [];
+
+  return (
+    <div ref={containerRef} style={{ width:"100%" }}>
+      {rows.map((row, ri) => (
+        <div key={ri} style={{ display:"flex", gap:GAP, marginBottom:GAP, alignItems:"flex-start" }}>
+          {row.map(({ file, w, h }) => (
+            <div key={file.id} style={{ width:w, flexShrink:0 }}>
+              <ImageCell file={file} isSelected={file.id===selId}
+                settings={settings} cellH={h} t={t} tick={tick}
+                onSelect={onSelect} onCropChange={onCropChange}
+                onUndoPush={onUndoPush} onRemove={onRemove} onEdit={onEdit} />
+            </div>
+          ))}
+        </div>
+      ))}
+      {/* Add more button — same height as target row */}
+      <label style={{ width:Math.round(cellH*0.75),height:cellH,display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"2px dashed #252525",borderRadius:8,cursor:"pointer",color:"#303030",gap:8,transition:"all .15s",verticalAlign:"top" }}
+        onMouseEnter={e=>{e.currentTarget.style.borderColor="#383838";e.currentTarget.style.color="#555";}}
+        onMouseLeave={e=>{e.currentTarget.style.borderColor="#252525";e.currentTarget.style.color="#303030";}}>
+        <span style={{ fontSize:28 }}>+</span>
+        <span style={{ fontSize:12,fontWeight:500 }}>{t.addMore}</span>
+        <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{ display:"none" }} />
+      </label>
+    </div>
+  );
+}
+function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndoPush }) {
   const canvasRef = useRef(null);
   const contRef   = useRef(null);
   const [zoom,setZoom] = useState(1);
@@ -375,7 +575,7 @@ function EditOverlay({ file, settings, blurCfg, onClose, onCropChange, onUndoPus
     const ro=new ResizeObserver(()=>{
       c.width=cont.clientWidth; c.height=cont.clientHeight;
       const fz=Math.min(cont.clientWidth/file.ec.width, cont.clientHeight/file.ec.height);
-      fitZRef.current=fz; setZoom(z=>Math.max(fz,z)); setTick(t=>t+1);
+      fitZRef.current=fz; setZoom(z=>Math.max(fz,z)); setTick(n=>n+1);
     });
     ro.observe(cont); c.width=cont.clientWidth; c.height=cont.clientHeight;
     return ()=>ro.disconnect();
@@ -441,7 +641,7 @@ function EditOverlay({ file, settings, blurCfg, onClose, onCropChange, onUndoPus
     const g=tc.createRadialGradient(r,r,r*(hardness/100),r,r,r);
     g.addColorStop(0,`rgba(0,0,0,${opacity/100})`); g.addColorStop(1,"rgba(0,0,0,0)");
     tc.globalCompositeOperation="destination-in"; tc.fillStyle=g; tc.fillRect(0,0,size,size);
-    ctx.drawImage(tmp,bx,by); setTick(t=>t+1);
+    ctx.drawImage(tmp,bx,by); setTick(n=>n+1);
   },[file,blurCfg]);
 
   const onMouseDown = useCallback((e)=>{
@@ -479,7 +679,20 @@ function EditOverlay({ file, settings, blurCfg, onClose, onCropChange, onUndoPus
 
     if (s.isPan) {
       const raw={x:s.panOrig.x+e.clientX-s.panStart.x, y:s.panOrig.y+e.clientY-s.panStart.y};
-      setPan(clamp(raw.x,raw.y,zoomRef.current)); return;
+      setPan(clamp(raw.x,raw.y,zoomRef.current));
+      // Also update blur circle position during pan
+      if (tool==="blur") {
+        const cont=contRef.current, circle=blurCircleRef.current;
+        if(cont&&circle) {
+          const r=cont.getBoundingClientRect();
+          const x=e.clientX-r.left, y=e.clientY-r.top;
+          const sz=blurCfg.size*zoomRef.current;
+          circle.style.left=(x-sz/2)+"px"; circle.style.top=(y-sz/2)+"px";
+          circle.style.width=sz+"px"; circle.style.height=sz+"px";
+          circle.style.display="block";
+        }
+      }
+      return;
     }
     const p=s2i(e.clientX,e.clientY); if(!p) return;
     const cp=s2c(e.clientX,e.clientY);
@@ -573,19 +786,19 @@ function EditOverlay({ file, settings, blurCfg, onClose, onCropChange, onUndoPus
     <div style={{ position:"fixed",top:50,left:0,right:222,bottom:0,background:"#181818",display:"flex",flexDirection:"column",zIndex:100 }}
       onContextMenu={e=>e.preventDefault()}>
       <div style={{ background:"#141414",borderBottom:"1px solid #242424",padding:"5px 12px",display:"flex",alignItems:"center",gap:4,flexShrink:0,flexWrap:"wrap" }}>
-        <button onClick={onClose} style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"1px solid #303030",borderRadius:5,padding:"5px 10px",cursor:"pointer",background:"transparent",color:"#d0d0d0",marginRight:8 }}>← Volver</button>
+        <button onClick={onClose} style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"1px solid #303030",borderRadius:5,padding:"5px 10px",cursor:"pointer",background:"transparent",color:"#d0d0d0",marginRight:8 }}>{t?.back||"← Back"}</button>
         <div style={{ width:1,height:16,background:"#282828",marginRight:4 }} />
-        {["crop","blur"].map(t=>(
-          <button key={t} onClick={()=>setTool(t)} style={oBtnSt(tool===t)}>
-            {t==="crop"?"✂ Recortar":"🖌 Pincel de desenfoque"}
+        {["crop","blur"].map(tb=>(
+          <button key={tb} onClick={()=>setTool(tb)} style={oBtnSt(tool===tb)}>
+            {tb==="crop"?(t?.cropTool||"✂ Crop"):(t?.blurTool||"🖌 Blur Brush")}
           </button>
         ))}
         {tool==="crop"&&<span style={{ fontSize:10,fontWeight:700,background:"#7c5cff",color:"#fff",borderRadius:3,padding:"2px 7px",marginLeft:2 }}>🔒 {ratioLbl}</span>}
         <div style={{ width:1,height:16,background:"#282828",margin:"0 6px" }} />
-        {oTxtBtn("Recorte automático", autoCrop)}
-        {oTxtBtn("Limpiar recorte", clearCrop)}
+        {oTxtBtn(t?.autoCropBtn||"Auto Crop", autoCrop)}
+        {oTxtBtn(t?.clearCropBtn||"Clear Crop", clearCrop)}
         <div style={{ flex:1 }} />
-        <span style={{ fontSize:10,color:"#444",fontFamily:"Inter,sans-serif",fontStyle:"italic" }}>Clic derecho = mover vista</span>
+        <span style={{ fontSize:10,color:"#444",fontFamily:"Inter,sans-serif",fontStyle:"italic" }}>{t?.rightClickHint||"Right-click = pan"}</span>
         <div style={{ width:1,height:16,background:"#282828",margin:"0 8px" }} />
         <span style={{ fontSize:11,color:"#383838",fontFamily:"Inter,sans-serif" }}>{file.name}</span>
       </div>
@@ -610,24 +823,59 @@ function ZIRME() {
   const [files,    setFiles]    = useState([]);
   const [selId,    setSelId]    = useState(null);
   const [editId,   setEditId]   = useState(null);
-  const [settings, setSettings] = useState({w:1024,h:1024,mode:"fill",fmt:"png",quality:92});
+  const [settings, setSettings] = useState(()=>({
+    w:1024, h:1024, mode:"fill",
+    fmt: (()=>{ try{ return localStorage.getItem("zirme-fmt")||"png"; }catch(e){ return "png"; } })(),
+    quality:92,
+  }));
   const [blurCfg,  setBlurCfg]  = useState({size:60,strength:12,hardness:30,opacity:85});
   const [zipping,  setZipping]  = useState(false);
   const [tick,     setTick]     = useState(0);
   const [cellH,    setCellH]    = useState(380);
-  const [howToOpen, setHowToOpen] = useState(false); // ← adjustable thumbnail height
+  const [langOpen, setLangOpen] = useState(false);
+  const [howToOpen,setHowToOpen]= useState(false);
+  const langNames = { en: "English", es: "Español" };
+  const langRef = useRef(null);
+
+  useEffect(()=>{
+    const handler = (e) => { if(langRef.current && !langRef.current.contains(e.target)) setLangOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return ()=>document.removeEventListener("mousedown", handler);
+  },[]);
+
+  const [lang, setLang] = useState(()=>{ try{ return localStorage.getItem("zirme-lang")||"es"; }catch(e){ return "es"; } });
+
+  const t = STRINGS[lang] || STRINGS.en;
 
   const filesRef    = useRef([]);
   const settingsRef = useRef(settings);
   useEffect(()=>{filesRef.current=files;},[files]);
   useEffect(()=>{settingsRef.current=settings;},[settings]);
 
+  // Persist lang
+  useEffect(()=>{
+    try{ localStorage.setItem("zirme-lang", lang); }catch(e){}
+    // Update static drop overlay text
+    const ov=document.getElementById("drop-overlay");
+    if(ov){
+      ov.querySelector(".label").textContent=t.dropLabel;
+      ov.querySelector(".sub").textContent=t.dropFormats;
+    }
+  },[lang, t]);
+
+  // Persist format
+  useEffect(()=>{
+    try{ localStorage.setItem("zirme-fmt", settings.fmt); }catch(e){}
+  },[settings.fmt]);
+
+  const changeLang = useCallback((l)=>{ setLang(l); },[]);
+
   const sel      = files.find(f=>f.id===selId)??null;
   const editFile = files.find(f=>f.id===editId)??null;
   const canUndo  = (sel?.history||[]).length>0;
 
   useEffect(()=>{
-    const h=()=>setTick(t=>t+1); window.addEventListener("resize",h); return ()=>window.removeEventListener("resize",h);
+    const h=()=>setTick(n=>n+1); window.addEventListener("resize",h); return ()=>window.removeEventListener("resize",h);
   },[]);
   useEffect(()=>{
     const h=(e)=>{if((e.ctrlKey||e.metaKey)&&e.key==="z"){e.preventDefault();undoSel();}};
@@ -645,14 +893,14 @@ function ZIRME() {
   const undoSel = useCallback(()=>{
     setFiles(prev=>prev.map(f=>{
       if(f.id!==selId) return f;
-      const hist=f.history||[]; if(!hist.length){showToast("No hay pasos para deshacer");return f;}
+      const hist=f.history||[]; if(!hist.length){showToast(t.toastNoUndo);return f;}
       const last=hist[hist.length-1];
       f.ec.getContext("2d").clearRect(0,0,f.ec.width,f.ec.height);
       f.ec.getContext("2d").drawImage(last.snap,0,0);
-      setTick(t=>t+1);
+      setTick(n=>n+1);
       return {...f,history:hist.slice(0,-1),crop:last.crop};
     }));
-  },[selId]);
+  },[selId, t]);
 
   const setCropForId = useCallback((id,crop)=>{
     setFiles(prev=>prev.map(f=>f.id===id?{...f,crop}:f));
@@ -672,7 +920,7 @@ function ZIRME() {
         const ec=document.createElement("canvas"); ec.width=img.naturalWidth; ec.height=img.naturalHeight;
         ec.getContext("2d").drawImage(img,0,0);
         setFiles(prev=>[...prev,{id,file,name:file.name,orig:img,ec,thumb:img.src,crop:null,history:[]}]);
-        setSelId(p=>p||id); setTick(t=>t+1);
+        setSelId(p=>p||id); setTick(n=>n+1);
       };
       img.src=URL.createObjectURL(file);
     });
@@ -686,10 +934,10 @@ function ZIRME() {
       let cW=iW,cH=iH; if(ia>ta) cW=iH*ta; else cH=iW/ta;
       return {...f,crop:{x:(iW-cW)/2,y:(iH-cH)/2,w:cW,h:cH}};
     }));
-    showToast(`✂ Auto crop a ${filesRef.current.length} imágenes`);
-  },[]);
+    showToast(t.toastAutoCrop(filesRef.current.length));
+  },[t]);
 
-  const clearAllCrops=useCallback(()=>{setFiles(prev=>prev.map(f=>({...f,crop:null}))); showToast("Crops eliminados");},[]);
+  const clearAllCrops=useCallback(()=>{setFiles(prev=>prev.map(f=>({...f,crop:null}))); showToast(t.toastCropsClear);},[t]);
 
   const renderFile = useCallback((f)=>{
     const {w,h,mode,fmt,quality}=settingsRef.current, src=f.ec, c=f.crop;
@@ -714,7 +962,7 @@ function ZIRME() {
   },[sel,renderFile]);
 
   const exportZip=useCallback(async()=>{
-    if(!files.length) return; setZipping(true); showToast("Generando ZIP…");
+    if(!files.length) return; setZipping(true); showToast(t.zipGenerating);
     try{
       const zip=new JSZip(), {fmt}=settingsRef.current, ext=fmt==="jpeg"?"jpg":fmt, cnt={};
       for(const f of filesRef.current){
@@ -726,10 +974,10 @@ function ZIRME() {
       const zb=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:6}});
       const a=document.createElement("a"); a.href=URL.createObjectURL(zb); a.download="zirme_export.zip"; a.click();
       setTimeout(()=>URL.revokeObjectURL(a.href),8000);
-      showToast(`✓ ZIP · ${filesRef.current.length} imágenes`);
-    }catch(err){showToast("Error al generar ZIP");}
+      showToast(t.toastZipReady(filesRef.current.length));
+    }catch(err){showToast(t.toastZipErr);}
     setZipping(false);
-  },[files.length,renderFile]);
+  },[files.length, renderFile, t]);
 
   // ── UI ────────────────────────────────────────────────────────────────
 
@@ -751,16 +999,38 @@ function ZIRME() {
       {/* Header */}
       <header style={{ background:"#141414",borderBottom:"1px solid #222",height:50,padding:"0 20px",display:"flex",alignItems:"center",gap:12,flexShrink:0 }}>
         <div style={{ fontWeight:700,fontSize:19,letterSpacing:-0.5,color:"#fff" }}>ZIRME</div>
-        <div style={{ fontSize:11,color:"#888" }}>Zoom-In Resizing &amp; Mastering Editor</div>
+        <div style={{ fontSize:11,color:"#888" }}>{t.subtitle}</div>
         <div style={{ flex:1 }} />
+        {/* Language selector — custom dropdown */}
+        <div ref={langRef} style={{ position:"relative" }}>
+          <button onClick={()=>setLangOpen(o=>!o)} style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,background:"#1e1e1e",border:"1px solid #2a2a2a",borderRadius:5,color:"#aaa",padding:"5px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap" }}>
+            {langNames[lang]}
+            <span style={{ fontSize:10,color:"#555",marginLeft:2,display:"inline-block",transform:langOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform .15s" }}>▾</span>
+          </button>
+          {langOpen&&(
+            <div style={{ position:"absolute",top:"calc(100% + 6px)",right:0,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:6,overflow:"hidden",zIndex:9999,minWidth:"110px",boxShadow:"0 8px 24px rgba(0,0,0,0.5)" }}>
+              {Object.entries(langNames).map(([code,name])=>(
+                <button key={code} onClick={()=>{ changeLang(code); setLangOpen(false); }}
+                  style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:code===lang?600:400,background:code===lang?"#2a2a2a":"transparent",color:code===lang?"#e0e0e0":"#888",border:"none",padding:"9px 14px",cursor:"pointer",width:"100%",textAlign:"left",display:"flex",alignItems:"center",gap:8,transition:"background .1s" }}
+                  onMouseEnter={e=>{ if(code!==lang) e.currentTarget.style.background="#222"; }}
+                  onMouseLeave={e=>{ if(code!==lang) e.currentTarget.style.background="transparent"; }}>
+                  {code===lang && <span style={{ color:"#7c5cff",fontSize:10 }}>●</span>}
+                  {code!==lang && <span style={{ fontSize:10,opacity:0 }}>●</span>}
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ width:1,height:16,background:"#2a2a2a" }} />
         <button onClick={undoSel} disabled={!canUndo} title="Ctrl+Z"
           style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canUndo?"pointer":"not-allowed",background:"transparent",color:canUndo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canUndo?1:0.4 }}>
-          ↩ Deshacer{canUndo?` (${(sel?.history||[]).length})`:""}
+          ↩ {canUndo ? t.undoCount((sel?.history||[]).length) : t.undo}
         </button>
-        {mBtn("↓ Imagen actual", exportCurrent, !sel, PURPLE)}
-        {mBtn(zipping?"Generando…":`↓ ZIP (${files.length})`, exportZip, !files.length||zipping, "#4f46e5")}
+        {mBtn(t.saveCurrent, exportCurrent, !sel, PURPLE)}
+        {mBtn(zipping ? t.zipGenerating : t.zipBtn(files.length), exportZip, !files.length||zipping, "#4f46e5")}
         <label style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,background:PURPLE,border:"none",borderRadius:5,padding:"7px 14px",cursor:"pointer",color:"#fff",whiteSpace:"nowrap" }}>
-          + Añadir
+          {t.add}
           <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{ display:"none" }} />
         </label>
       </header>
@@ -773,93 +1043,79 @@ function ZIRME() {
           {files.length===0?(
             <div style={{ height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,color:"#282828" }}>
               <div style={{ fontSize:64 }}>🖼</div>
-              <div style={{ fontSize:16,fontWeight:500 }}>Arrastra imágenes a cualquier parte</div>
-              <div style={{ fontSize:12 }}>o usa el botón + Añadir en la parte superior</div>
+              <div style={{ fontSize:16,fontWeight:500 }}>{t.emptyHint}</div>
+              <div style={{ fontSize:12 }}>{t.emptySub}</div>
             </div>
           ):(
-            <div style={{ display:"grid",gridTemplateColumns:`repeat(auto-fill, minmax(${Math.round(cellH*0.75)}px, 1fr))`,gap:12 }}>
-              {files.map(f=>(
-                <ImageCell key={f.id} file={f} isSelected={f.id===selId}
-                  settings={settings} cellH={cellH}
-                  onSelect={setSelId} onCropChange={setCropForId}
-                  onUndoPush={pushUndo} onRemove={removeFile}
-                  onEdit={setEditId} tick={tick} />
-              ))}
-              <label style={{ height:cellH+"px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"2px dashed #252525",borderRadius:8,cursor:"pointer",color:"#303030",gap:8,transition:"all .15s" }}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor="#383838";e.currentTarget.style.color="#555";}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor="#252525";e.currentTarget.style.color="#303030";}}>
-                <span style={{ fontSize:28 }}>+</span>
-                <span style={{ fontSize:12,fontWeight:500 }}>Añadir más</span>
-                <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{ display:"none" }} />
-              </label>
-            </div>
+            <JustifiedGrid
+              files={files} cellH={cellH} settings={settings}
+              selId={selId} t={t} tick={tick}
+              onSelect={setSelId} onCropChange={setCropForId}
+              onUndoPush={pushUndo} onRemove={removeFile}
+              onEdit={setEditId} loadFiles={loadFiles}
+            />
           )}
         </div>
 
         {/* Right panel */}
         <aside style={{ width:228,background:"#1e1e1e",borderLeft:"1px solid #242424",overflowY:"auto",padding:"14px 16px",flexShrink:0 }}>
 
-          <span className="sec-title">Vista de miniaturas</span>
-          <label className="lbl">Tamaño: {cellH}px</label>
+          <span className="sec-title">{t.secThumbs}</span>
+          <label className="lbl">{t.thumbSize(cellH)}</label>
           <input type="range" min={180} max={700} value={cellH} onChange={e=>setCellH(+e.target.value)} style={{ marginBottom:16 }} />
 
-          <span className="sec-title">Tamaño de salida</span>
-          <label className="lbl">Ancho (px)</label>
+          <span className="sec-title">{t.secOutput}</span>
+          <label className="lbl">{t.widthLbl}</label>
           <input type="number" min={1} value={settings.w} onChange={e=>setSettings(s=>({...s,w:+e.target.value}))} />
-          <label className="lbl">Alto (px)</label>
+          <label className="lbl">{t.heightLbl}</label>
           <input type="number" min={1} value={settings.h} onChange={e=>setSettings(s=>({...s,h:+e.target.value}))} />
-          <div style={{ fontSize:10,color:"#666",marginBottom:10 }}>Ratio: {oW/dv}:{oH/dv}</div>
-          <label className="lbl">Modo</label>
+          <div style={{ fontSize:10,color:"#666",marginBottom:10 }}>{t.ratioLbl}: {oW/dv}:{oH/dv}</div>
+          <label className="lbl">{t.modeLbl}</label>
           <select value={settings.mode} onChange={e=>setSettings(s=>({...s,mode:e.target.value}))}>
-            <option value="fill">Relleno — recortar al llenar</option>
-            <option value="fit">Ajuste — encajar con bordes</option>
-            <option value="stretch">Estirar — deformar</option>
+            <option value="fill">{t.modeFill}</option>
+            <option value="fit">{t.modeFit}</option>
+            <option value="stretch">{t.modeStretch}</option>
           </select>
 
-          <span className="sec-title">Pincel de desenfoque</span>
-          <label className="lbl">Tamaño: {blurCfg.size}px</label>
+          <span className="sec-title">{t.secBlur}</span>
+          <label className="lbl">{t.sizeLbl(blurCfg.size)}</label>
           <input type="range" min={5} max={500} value={blurCfg.size} onChange={e=>setBlurCfg(b=>({...b,size:+e.target.value}))} style={{ marginBottom:10 }} />
-          <label className="lbl">Intensidad: {blurCfg.strength}</label>
+          <label className="lbl">{t.strengthLbl(blurCfg.strength)}</label>
           <input type="range" min={1} max={60} value={blurCfg.strength} onChange={e=>setBlurCfg(b=>({...b,strength:+e.target.value}))} style={{ marginBottom:10 }} />
-          <label className="lbl">Dureza: {blurCfg.hardness}%</label>
+          <label className="lbl">{t.hardnessLbl(blurCfg.hardness)}</label>
           <input type="range" min={0} max={95} value={blurCfg.hardness} onChange={e=>setBlurCfg(b=>({...b,hardness:+e.target.value}))} style={{ marginBottom:10 }} />
-          <label className="lbl">Opacidad: {blurCfg.opacity}%</label>
+          <label className="lbl">{t.opacityLbl(blurCfg.opacity)}</label>
           <input type="range" min={10} max={100} value={blurCfg.opacity} onChange={e=>setBlurCfg(b=>({...b,opacity:+e.target.value}))} style={{ marginBottom:12 }} />
 
-          <span className="sec-title">Lote</span>
+          <span className="sec-title">{t.secBatch}</span>
           <div style={{ fontSize:11,color:"#888",lineHeight:2.2,marginBottom:10 }}>
-            <div>Total <span style={{ color:"#ccc" }}>{files.length}</span></div>
-            <div>Con recorte <span style={{ color:withCrop===files.length&&files.length>0?"#22c55e":"#aaa" }}>{withCrop}</span></div>
-            <div>Sin recorte <span style={{ color:files.length-withCrop>0?"#f59e0b":"#aaa" }}>{files.length-withCrop}</span></div>
+            <div>{t.totalLbl} <span style={{ color:"#ccc" }}>{files.length}</span></div>
+            <div>{t.withCropLbl} <span style={{ color:withCrop===files.length&&files.length>0?"#22c55e":"#aaa" }}>{withCrop}</span></div>
+            <div>{t.noCropLbl} <span style={{ color:files.length-withCrop>0?"#f59e0b":"#aaa" }}>{files.length-withCrop}</span></div>
           </div>
-          {smBtn("⊠ Recorte Automático", autoCropAll)}
-          {smBtn("✕ Limpiar todos los recortes", clearAllCrops)}
-          {files.length>0&&smBtn("🗑 Eliminar todas las imágenes",()=>{setFiles([]);setSelId(null);setEditId(null);})}
+          {smBtn(t.autoCropAll, autoCropAll)}
+          {smBtn(t.clearAllCrops, clearAllCrops)}
+          {files.length>0&&smBtn(t.deleteAll,()=>{setFiles([]);setSelId(null);setEditId(null);})}
 
-          <span className="sec-title">Exportar</span>
-          <label className="lbl">Formato</label>
+          <span className="sec-title">{t.secExport}</span>
+          <label className="lbl">{t.formatLbl}</label>
           <select value={settings.fmt} onChange={e=>setSettings(s=>({...s,fmt:e.target.value}))}>
             <option value="jpeg">JPG</option>
             <option value="png">PNG</option>
             <option value="webp">WebP</option>
           </select>
           {settings.fmt!=="png"&&<>
-            <label className="lbl">Calidad: {settings.quality}%</label>
+            <label className="lbl">{t.qualityLbl(settings.quality)}</label>
             <input type="range" min={1} max={100} value={settings.quality} onChange={e=>setSettings(s=>({...s,quality:+e.target.value}))} style={{ marginBottom:12 }} />
           </>}
 
           <button onClick={()=>setHowToOpen(o=>!o)} style={{ fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:700,color:"#6a6a6a",textTransform:"uppercase",letterSpacing:"1.8px",marginTop:18,paddingBottom:6,borderTop:"none",borderLeft:"none",borderRight:"none",borderBottom:"1px solid #2a2a2a",background:"transparent",cursor:"pointer",width:"100%",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:0 }}>
-            Cómo usar
+            {t.secHowTo}
             <span style={{ fontSize:14,fontWeight:400,letterSpacing:0,transition:"transform .2s",display:"inline-block",transform:howToOpen?"rotate(90deg)":"rotate(0deg)" }}>›</span>
           </button>
           {howToOpen&&(
             <div style={{ fontSize:10,color:"#666",lineHeight:2.6,marginTop:8 }}>
-              <div>Arrastrar imagen → nuevo recorte</div>
-              <div>Tiradores blancos → redimensionar</div>
-              <div>Dentro del recorte → mover</div>
-              <div>✎ Editar → zoom + pincel de desenfoque</div>
-              <div>Clic derecho en edición → mover vista</div>
-              <div>Ctrl+Z → deshacer</div>
+              {t.howTo.map((line,i)=><div key={i}>{line}</div>)}
             </div>
           )}
         </aside>
@@ -867,7 +1123,7 @@ function ZIRME() {
 
       {/* Edit overlay */}
       {editFile&&(
-        <EditOverlay file={editFile} settings={settings} blurCfg={blurCfg}
+        <EditOverlay file={editFile} settings={settings} blurCfg={blurCfg} t={t}
           onClose={()=>setEditId(null)} onCropChange={setCropForId} onUndoPush={pushUndo} />
       )}
     </div>
