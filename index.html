@@ -16,33 +16,37 @@
     html, body, #root { height: 100%; width: 100%; overflow: hidden; background: #181818; }
     body { font-family: 'Inter', sans-serif; color: #d0d0d0; }
 
-    /* ── Inputs ── */
     input[type=range] { -webkit-appearance: none; appearance: none; height: 3px; border-radius: 2px; background: #2e2e2e; outline: none; cursor: pointer; width: 100%; }
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: #7c5cff; cursor: pointer; box-shadow: 0 0 0 2px rgba(124,92,255,0.25); }
     input[type=number] { background: #222; border: 1px solid #303030; border-radius: 5px; color: #d0d0d0; font-family: Inter,sans-serif; font-size: 12px; padding: 6px 8px; outline: none; width: 100%; margin-bottom: 8px; }
     input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+    input[type=text] { background: #222; border: 1px solid #303030; border-radius: 5px; color: #d0d0d0; font-family: Inter,sans-serif; font-size: 12px; padding: 6px 8px; outline: none; width: 100%; margin-bottom: 8px; }
     select { background: #222; border: 1px solid #303030; border-radius: 5px; color: #d0d0d0; font-family: Inter,sans-serif; font-size: 12px; padding: 6px 8px; outline: none; width: 100%; margin-bottom: 8px; cursor: pointer; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 3px; }
 
-    /* ── Cell ── */
+    /* Cell */
     .cell-wrap { position: relative; background: #202020; border-radius: 8px; overflow: hidden; border: 2px solid #282828; transition: border-color .15s; cursor: crosshair; break-inside: avoid; }
     .cell-wrap:hover { border-color: #383838; }
-    .cell-wrap.selected { border-color: #7c5cff; }
+    .cell-wrap.selected { border-color: #7c5cff; box-shadow: 0 0 0 1px #7c5cff; }
+    .cell-wrap.multi-sel { border-color: #a78bfa; }
+    .cell-wrap.drag-over { border-color: #7c5cff; opacity: 0.6; }
     .cell-wrap .hover-btns { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; pointer-events: none; z-index: 2; }
     .cell-wrap:hover .hover-btns { opacity: 1; pointer-events: all; }
     .hbtn { font-family: Inter,sans-serif; font-size: 11px; font-weight: 600; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
-    .hbtn-edit { background: #7c5cff; color: #fff; }
-    .hbtn-edit:hover { background: #9b80ff; }
-    .hbtn-del { background: rgba(239,68,68,0.2); color: #f87171; }
-    .hbtn-del:hover { background: rgba(239,68,68,0.35); }
+    .hbtn-edit  { background: #7c5cff; color: #fff; }
+    .hbtn-edit:hover  { background: #9b80ff; }
+    .hbtn-prev  { background: rgba(34,197,94,0.2); color: #4ade80; }
+    .hbtn-prev:hover  { background: rgba(34,197,94,0.35); }
+    .hbtn-del   { background: rgba(239,68,68,0.2); color: #f87171; }
+    .hbtn-del:hover   { background: rgba(239,68,68,0.35); }
 
-    /* ── Toast ── */
+    /* Toast */
     #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #d0d0d0; color: #111; font-size: 12px; font-family: Inter,sans-serif; padding: 8px 20px; border-radius: 20px; pointer-events: none; opacity: 0; transition: opacity .25s; z-index: 9999; white-space: nowrap; font-weight: 500; }
     #toast.show { opacity: 1; }
 
-    /* ── Drop overlay ── */
+    /* Drop overlay */
     #drop-overlay { position: fixed; inset: 0; background: rgba(24,24,24,0.93); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 8888; pointer-events: none; opacity: 0; transition: opacity .18s; }
     #drop-overlay.show { opacity: 1; pointer-events: all; }
     #drop-overlay .box { border: 2px dashed #383838; border-radius: 16px; padding: 52px 80px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
@@ -50,19 +54,34 @@
     #drop-overlay .label { font-size: 20px; font-weight: 600; color: #d0d0d0; }
     #drop-overlay .sub { font-size: 12px; color: #444; }
 
-    /* ── Slider filled track (purple) ── */
+    /* Slider track */
     input[type=range]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: linear-gradient(to right, #7c5cff var(--val, 50%), #2e2e2e var(--val, 50%)); }
     input[type=range]::-moz-range-track { height: 3px; border-radius: 2px; background: #2e2e2e; }
     input[type=range]::-moz-range-progress { background: #7c5cff; height: 3px; border-radius: 2px; }
 
-    /* ── Panel typography ── */
+    /* Panel typography */
     .sec-title { font-size: 10px; font-weight: 700; color: #6a6a6a; text-transform: uppercase; letter-spacing: 1.8px; margin-bottom: 10px; margin-top: 18px; padding-bottom: 6px; border-bottom: 1px solid #2a2a2a; display: block; }
     .lbl { font-size: 11px; color: #aaaaaa; font-weight: 500; display: block; margin-bottom: 4px; }
+
+    /* Panel tabs */
+    .tab-bar { display: flex; gap: 2px; margin-bottom: 4px; margin-top: 8px; background: #181818; border-radius: 6px; padding: 3px; }
+    .tab-btn { flex: 1; font-family: Inter,sans-serif; font-size: 11px; font-weight: 500; border: none; border-radius: 4px; padding: 6px 0; cursor: pointer; transition: all .12s; }
+    .tab-btn.active { background: #2e2e2e; color: #e0e0e0; }
+    .tab-btn.inactive { background: transparent; color: #555; }
+
+    /* Progress bar */
+    #zip-progress { position: fixed; top: 50px; left: 0; right: 0; height: 2px; background: #7c5cff; transform-origin: left; transform: scaleX(0); transition: transform .2s; z-index: 9990; }
+
+    /* Preview modal */
+    #preview-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9900; }
+    #preview-modal .pm-box { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; max-width: 90vw; max-height: 90vh; }
+    #preview-modal img { max-width: 70vw; max-height: 70vh; object-fit: contain; border-radius: 6px; background: #111; }
   </style>
 </head>
 <body>
 <div id="root"></div>
 <div id="toast"></div>
+<div id="zip-progress"></div>
 <div id="drop-overlay">
   <div class="box">
     <div class="icon">🖼</div>
@@ -81,129 +100,110 @@
 </script>
 
 <script type="text/babel">
-const { useState, useRef, useEffect, useCallback } = React;
+const { useState, useRef, useEffect, useCallback, useMemo } = React;
 let _uid = 0;
 
-/* ── i18n ────────────────────────────────────────────────────────────── */
+/* ── i18n ─────────────────────────────────────────────────────────────── */
 const STRINGS = {
   en: {
-    subtitle:        "Zoom-In Resizing & Mastering Editor",
-    undo:            "Undo",
-    undoCount:       n=>`Undo (${n})`,
-    saveCurrent:     "↓ Save Image",
-    zipBtn:          n=>`↓ ZIP (${n})`,
-    zipGenerating:   "Generating ZIP…",
-    add:             "+ Add",
-    dropLabel:       "Drop your images here",
-    dropFormats:     "JPEG · PNG · WebP · any amount",
-    emptyHint:       "Drop images anywhere",
-    emptySub:        "or use the + Add button above",
-    addMore:         "Add more",
-    noCrop:          "no crop",
-    editBtn:         "✎ Edit",
-    back:            "← Back",
-    cropTool:        "✂ Crop",
-    blurTool:        "🖌 Blur Brush",
-    autoCropBtn:     "Auto Crop",
-    clearCropBtn:    "Clear Crop",
-    rightClickHint:  "Right-click = pan view",
-    secThumbs:       "Thumbnail View",
-    thumbSize:       n=>`Size: ${n}px`,
-    secOutput:       "Output Size",
-    widthLbl:        "Width (px)",
-    heightLbl:       "Height (px)",
-    ratioLbl:        "Ratio",
-    modeLbl:         "Mode",
-    modeFill:        "Fill — crop to fit",
-    modeFit:         "Fit — letterbox",
-    modeStretch:     "Stretch — distort",
-    secBlur:         "Blur Brush",
-    sizeLbl:         n=>`Size: ${n}px`,
-    strengthLbl:     n=>`Strength: ${n}`,
-    hardnessLbl:     n=>`Hardness: ${n}%`,
-    opacityLbl:      n=>`Opacity: ${n}%`,
-    secBatch:        "Batch",
-    totalLbl:        "Total",
-    withCropLbl:     "Cropped",
-    noCropLbl:       "Not cropped",
-    autoCropAll:     "⊠ Auto Crop All",
-    clearAllCrops:   "✕ Clear All Crops",
-    deleteAll:       "🗑 Delete All Images",
-    secExport:       "Export",
-    formatLbl:       "Format",
-    qualityLbl:      n=>`Quality: ${n}%`,
-    secHowTo:        "How to use",
-    howTo:           ["Drag on image → new crop","White handles → resize","Inside crop → move","✎ Edit → zoom + blur brush","Right-click in edit → pan","Ctrl+Z → undo"],
-    toastZipReady:   n=>`✓ ZIP ready · ${n} images`,
-    toastZipErr:     "Error generating ZIP",
-    toastNoUndo:     "Nothing to undo",
-    toastAutoCrop:   n=>`✂ Auto crop applied to ${n} images`,
-    toastCropsClear: "All crops cleared",
-    langLabel:       "EN",
+    subtitle:"Zoom-In Resizing & Mastering Editor",
+    undo:"Undo", undoCount:n=>`Undo (${n})`, redo:"Redo", redoCount:n=>`Redo (${n})`,
+    saveCurrent:"↓ Save Image", zipBtn:n=>`↓ ZIP (${n})`, zipGenerating:"Generating ZIP…",
+    add:"+ Add", dropLabel:"Drop your images here", dropFormats:"JPEG · PNG · WebP · any amount",
+    emptyHint:"Drop images anywhere", emptySub:"or use the + Add button above",
+    addMore:"Add more", noCrop:"no crop", editBtn:"✎ Edit", previewBtn:"👁 Preview",
+    back:"← Back", cropTool:"✂ Crop", blurTool:"🖌 Blur Brush",
+    autoCropBtn:"Auto Crop", clearCropBtn:"Clear Crop", rightClickHint:"Right-click = pan",
+    freeCrop:"🔓 Free", lockedCrop:r=>`🔒 ${r}`,
+    secThumbs:"Thumbnail View", thumbSize:n=>`Size: ${n}px`,
+    secOutput:"Output Size", widthLbl:"Width (px)", heightLbl:"Height (px)",
+    ratioLbl:"Ratio", modeLbl:"Mode",
+    modeFill:"Fill — crop to fit", modeFit:"Fit — letterbox", modeStretch:"Stretch — distort",
+    secBlur:"Blur Brush", sizeLbl:n=>`Size: ${n}px`, strengthLbl:n=>`Strength: ${n}`,
+    hardnessLbl:n=>`Hardness: ${n}%`, opacityLbl:n=>`Opacity: ${n}%`,
+    secBatch:"Batch", totalLbl:"Total", withCropLbl:"Cropped", noCropLbl:"Not cropped",
+    autoCropAll:"⊠ Auto Crop All", clearAllCrops:"✕ Clear All Crops", deleteAll:"🗑 Delete All",
+    secExport:"Export", formatLbl:"Format", qualityLbl:n=>`Quality: ${n}%`,
+    prefixLbl:"Filename prefix", suffixLbl:"Filename suffix",
+    secRename:"Filename", renameModeLbl:"Mode", renameModeKeep:"Keep original", renameModeCustom:"Custom name",
+    renameBaseLbl:"Base name", renameNumberingLbl:"Numbering", renameStartLbl:"Start at",
+    renamePreviewLbl:"Preview",
+    tabImage:"Image", tabExport:"Export",
+    panelHide:"‹ Hide panel", panelShow:"› Show panel",
+    secHowTo:"How to use",
+    howTo:[
+      {icon:"🖱", text:"Drag on image → new crop"},
+      {icon:"⬜", text:"White handles → resize crop"},
+      {icon:"✋", text:"Inside crop → move it"},
+      {icon:"✎",  text:"Edit button → zoom & blur brush"},
+      {icon:"🖱", text:"Right-click in editor → pan"},
+      {icon:"⌨",  text:"Ctrl+Z / Ctrl+Y → undo / redo"},
+      {icon:"←",  text:"Arrow keys → navigate images"},
+      {icon:"⇧",  text:"Shift+click → multi-select"},
+      {icon:"⠿",  text:"Drag thumbnails → reorder"},
+    ],
+    toastZipReady:n=>`✓ ZIP ready · ${n} images`, toastZipErr:"Error generating ZIP",
+    toastNoUndo:"Nothing to undo", toastNoRedo:"Nothing to redo",
+    toastAutoCrop:n=>`✂ Auto crop applied to ${n} images`, toastCropsClear:"All crops cleared",
+    previewTitle:"Export Preview",
+    previewClose:"Close",
+    multiApplied:n=>`Applied to ${n} selected images`,
   },
   es: {
-    subtitle:        "Zoom-In Resizing & Mastering Editor",
-    undo:            "Deshacer",
-    undoCount:       n=>`Deshacer (${n})`,
-    saveCurrent:     "↓ Imagen actual",
-    zipBtn:          n=>`↓ ZIP (${n})`,
-    zipGenerating:   "Generando ZIP…",
-    add:             "+ Añadir",
-    dropLabel:       "Suelta tus imágenes aquí",
-    dropFormats:     "JPEG · PNG · WebP · cualquier cantidad",
-    emptyHint:       "Arrastra imágenes a cualquier parte",
-    emptySub:        "o usa el botón + Añadir en la parte superior",
-    addMore:         "Añadir más",
-    noCrop:          "sin recorte",
-    editBtn:         "✎ Editar",
-    back:            "← Volver",
-    cropTool:        "✂ Recortar",
-    blurTool:        "🖌 Pincel de desenfoque",
-    autoCropBtn:     "Recorte automático",
-    clearCropBtn:    "Limpiar recorte",
-    rightClickHint:  "Clic derecho = mover vista",
-    secThumbs:       "Vista de miniaturas",
-    thumbSize:       n=>`Tamaño: ${n}px`,
-    secOutput:       "Tamaño de salida",
-    widthLbl:        "Ancho (px)",
-    heightLbl:       "Alto (px)",
-    ratioLbl:        "Ratio",
-    modeLbl:         "Modo",
-    modeFill:        "Relleno — recortar al llenar",
-    modeFit:         "Ajuste — encajar con bordes",
-    modeStretch:     "Estirar — deformar",
-    secBlur:         "Pincel de desenfoque",
-    sizeLbl:         n=>`Tamaño: ${n}px`,
-    strengthLbl:     n=>`Intensidad: ${n}`,
-    hardnessLbl:     n=>`Dureza: ${n}%`,
-    opacityLbl:      n=>`Opacidad: ${n}%`,
-    secBatch:        "Lote",
-    totalLbl:        "Total",
-    withCropLbl:     "Con recorte",
-    noCropLbl:       "Sin recorte",
-    autoCropAll:     "⊠ Recorte Automático",
-    clearAllCrops:   "✕ Limpiar todos los recortes",
-    deleteAll:       "🗑 Eliminar todas las imágenes",
-    secExport:       "Exportar",
-    formatLbl:       "Formato",
-    qualityLbl:      n=>`Calidad: ${n}%`,
-    secHowTo:        "Cómo usar",
-    howTo:           ["Arrastrar imagen → nuevo recorte","Tiradores blancos → redimensionar","Dentro del recorte → mover","✎ Editar → zoom + pincel de desenfoque","Clic derecho en edición → mover vista","Ctrl+Z → deshacer"],
-    toastZipReady:   n=>`✓ ZIP listo · ${n} imágenes`,
-    toastZipErr:     "Error al generar ZIP",
-    toastNoUndo:     "No hay pasos para deshacer",
-    toastAutoCrop:   n=>`✂ Recorte automático aplicado a ${n} imágenes`,
-    toastCropsClear: "Recortes eliminados",
-    langLabel:       "ES",
+    subtitle:"Zoom-In Resizing & Mastering Editor",
+    undo:"Deshacer", undoCount:n=>`Deshacer (${n})`, redo:"Rehacer", redoCount:n=>`Rehacer (${n})`,
+    saveCurrent:"↓ Imagen actual", zipBtn:n=>`↓ ZIP (${n})`, zipGenerating:"Generando ZIP…",
+    add:"+ Añadir", dropLabel:"Suelta tus imágenes aquí", dropFormats:"JPEG · PNG · WebP · cualquier cantidad",
+    emptyHint:"Arrastra imágenes a cualquier parte", emptySub:"o usa el botón + Añadir en la parte superior",
+    addMore:"Añadir más", noCrop:"sin recorte", editBtn:"✎ Editar", previewBtn:"👁 Vista previa",
+    back:"← Volver", cropTool:"✂ Recortar", blurTool:"🖌 Pincel de desenfoque",
+    autoCropBtn:"Recorte automático", clearCropBtn:"Limpiar recorte", rightClickHint:"Clic derecho = mover vista",
+    freeCrop:"🔓 Libre", lockedCrop:r=>`🔒 ${r}`,
+    secThumbs:"Vista de miniaturas", thumbSize:n=>`Tamaño: ${n}px`,
+    secOutput:"Tamaño de salida", widthLbl:"Ancho (px)", heightLbl:"Alto (px)",
+    ratioLbl:"Ratio", modeLbl:"Modo",
+    modeFill:"Relleno — recortar al llenar", modeFit:"Ajuste — encajar con bordes", modeStretch:"Estirar — deformar",
+    secBlur:"Pincel de desenfoque", sizeLbl:n=>`Tamaño: ${n}px`, strengthLbl:n=>`Intensidad: ${n}`,
+    hardnessLbl:n=>`Dureza: ${n}%`, opacityLbl:n=>`Opacidad: ${n}%`,
+    secBatch:"Lote", totalLbl:"Total", withCropLbl:"Con recorte", noCropLbl:"Sin recorte",
+    autoCropAll:"⊠ Recorte Automático", clearAllCrops:"✕ Limpiar todos los recortes", deleteAll:"🗑 Eliminar todo",
+    secExport:"Exportar", formatLbl:"Formato", qualityLbl:n=>`Calidad: ${n}%`,
+    prefixLbl:"Prefijo del nombre", suffixLbl:"Sufijo del nombre",
+    secRename:"Nombre de archivo", renameModeLbl:"Modo", renameModeKeep:"Mantener original", renameModeCustom:"Nombre personalizado",
+    renameBaseLbl:"Nombre base", renameNumberingLbl:"Numeración", renameStartLbl:"Empezar en",
+    renamePreviewLbl:"Vista previa",
+    tabImage:"Imagen", tabExport:"Exportar",
+    panelHide:"‹ Ocultar panel", panelShow:"› Mostrar panel",
+    secHowTo:"Cómo usar",
+    howTo:[
+      {icon:"🖱", text:"Arrastra sobre la imagen → nuevo recorte"},
+      {icon:"⬜", text:"Tiradores blancos → redimensionar"},
+      {icon:"✋", text:"Dentro del recorte → moverlo"},
+      {icon:"✎",  text:"Botón editar → zoom y pincel de desenfoque"},
+      {icon:"🖱", text:"Clic derecho en editor → mover vista"},
+      {icon:"⌨",  text:"Ctrl+Z / Ctrl+Y → deshacer / rehacer"},
+      {icon:"←",  text:"Flechas → navegar entre imágenes"},
+      {icon:"⇧",  text:"Shift+clic → selección múltiple"},
+      {icon:"⠿",  text:"Arrastra miniaturas → reordenar"},
+    ],
+    toastZipReady:n=>`✓ ZIP listo · ${n} imágenes`, toastZipErr:"Error al generar ZIP",
+    toastNoUndo:"No hay pasos para deshacer", toastNoRedo:"No hay pasos para rehacer",
+    toastAutoCrop:n=>`✂ Recorte automático aplicado a ${n} imágenes`, toastCropsClear:"Recortes eliminados",
+    previewTitle:"Vista previa de exportación",
+    previewClose:"Cerrar",
+    multiApplied:n=>`Aplicado a ${n} imágenes seleccionadas`,
   },
 };
 
-/* ── Helpers ─────────────────────────────────────────────────────────── */
-
+/* ── Helpers ──────────────────────────────────────────────────────────── */
 function showToast(msg) {
   const t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("show");
   clearTimeout(t._to); t._to = setTimeout(()=>t.classList.remove("show"), 2600);
+}
+function setZipProgress(p) {
+  const el = document.getElementById("zip-progress");
+  if(el) el.style.transform = `scaleX(${p})`;
 }
 function snapCanvas(c) {
   const s = document.createElement("canvas"); s.width=c.width; s.height=c.height;
@@ -211,247 +211,235 @@ function snapCanvas(c) {
 }
 function gcd(a,b){ return b===0?a:gcd(b,a%b); }
 
-// Clamp a crop rect so it never exceeds image bounds, maintaining ratio
 function clampCrop(crop, iW, iH, ratio) {
   let { x, y, w, h } = crop;
-  // Enforce ratio
-  if (ratio) {
-    if (w / (h||0.001) > ratio) h = w / ratio; else w = h * ratio;
+  w=Math.max(10,w); h=Math.max(10,h);
+  // Fit dimensions within image, respecting ratio if locked
+  if(ratio){
+    w=Math.min(w,iW); h=Math.min(h,iH);
+    if(w/h>ratio) w=h*ratio; else h=w/ratio;
+    if(w>iW){w=iW;h=w/ratio;} if(h>iH){h=iH;w=h*ratio;}
+  } else {
+    w=Math.min(w,iW); h=Math.min(h,iH);
   }
-  // Clamp size to image
-  w = Math.min(w, iW); h = Math.min(h, iH);
-  if (ratio) { if (w/iW > h/iH) w=h*ratio; else h=w/ratio; }
-  // Clamp position
-  x = Math.max(0, Math.min(x, iW - w));
-  y = Math.max(0, Math.min(y, iH - h));
-  return { x, y, w, h };
+  // Clamp position so crop sits inside image
+  x=Math.max(0,Math.min(x,iW-w));
+  y=Math.max(0,Math.min(y,iH-h));
+  // Final strict guarantee: right/bottom edges never exceed image bounds
+  w=Math.min(w,iW-x); h=Math.min(h,iH-y);
+  return {x,y,w,h};
 }
 
-// Handle IDs: 0=TL,1=TC,2=TR,3=ML,4=MR,5=BL,6=BC,7=BR
 const HANDLES = [
-  {hx:0,  hy:0,  cx:"nw-resize"},
-  {hx:0.5,hy:0,  cx:"n-resize"},
-  {hx:1,  hy:0,  cx:"ne-resize"},
-  {hx:0,  hy:0.5,cx:"w-resize"},
-  {hx:1,  hy:0.5,cx:"e-resize"},
-  {hx:0,  hy:1,  cx:"sw-resize"},
-  {hx:0.5,hy:1,  cx:"s-resize"},
-  {hx:1,  hy:1,  cx:"se-resize"},
+  {hx:0,  hy:0,  cx:"nw-resize"},{hx:0.5,hy:0,  cx:"n-resize"},{hx:1,hy:0,cx:"ne-resize"},
+  {hx:0,  hy:0.5,cx:"w-resize"}, {hx:1,  hy:0.5,cx:"e-resize"},
+  {hx:0,  hy:1,  cx:"sw-resize"},{hx:0.5,hy:1,  cx:"s-resize"}, {hx:1,hy:1,cx:"se-resize"},
 ];
-const HS = 7; // handle size px (in canvas space)
+const HS = 8;
 
-/* ── drawCropOverlay ─────────────────────────────────────────────────── */
-function drawCropOverlay(ctx, cr, sc, offX, offY, zoom=1) {
-  if (!cr || cr.w < 2 || cr.h < 2) return;
-  const cx = cr.x*sc+offX, cy = cr.y*sc+offY;
-  const cw = cr.w*sc, ch = cr.h*sc;
-
-  ctx.fillStyle = "rgba(0,0,0,0.52)";
-  ctx.fillRect(offX, offY, (offX+cr.w*sc+offX)-offX, cy-offY); // top — simpler below
-  // Recompute: offX=left edge of image on canvas
-  const imgX=offX, imgY=offY, imgW=cr.w*sc+offX*2; // wrong approach, do it properly:
-  // Just use the four rects:
-  ctx.clearRect(0,0,0,0); // noop reset
-  ctx.fillStyle = "rgba(0,0,0,0.52)";
-  // top
-  ctx.fillRect(offX, offY, cw + (cx-offX) + ((offX+(cr.w*sc+(cr.x*sc))) - (cx+cw)), cy-offY);
-  // Simpler — just 4 independent rects relative to image area
-  // (recalc with absolute coords)
-  ctx.fillRect(offX, offY, imgW-0, cy-offY); // actually let me just do it the right way
-}
-
-// Better: just draw the 4 shadow rects properly
+/* ── drawCropShadow ───────────────────────────────────────────────────── */
 function drawCropShadow(ctx, cr, sc, offX, offY, iW, iH) {
-  const cx = cr.x*sc+offX, cy = cr.y*sc+offY;
-  const cw = cr.w*sc, ch = cr.h*sc;
-  const r = offX + iW*sc; // right edge of image
-  const b = offY + iH*sc; // bottom edge of image
-  ctx.fillStyle = "rgba(0,0,0,0.54)";
-  ctx.fillRect(offX, offY, r-offX, cy-offY);        // top
-  ctx.fillRect(offX, cy+ch, r-offX, b-(cy+ch));     // bottom
-  ctx.fillRect(offX, cy, cx-offX, ch);              // left
-  ctx.fillRect(cx+cw, cy, r-(cx+cw), ch);           // right
-  // Border
-  ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.strokeRect(cx, cy, cw, ch);
-  // Rule of thirds
-  ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.lineWidth = 0.7; ctx.setLineDash([3,3]);
-  for (let i=1;i<3;i++){
-    ctx.beginPath(); ctx.moveTo(cx+cw*i/3,cy); ctx.lineTo(cx+cw*i/3,cy+ch); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx,cy+ch*i/3); ctx.lineTo(cx+cw,cy+ch*i/3); ctx.stroke();
-  }
+  if(!cr||cr.w<2) return;
+  const cx=cr.x*sc+offX, cy=cr.y*sc+offY;
+  const cw=cr.w*sc, ch=cr.h*sc;
+  const r=offX+iW*sc, b=offY+iH*sc;
+
+  // Darken outside
+  ctx.fillStyle="rgba(0,0,0,0.58)";
+  ctx.fillRect(offX,offY,r-offX,cy-offY);
+  ctx.fillRect(offX,cy+ch,r-offX,b-(cy+ch));
+  ctx.fillRect(offX,cy,cx-offX,ch);
+  ctx.fillRect(cx+cw,cy,r-(cx+cw),ch);
+
+  // Outer border — double-stroke (no shadowBlur: keeps GPU path, avoids lag on large crops)
   ctx.setLineDash([]);
-  // Handles
-  ctx.fillStyle = "#fff";
+  ctx.strokeStyle="rgba(0,0,0,0.75)"; ctx.lineWidth=3.5;
+  ctx.strokeRect(cx,cy,cw,ch);
+  ctx.strokeStyle="#ffffff"; ctx.lineWidth=1.5;
+  ctx.strokeRect(cx,cy,cw,ch);
+
+  // Rule of thirds — batched into a single path (4× fewer draw calls)
+  ctx.beginPath();
+  for(let i=1;i<3;i++){
+    ctx.moveTo(cx+cw*i/3, cy+1); ctx.lineTo(cx+cw*i/3, cy+ch-1);
+    ctx.moveTo(cx+1, cy+ch*i/3); ctx.lineTo(cx+cw-1, cy+ch*i/3);
+  }
+  ctx.strokeStyle="rgba(255,255,255,0.65)"; ctx.lineWidth=0.75;
+  ctx.stroke();
+
+  // Handles — shadow via dark underlay rect (no shadowBlur)
+  ctx.fillStyle="rgba(0,0,0,0.75)";
+  HANDLES.forEach(({hx,hy})=>{
+    const hpx=cx+cw*hx, hpy=cy+ch*hy;
+    ctx.fillRect(hpx-HS/2-1.5, hpy-HS/2-1.5, HS+3, HS+3);
+  });
+  ctx.fillStyle="#ffffff";
   HANDLES.forEach(({hx,hy})=>{
     const hpx=cx+cw*hx, hpy=cy+ch*hy;
     ctx.fillRect(hpx-HS/2, hpy-HS/2, HS, HS);
   });
 }
 
-/* ── hitHandle: which handle (0-7) or -1 if none ──────────────────── */
-function hitHandle(px, py, cr, sc, offX, offY) {
-  if (!cr||cr.w<2) return -1;
+function hitHandle(px,py,cr,sc,offX,offY) {
+  if(!cr||cr.w<2) return -1;
   const cx=cr.x*sc+offX, cy=cr.y*sc+offY, cw=cr.w*sc, ch=cr.h*sc;
-  for (let i=0;i<HANDLES.length;i++){
+  for(let i=0;i<HANDLES.length;i++){
     const {hx,hy}=HANDLES[i];
-    const hpx=cx+cw*hx, hpy=cy+ch*hy;
-    if (Math.abs(px-hpx)<HS+3 && Math.abs(py-hpy)<HS+3) return i;
+    if(Math.abs(px-(cx+cw*hx))<HS+4 && Math.abs(py-(cy+ch*hy))<HS+4) return i;
   }
   return -1;
 }
 
-/* ── ImageCell ───────────────────────────────────────────────────────── */
-function ImageCell({ file, isSelected, settings, cellH, t, onSelect, onCropChange, onUndoPush, onRemove, onEdit, tick }) {
+/* ── buildRows ────────────────────────────────────────────────────────── */
+function buildRows(files, targetH, containerW, gap) {
+  if(!files.length||!containerW) return [];
+  const rows=[]; let row=[], rowRatioSum=0;
+  for(const f of files) {
+    const ratio=(f.ec?.width||1)/(f.ec?.height||1);
+    row.push({file:f,ratio}); rowRatioSum+=ratio;
+    const totalW=rowRatioSum*targetH+gap*(row.length-1);
+    if(totalW>=containerW) {
+      const scale=(containerW-gap*(row.length-1))/(rowRatioSum*targetH);
+      const h=Math.round(targetH*scale);
+      rows.push(row.map(it=>({file:it.file,w:Math.round(it.ratio*h),h})));
+      row=[]; rowRatioSum=0;
+    }
+  }
+  if(row.length) rows.push(row.map(it=>({file:it.file,w:Math.round(it.ratio*targetH),h:targetH})));
+  return rows;
+}
+
+/* ── ImageCell ────────────────────────────────────────────────────────── */
+function ImageCell({ file, isSelected, isMultiSel, settings, cellH, t,
+    onSelect, onCropChange, onUndoPush, onRemove, onEdit, onPreview, tick,
+    dragging, onDragStart, onDragEnter, onDragEnd }) {
   const canvasRef = useRef(null);
-  // drag state: mode = "none"|"new"|"move"|"handle"
-  const drag = useRef({ mode:"none", startImg:null, cropOrig:null, handleIdx:-1 });
+  const drag = useRef({mode:"none",startImg:null,cropOrig:null,handleIdx:-1});
 
-  const getT = useCallback(() => {
-    const c = canvasRef.current; if (!c) return null;
+  const getT = useCallback(()=>{
+    const c=canvasRef.current; if(!c) return null;
     const W=c.width, H=c.height, img=file.ec;
-    // Pixel-perfect: image stretched to fill W×H exactly
-    const sc = W / img.width;
-    return { sc, offX:0, offY:0, dW:W, dH:H, W, H };
-  }, [file]);
+    const sc=W/img.width;
+    return {sc,offX:0,offY:0,dW:W,dH:H,W,H};
+  },[file]);
 
-  const evToCanvas = useCallback((e) => {
+  const evToCanvas = useCallback((e)=>{
     const c=canvasRef.current; if(!c) return null;
     const rect=c.getBoundingClientRect();
-    return { px:(e.clientX-rect.left)*(c.width/rect.width), py:(e.clientY-rect.top)*(c.height/rect.height) };
-  }, []);
+    return {px:(e.clientX-rect.left)*(c.width/rect.width),py:(e.clientY-rect.top)*(c.height/rect.height)};
+  },[]);
 
-  const evToImg = useCallback((e) => {
+  const evToImg = useCallback((e)=>{
     const cp=evToCanvas(e); if(!cp) return null;
-    const t=getT(); if(!t) return null;
-    return { x:(cp.px-t.offX)/t.sc, y:(cp.py-t.offY)/t.sc };
-  }, [evToCanvas, getT]);
+    const tt=getT(); if(!tt) return null;
+    return {x:(cp.px-tt.offX)/tt.sc,y:(cp.py-tt.offY)/tt.sc};
+  },[evToCanvas,getT]);
 
-  // Draw
-  useEffect(() => {
-    const c = canvasRef.current; if (!c) return;
-    const img = file.ec;
-    // Use explicit pixel dimensions from justified layout
-    const cw = c.offsetWidth; if (cw > 0) c.width = cw;
-    c.height = cellH; // cellH is now the exact pixel height for this cell
-    const W = c.width, H = c.height;
-    const ctx = c.getContext("2d");
-
-    // Image fills 100% of cell — scale = W/imgW = H/imgH
-    const sc = W / img.width;
-    const offX = 0, offY = 0;
-
-    ctx.fillStyle = "#202020"; ctx.fillRect(0,0,W,H);
-    ctx.drawImage(img, 0, 0, W, H);
-
-    // Crop overlay
-    const cr = file.crop;
-    if (cr?.w>2) drawCropShadow(ctx, cr, sc, offX, offY, img.width, img.height);
-
-    // Filename bar (bottom)
+  useEffect(()=>{
+    const c=canvasRef.current; if(!c) return;
+    const img=file.ec;
+    const cw=c.offsetWidth; if(cw>0) c.width=cw;
+    c.height=cellH;
+    const W=c.width, H=c.height;
+    const ctx=c.getContext("2d");
+    const sc=W/img.width;
+    ctx.fillStyle="#202020"; ctx.fillRect(0,0,W,H);
+    ctx.drawImage(img,0,0,W,H);
+    const cr=file.crop;
+    if(cr?.w>2) drawCropShadow(ctx,cr,sc,0,0,img.width,img.height);
+    // Filename bar
     ctx.fillStyle="rgba(0,0,0,0.65)"; ctx.fillRect(0,H-22,W,22);
     ctx.fillStyle="#888"; ctx.font="500 10px Inter,sans-serif";
     const nm=file.name.length>38?file.name.slice(0,36)+"…":file.name;
     ctx.fillText(nm,6,H-7);
-
-    // Top bar: crop resolution
+    // Top info bar
     ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(0,0,W,22);
     ctx.font="500 10px Inter,sans-serif";
-    if (cr?.w>2) {
-      const cropRes=`✂ ${Math.round(cr.w)}×${Math.round(cr.h)}px`;
-      ctx.fillStyle="#a78bfa"; ctx.fillText(cropRes, 6, 15);
+    if(cr?.w>2){
+      ctx.fillStyle="#a78bfa"; ctx.fillText(`✂ ${Math.round(cr.w)}×${Math.round(cr.h)}px`,6,15);
     } else {
-      ctx.fillStyle="#444"; ctx.fillText(t?.noCrop||"no crop", 6, 15);
+      ctx.fillStyle="#444"; ctx.fillText(t?.noCrop||"no crop",6,15);
     }
-  }, [file, file.crop, cellH, tick]);
+  },[file,file.crop,cellH,tick]);
 
-  const onMouseDown = useCallback((e) => {
-    if (e.button!==0) return;
-    onSelect(file.id);
+  const onMouseDown = useCallback((e)=>{
+    if(e.button!==0) return;
+    onSelect(file.id, e.shiftKey);
     const cp=evToCanvas(e); const p=evToImg(e);
-    if (!cp||!p) return;
-    const t=getT(); if(!t) return;
+    if(!cp||!p) return;
+    const tt=getT(); if(!tt) return;
     const cr=file.crop;
-    // Check handle first
-    const hi = cr && cr.w>2 ? hitHandle(cp.px, cp.py, cr, t.sc, t.offX, t.offY) : -1;
-    if (hi>=0) {
-      onUndoPush(file.id);
-      drag.current={mode:"handle", startImg:p, cropOrig:{...cr}, handleIdx:hi};
-      e.preventDefault(); return;
+    const hi=cr&&cr.w>2?hitHandle(cp.px,cp.py,cr,tt.sc,tt.offX,tt.offY):-1;
+    if(hi>=0){ onUndoPush(file.id); drag.current={mode:"handle",startImg:p,cropOrig:{...cr},handleIdx:hi}; e.preventDefault(); return; }
+    if(cr&&cr.w>2&&p.x>=cr.x&&p.x<=cr.x+cr.w&&p.y>=cr.y&&p.y<=cr.y+cr.h){
+      onUndoPush(file.id); drag.current={mode:"move",startImg:p,cropOrig:{...cr},handleIdx:-1}; e.preventDefault(); return;
     }
-    // Check inside crop for move
-    if (cr&&cr.w>2&&p.x>=cr.x&&p.x<=cr.x+cr.w&&p.y>=cr.y&&p.y<=cr.y+cr.h) {
-      onUndoPush(file.id);
-      drag.current={mode:"move", startImg:p, cropOrig:{...cr}, handleIdx:-1};
-      e.preventDefault(); return;
+    if(p.x>=0&&p.x<=file.ec.width&&p.y>=0&&p.y<=file.ec.height){
+      onUndoPush(file.id); drag.current={mode:"new",startImg:p,cropOrig:null,handleIdx:-1};
+      onCropChange(file.id,{x:p.x,y:p.y,w:0,h:0}); e.preventDefault();
     }
-    // New crop — only if click is inside image
-    if (p.x>=0&&p.x<=file.ec.width&&p.y>=0&&p.y<=file.ec.height) {
-      onUndoPush(file.id);
-      drag.current={mode:"new", startImg:p, cropOrig:null, handleIdx:-1};
-      onCropChange(file.id,{x:p.x,y:p.y,w:0,h:0});
-      e.preventDefault();
-    }
-  }, [file, evToCanvas, evToImg, getT, onSelect, onCropChange, onUndoPush]);
+  },[file,evToCanvas,evToImg,getT,onSelect,onCropChange,onUndoPush]);
 
-  const onMouseMove = useCallback((e) => {
-    const d=drag.current; const c=canvasRef.current; if(!c) return;
-    const t=getT(); if(!t) return;
-    const cp=evToCanvas(e); const p=evToImg(e);
-    if (!cp||!p) return;
+  const onMouseMove = useCallback((e)=>{
+    // ── Cursor update — always, independent of drag state ──────────────────
+    const cp2=evToCanvas(e); const pi2=evToImg(e);
+    if(cp2&&pi2){
+      const tt2=getT(); const cr2=file.crop;
+      if(tt2&&cr2&&cr2.w>2){
+        const cv=canvasRef.current;
+        if(cv){
+          const hi2=hitHandle(cp2.px,cp2.py,cr2,tt2.sc,tt2.offX,tt2.offY);
+          cv.style.cursor=hi2>=0?HANDLES[hi2].cx:(pi2.x>=cr2.x&&pi2.x<=cr2.x+cr2.w&&pi2.y>=cr2.y&&pi2.y<=cr2.y+cr2.h?"move":"crosshair");
+        }
+      }
+    }
+    const d=drag.current; if(d.mode==="none") return;
+    const p=evToImg(e); if(!p) return;
     const ratio=settings.w/settings.h;
     const iW=file.ec.width, iH=file.ec.height;
-
-    if (d.mode==="new") {
+    if(d.mode==="new"){
       const rawW=p.x-d.startImg.x, rawH=p.y-d.startImg.y;
-      let cW=Math.abs(rawW), cH=Math.abs(rawH);
-      if (cW/(cH||0.001)>ratio) cH=cW/ratio; else cW=cH*ratio;
+      let cW=Math.abs(rawW),cH=Math.abs(rawH);
+      if(cW/(cH||0.001)>ratio) cH=cW/ratio; else cW=cH*ratio;
       const nx=rawW>=0?d.startImg.x:d.startImg.x-cW;
       const ny=rawH>=0?d.startImg.y:d.startImg.y-cH;
-      onCropChange(file.id, clampCrop({x:nx,y:ny,w:cW,h:cH}, iW, iH, ratio));
-    } else if (d.mode==="move") {
+      onCropChange(file.id,clampCrop({x:nx,y:ny,w:cW,h:cH},iW,iH,ratio));
+    } else if(d.mode==="move"){
       const dx=p.x-d.startImg.x, dy=p.y-d.startImg.y;
-      onCropChange(file.id, clampCrop({...d.cropOrig, x:d.cropOrig.x+dx, y:d.cropOrig.y+dy}, iW, iH, ratio));
-    } else if (d.mode==="handle") {
-      const orig=d.cropOrig, hi=d.handleIdx;
+      onCropChange(file.id,clampCrop({...d.cropOrig,x:d.cropOrig.x+dx,y:d.cropOrig.y+dy},iW,iH,ratio));
+    } else if(d.mode==="handle"){
+      const orig=d.cropOrig, hi=d.handleIdx, sp=d.startImg;
+      const dx=p.x-sp.x, dy=p.y-sp.y;
       let {x,y,w,h}={...orig};
-      const dx=p.x-d.startImg.x, dy=p.y-d.startImg.y;
-      // Which edges does this handle touch?
       const {hx,hy}=HANDLES[hi];
-      if (hx===0) { x=orig.x+dx; w=orig.w-dx; }       // left edge
-      if (hx===1) { w=orig.w+dx; }                      // right edge
-      if (hy===0) { y=orig.y+dy; h=orig.h-dy; }        // top edge
-      if (hy===1) { h=orig.h+dy; }                      // bottom edge
-      // Keep positive size
-      if (w<10) w=10; if (h<10) h=10;
-      // Re-enforce ratio
-      if (hx===0.5) { w=h*ratio; if(hx===0){x=orig.x+(orig.w-w);} } // top/bottom only
-      else if (hy===0.5) { h=w/ratio; if(hy===0){y=orig.y+(orig.h-h);} } // left/right only
-      else { // corner — keep ratio based on larger delta
-        if (Math.abs(dx)>Math.abs(dy)) h=w/ratio; else w=h*ratio;
-        // Recompute anchor
-        if (hx===0) x=orig.x+(orig.w-w);
-        if (hy===0) y=orig.y+(orig.h-h);
-      }
-      onCropChange(file.id, clampCrop({x,y,w,h}, iW, iH, null));
+      // Anchor-aware resize: keep opposite edge fixed, pre-clamp to image boundaries
+      if(hx===0){ const r=orig.x+orig.w; x=Math.max(0,Math.min(orig.x+dx,r-10)); w=r-x; }
+      if(hx===1){ w=Math.max(10,Math.min(orig.w+dx,iW-orig.x)); x=orig.x; }
+      if(hy===0){ const b=orig.y+orig.h; y=Math.max(0,Math.min(orig.y+dy,b-10)); h=b-y; }
+      if(hy===1){ h=Math.max(10,Math.min(orig.h+dy,iH-orig.y)); y=orig.y; }
+      if(hx===0.5){w=h*ratio;} else if(hy===0.5){h=w/ratio;}
+      else{if(Math.abs(dx)>=Math.abs(dy))h=w/ratio; else w=h*ratio; if(hx===0)x=orig.x+(orig.w-w); if(hy===0)y=orig.y+(orig.h-h);}
+      onCropChange(file.id,clampCrop({x,y,w,h},iW,iH,ratio)); // pass ratio so clamping maintains proportion
     }
+  },[file,evToCanvas,evToImg,getT,settings,onCropChange]);
 
-    // Dynamic cursor
-    const cr=file.crop;
-    const hi2 = cr&&cr.w>2 ? hitHandle(cp.px,cp.py,cr,t.sc,t.offX,t.offY) : -1;
-    if (hi2>=0) c.style.cursor=HANDLES[hi2].cx;
-    else if (cr&&cr.w>2&&p.x>=cr.x&&p.x<=cr.x+cr.w&&p.y>=cr.y&&p.y<=cr.y+cr.h) c.style.cursor="move";
-    else if (p.x>=0&&p.x<=iW&&p.y>=0&&p.y<=iH) c.style.cursor="crosshair";
-    else c.style.cursor="default";
-  }, [file, evToCanvas, evToImg, getT, onCropChange, settings]);
+  const onMouseUp = useCallback(()=>{
+    drag.current.mode="none";
+    const cv=canvasRef.current; if(cv) cv.style.cursor=""; // revert to crosshair from cell-wrap CSS
+  },[]);
 
-  const onMouseUp = useCallback(()=>{ drag.current.mode="none"; }, []);
+  const cls = `cell-wrap${isSelected?" selected":""}${isMultiSel?" multi-sel":""}${dragging?" drag-over":""}`;
 
   return (
-    <div className={`cell-wrap${isSelected?" selected":""}`} style={{}}>
-      <canvas ref={canvasRef} style={{ display:"block", width:"100%" }}
+    <div className={cls}
+      draggable onDragStart={()=>onDragStart(file.id)}
+      onDragEnter={()=>onDragEnter(file.id)} onDragEnd={onDragEnd}
+      onDragOver={e=>e.preventDefault()}>
+      <canvas ref={canvasRef} style={{display:"block",width:"100%"}}
         onMouseDown={onMouseDown} onMouseMove={onMouseMove}
         onMouseUp={onMouseUp} onMouseLeave={onMouseUp} />
       <div className="hover-btns">
+        {file.crop?.w>2&&<button className="hbtn hbtn-prev" onClick={e=>{e.stopPropagation();onPreview(file.id);}}>{t?.previewBtn||"👁"}</button>}
         <button className="hbtn hbtn-edit" onClick={e=>{e.stopPropagation();onEdit(file.id);}}>{t?.editBtn||"✎ Edit"}</button>
         <button className="hbtn hbtn-del"  onClick={e=>{e.stopPropagation();onRemove(file.id);}}>×</button>
       </div>
@@ -459,434 +447,479 @@ function ImageCell({ file, isSelected, settings, cellH, t, onSelect, onCropChang
   );
 }
 
-/* ── buildRows: justified layout (Google Photos style) ──────────────── */
-// Given files array, target row height, and container width,
-// returns array of rows: each row = [{file, w, h}, ...]
-function buildRows(files, targetH, containerW, gap) {
-  if (!files.length || !containerW) return [];
-  const rows = [];
-  let row = [];
-  let rowRatioSum = 0;
-
-  for (const f of files) {
-    const iW = f.ec?.width  || 1;
-    const iH = f.ec?.height || 1;
-    const ratio = iW / iH;
-    row.push({ file: f, ratio });
-    rowRatioSum += ratio;
-
-    // Total width this row would take at targetH
-    const totalW = rowRatioSum * targetH + gap * (row.length - 1);
-    if (totalW >= containerW) {
-      // Scale down so row fills exactly containerW
-      const scale = (containerW - gap * (row.length - 1)) / (rowRatioSum * targetH);
-      const h = Math.round(targetH * scale);
-      rows.push(row.map(item => ({
-        file: item.file,
-        w: Math.round(item.ratio * h),
-        h,
-      })));
-      row = [];
-      rowRatioSum = 0;
-    }
-  }
-
-  // Last incomplete row: don't stretch, just use targetH
-  if (row.length) {
-    rows.push(row.map(item => ({
-      file: item.file,
-      w: Math.round(item.ratio * targetH),
-      h: targetH,
-    })));
-  }
-
-  return rows;
-}
-
-/* ── JustifiedGrid ───────────────────────────────────────────────────── */
-function JustifiedGrid({ files, cellH, settings, selId, t, tick,
-    onSelect, onCropChange, onUndoPush, onRemove, onEdit, loadFiles }) {
+/* ── JustifiedGrid ────────────────────────────────────────────────────── */
+function JustifiedGrid({ files, cellH, settings, selId, multiSel, t, tick,
+    onSelect, onCropChange, onUndoPush, onRemove, onEdit, onPreview, loadFiles, onReorder }) {
   const containerRef = useRef(null);
   const [containerW, setContainerW] = useState(0);
+  const [dragSrc, setDragSrc] = useState(null);
+  const [dragOver, setDragOver] = useState(null);
   const GAP = 10;
 
-  useEffect(() => {
-    const el = containerRef.current; if (!el) return;
-    const ro = new ResizeObserver(entries => {
-      setContainerW(entries[0].contentRect.width);
-    });
-    ro.observe(el);
-    setContainerW(el.clientWidth);
-    return () => ro.disconnect();
-  }, []);
+  useEffect(()=>{
+    const el=containerRef.current; if(!el) return;
+    const ro=new ResizeObserver(entries=>setContainerW(entries[0].contentRect.width));
+    ro.observe(el); setContainerW(el.clientWidth);
+    return()=>ro.disconnect();
+  },[]);
 
-  const rows = containerW > 0 ? buildRows(files, cellH, containerW, GAP) : [];
+  const rows = useMemo(()=>containerW>0?buildRows(files,cellH,containerW,GAP):[],[files,cellH,containerW]);
+
+  const handleDragStart = useCallback((id)=>setDragSrc(id),[]);
+  const handleDragEnter = useCallback((id)=>setDragOver(id),[]);
+  const handleDragEnd   = useCallback(()=>{
+    if(dragSrc&&dragOver&&dragSrc!==dragOver) onReorder(dragSrc,dragOver);
+    setDragSrc(null); setDragOver(null);
+  },[dragSrc,dragOver,onReorder]);
 
   return (
-    <div ref={containerRef} style={{ width:"100%" }}>
-      {rows.map((row, ri) => (
-        <div key={ri} style={{ display:"flex", gap:GAP, marginBottom:GAP, alignItems:"flex-start" }}>
-          {row.map(({ file, w, h }) => (
-            <div key={file.id} style={{ width:w, flexShrink:0 }}>
+    <div ref={containerRef} style={{width:"100%"}}>
+      {rows.map((row,ri)=>(
+        <div key={ri} style={{display:"flex",gap:GAP,marginBottom:GAP,alignItems:"flex-start"}}>
+          {row.map(({file,w,h})=>(
+            <div key={file.id} style={{width:w,flexShrink:0}}>
               <ImageCell file={file} isSelected={file.id===selId}
-                settings={settings} cellH={h} t={t} tick={tick}
+                isMultiSel={multiSel.has(file.id)} settings={settings} cellH={h} t={t} tick={tick}
                 onSelect={onSelect} onCropChange={onCropChange}
-                onUndoPush={onUndoPush} onRemove={onRemove} onEdit={onEdit} />
+                onUndoPush={onUndoPush} onRemove={onRemove} onEdit={onEdit} onPreview={onPreview}
+                dragging={file.id===dragOver}
+                onDragStart={handleDragStart} onDragEnter={handleDragEnter} onDragEnd={handleDragEnd} />
             </div>
           ))}
         </div>
       ))}
-      {/* Add more button — same height as target row */}
-      <label style={{ width:Math.round(cellH*0.75),height:cellH,display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"2px dashed #252525",borderRadius:8,cursor:"pointer",color:"#303030",gap:8,transition:"all .15s",verticalAlign:"top" }}
+      <label style={{height:cellH+"px",display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"2px dashed #252525",borderRadius:8,cursor:"pointer",color:"#303030",gap:8,transition:"all .15s",minWidth:Math.round(cellH*0.6)+"px",verticalAlign:"top"}}
         onMouseEnter={e=>{e.currentTarget.style.borderColor="#383838";e.currentTarget.style.color="#555";}}
         onMouseLeave={e=>{e.currentTarget.style.borderColor="#252525";e.currentTarget.style.color="#303030";}}>
-        <span style={{ fontSize:28 }}>+</span>
-        <span style={{ fontSize:12,fontWeight:500 }}>{t.addMore}</span>
-        <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{ display:"none" }} />
+        <span style={{fontSize:28}}>+</span>
+        <span style={{fontSize:12,fontWeight:500}}>{t.addMore}</span>
+        <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{display:"none"}} />
       </label>
     </div>
   );
 }
-function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndoPush }) {
-  const canvasRef = useRef(null);
-  const contRef   = useRef(null);
-  const [zoom,setZoom] = useState(1);
-  const [pan,setPan]   = useState({x:0,y:0});
-  const [tool,setTool] = useState("crop");
-  const [tick,setTick] = useState(0);
-  const blurCircleRef = useRef(null); // direct DOM ref for zero-latency cursor
-  const panRef  = useRef({x:0,y:0}); useEffect(()=>{panRef.current=pan;},[pan]);
-  const zoomRef = useRef(1);          useEffect(()=>{zoomRef.current=zoom;},[zoom]);
-  const fitZRef = useRef(1);
-  const st = useRef({ mode:"none", isPan:false, panStart:null, panOrig:null,
-                      cropStart:null, cropOrig:null, moveStart:null,
-                      handleIdx:-1, blurPushed:false });
 
-  const fitView = useCallback(()=>{
-    if(!contRef.current) return;
-    const {clientWidth:cW,clientHeight:cH}=contRef.current;
-    const fz=Math.min(cW/file.ec.width, cH/file.ec.height);
-    fitZRef.current=fz; setZoom(fz); setPan({x:0,y:0});
-  },[file]);
-  useEffect(()=>{setTimeout(fitView,60);},[]);
+/* ── EditOverlay ──────────────────────────────────────────────────────── */
+function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndoPush, panelOpen }) {
+  const canvasRef     = useRef(null);
+  const contRef       = useRef(null);
+  const blurCircleRef = useRef(null);
+  const frameRef      = useRef(0);
 
-  useEffect(()=>{
-    const c=canvasRef.current, cont=contRef.current; if(!c||!cont) return;
-    const ro=new ResizeObserver(()=>{
-      c.width=cont.clientWidth; c.height=cont.clientHeight;
-      const fz=Math.min(cont.clientWidth/file.ec.width, cont.clientHeight/file.ec.height);
-      fitZRef.current=fz; setZoom(z=>Math.max(fz,z)); setTick(n=>n+1);
-    });
-    ro.observe(cont); c.width=cont.clientWidth; c.height=cont.clientHeight;
-    return ()=>ro.disconnect();
-  },[]);
+  // Tool state — only affects toolbar rendering, not draw loop
+  const [tool,     setTool]     = useState("crop");
+  const [freeCrop, setFreeCrop] = useState(false);
+  const [ready,    setReady]    = useState(false);
 
-  // Draw
-  useEffect(()=>{
-    const c=canvasRef.current; if(!c) return;
+  // All hot-path values live in refs — NEVER setState during drag/pan/draw
+  const zoomRef    = useRef(1);
+  const panRef     = useRef({x:0,y:0});
+  const cropRef    = useRef(file.crop);   // local working copy, committed on mouseUp
+  const fitZRef    = useRef(1);
+  const toolRef    = useRef("crop");
+  const freeCropRef= useRef(false);
+  const blurCfgRef = useRef(blurCfg);
+  const settingsRef2 = useRef(settings);
+
+  const isDraggingRef = useRef(false);   // true while any drag/pan gesture is live
+  const fileRef       = useRef(file);    // stable mirror of file prop — prevents drawNow recreation
+
+  // Keep refs in sync with props/state (no cost — just assignments)
+  useEffect(()=>{ toolRef.current=tool; },[tool]);
+  useEffect(()=>{ freeCropRef.current=freeCrop; },[freeCrop]);
+  useEffect(()=>{ blurCfgRef.current=blurCfg; },[blurCfg]);
+  useEffect(()=>{ settingsRef2.current=settings; },[settings]);
+  useEffect(()=>{ fileRef.current=file; },[file]); // keeps fileRef current without recreating drawNow
+
+  // Fires synchronously BEFORE browser paint → no blank-frame window.
+  // Calls drawNow() directly (not draw/RAF) so canvas is updated in the same commit frame.
+  // Guard: skip cropRef overwrite while a drag is live.
+  const { useLayoutEffect } = React;
+  useLayoutEffect(()=>{
+    if(!isDraggingRef.current) cropRef.current=file.crop;
+    drawNow(); // synchronous — the RAF gap was the root cause of the flicker
+  },[file.crop, drawNow]); // drawNow is stable ([] deps) → effectively just [file.crop]
+
+  const st = useRef({mode:"none",isPan:false,panStart:null,panOrig:null,
+                     cropOrig:null,cropStart:null,moveStartImg:null,handleIdx:-1,blurPushed:false});
+
+  // ── Imperative draw — called directly, no React state ──────────────────
+  const drawNow = useCallback(()=>{
+    const c=canvasRef.current; if(!c||!c.width) return;
     const ctx=c.getContext("2d");
-    const W=c.width, H=c.height, z=zoom, p=pan;
-    const img=file.ec, iW=img.width, iH=img.height;
+    const W=c.width, H=c.height;
+    const z=zoomRef.current, p=panRef.current;
+    const img=fileRef.current.ec, iW=img.width, iH=img.height; // fileRef: no recreations on file changes
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality="medium";
     ctx.fillStyle="#181818"; ctx.fillRect(0,0,W,H);
     ctx.save();
     ctx.translate(W/2+p.x, H/2+p.y); ctx.scale(z,z); ctx.translate(-iW/2,-iH/2);
     ctx.drawImage(img,0,0);
-    const cr=file.crop;
-    if (cr&&cr.w>2) {
-      drawCropShadow(ctx, cr, 1, 0, 0, iW, iH);
-    }
+    const cr=cropRef.current;
+    if(cr&&cr.w>2) drawCropShadow(ctx,cr,1,0,0,iW,iH);
     ctx.restore();
     ctx.font="500 11px Inter,sans-serif"; ctx.fillStyle="rgba(150,150,150,0.5)";
-    ctx.fillText(`${iW}×${iH}px   ${Math.round(z*100)}%${cr?.w>2?`   ✂ ${Math.round(cr.w)}×${Math.round(cr.h)}`:""}`, 12, H-12);
-  },[file, file.crop, zoom, pan, tick]);
+    const sc = cr&&cr.w>2 ? `   ✂ ${Math.round(cr.w)}×${Math.round(cr.h)}` : "";
+    ctx.fillText(`${iW}×${iH}px   ${Math.round(z*100)}%${sc}`,12,H-12);
+  },[]); // stable — reads everything via refs, never needs to recreate
+  const draw = useCallback(()=>{
+    if(frameRef.current) return;
+    frameRef.current = requestAnimationFrame(()=>{
+      frameRef.current = 0;
+      drawNow();
+    });
+  },[drawNow]);
 
-  // Screen → image
-  const s2i = useCallback((sx,sy)=>{
-    const c=canvasRef.current; if(!c) return null;
-    const r=c.getBoundingClientRect();
-    return { x:(sx-r.left-c.width/2-panRef.current.x)/zoomRef.current+file.ec.width/2,
-             y:(sy-r.top-c.height/2-panRef.current.y)/zoomRef.current+file.ec.height/2 };
-  },[file]);
-
-  // Screen → canvas px (for handle hit detection)
-  const s2c = useCallback((sx,sy)=>{
+  // ── Coordinate helpers — pure, use refs ────────────────────────────────
+  const getPointerData=(sx,sy)=>{
     const c=canvasRef.current; if(!c) return null;
     const r=c.getBoundingClientRect();
     const z=zoomRef.current, p=panRef.current;
     const iW=file.ec.width, iH=file.ec.height;
-    const W=c.width, H=c.height;
-    // image top-left in canvas coords
-    const ox=(W/2+p.x) - iW*z/2;
-    const oy=(H/2+p.y) - iH*z/2;
-    const cx=(sx-r.left)*(c.width/r.width);
-    const cy=(sy-r.top)*(c.height/r.height);
-    return { px:cx, py:cy, sc:z, offX:ox, offY:oy };
-  },[file]);
-
-  const clamp = useCallback((px,py,z)=>{
-    const cont=contRef.current; if(!cont) return {x:px,y:py};
+    const px=(sx-r.left)*(c.width/r.width), py=(sy-r.top)*(c.height/r.height);
+    return{
+      img:{x:(sx-r.left-c.width/2-p.x)/z+iW/2, y:(sy-r.top-c.height/2-p.y)/z+iH/2},
+      px, py, sc:z,
+      offX:(c.width/2+p.x)-iW*z/2,
+      offY:(c.height/2+p.y)-iH*z/2,
+    };
+  };
+  const clampPan=(px,py,z)=>{
+    const cont=contRef.current; if(!cont) return{x:px,y:py};
     const cW=cont.clientWidth, cH=cont.clientHeight, iW=file.ec.width, iH=file.ec.height;
     const ex=Math.max(0,iW*z-cW)/2, ey=Math.max(0,iH*z-cH)/2;
-    return {x:Math.max(-ex,Math.min(ex,px)), y:Math.max(-ey,Math.min(ey,py))};
-  },[file]);
+    return{x:Math.max(-ex,Math.min(ex,px)), y:Math.max(-ey,Math.min(ey,py))};
+  };
+  const getRatio=()=> freeCropRef.current ? null : settingsRef2.current.w/settingsRef2.current.h;
 
-  const doBlur = useCallback((ix,iy)=>{
-    const {size,strength,hardness,opacity}=blurCfg;
+  // ── Setup: fitView + ResizeObserver ────────────────────────────────────
+  const fitView=useCallback(()=>{
+    if(isDraggingRef.current) return;
+    const cont=contRef.current, c=canvasRef.current; if(!cont||!c) return;
+    const cW=cont.clientWidth, cH=cont.clientHeight;
+    if(cW===0||cH===0) return;
+    const ec=fileRef.current.ec;
+    // Only reassign canvas dimensions when they actually changed:
+    // assigning canvas.width/height ALWAYS clears the canvas (even same value) → blank frame
+    const sizeChanged=(c.width!==cW||c.height!==cH);
+    if(sizeChanged){ c.width=cW; c.height=cH; }
+    const fz=Math.min(cW/ec.width, cH/ec.height)*0.92;
+    fitZRef.current=fz;
+    if(sizeChanged||zoomRef.current<fz){ zoomRef.current=fz; panRef.current={x:0,y:0}; }
+    drawNow(); // synchronous — canvas is redrawn immediately, no blank-frame RAF gap
+    setReady(true);
+  },[drawNow]); // drawNow is stable ([] deps) → fitView is stable → ResizeObserver registers once
+
+  useEffect(()=>{
+    // Small timeout so the flex container has its final size
+    const id=setTimeout(fitView,30);
+    return()=>clearTimeout(id);
+  },[]);
+
+  useEffect(()=>{
+    const cont=contRef.current, c=canvasRef.current; if(!cont||!c) return;
+    const ro=new ResizeObserver(()=>{ fitView(); });
+    ro.observe(cont);
+    return()=>ro.disconnect();
+  },[fitView]);
+  useEffect(()=>()=>{ if(frameRef.current) cancelAnimationFrame(frameRef.current); },[]);
+
+  // ── Blur helper ────────────────────────────────────────────────────────
+  const doBlur=(ix,iy)=>{
+    const{size,strength,hardness,opacity}=blurCfgRef.current;
     const ec=file.ec, ctx=ec.getContext("2d");
     const r=size/2, bx=Math.round(ix-r), by=Math.round(iy-r);
-    if (bx+size<0||by+size<0||bx>ec.width||by>ec.height) return;
+    if(bx+size<0||by+size<0||bx>ec.width||by>ec.height) return;
     const tmp=document.createElement("canvas"); tmp.width=size; tmp.height=size;
     const tc=tmp.getContext("2d");
     tc.filter=`blur(${strength}px)`; tc.drawImage(ec,bx,by,size,size,0,0,size,size); tc.filter="none";
     const g=tc.createRadialGradient(r,r,r*(hardness/100),r,r,r);
     g.addColorStop(0,`rgba(0,0,0,${opacity/100})`); g.addColorStop(1,"rgba(0,0,0,0)");
     tc.globalCompositeOperation="destination-in"; tc.fillStyle=g; tc.fillRect(0,0,size,size);
-    ctx.drawImage(tmp,bx,by); setTick(n=>n+1);
-  },[file,blurCfg]);
+    ctx.drawImage(tmp,bx,by);
+    draw(); // direct draw, no setState
+  };
 
-  const onMouseDown = useCallback((e)=>{
+  // ── Mouse handlers — all imperative, zero setState ─────────────────────
+  const onMouseDown=useCallback((e)=>{
+    isDraggingRef.current = true;
     const s=st.current;
-    // Right-click or Alt+click = mover vista (paneo)
-    if (e.button===2 || e.altKey) {
-      e.preventDefault();
-      s.isPan=true; s.panStart={x:e.clientX,y:e.clientY}; s.panOrig={...panRef.current}; return;
+    if(e.button===2||e.altKey){
+      e.preventDefault(); s.isPan=true;
+      s.panStart={x:e.clientX,y:e.clientY}; s.panOrig={...panRef.current}; return;
     }
-    if (e.button!==0) return;
-    if (tool==="crop") {
-      const cp=s2c(e.clientX,e.clientY); if(!cp) return;
-      const p=s2i(e.clientX,e.clientY); if(!p) return;
-      const cr=file.crop;
-      const hi = cr&&cr.w>2 ? hitHandle(cp.px,cp.py,cr,cp.sc,cp.offX,cp.offY) : -1;
-      if (hi>=0) {
+    if(e.button!==0) return;
+    if(toolRef.current==="crop"){
+      const pd=getPointerData(e.clientX,e.clientY); if(!pd) return;
+      const p=pd.img;
+      const cr=cropRef.current;
+      const hi=cr&&cr.w>2?hitHandle(pd.px,pd.py,cr,pd.sc,pd.offX,pd.offY):-1;
+      if(hi>=0){
         onUndoPush(file.id); s.mode="handle"; s.handleIdx=hi; s.cropOrig={...cr}; s.cropStart=p;
-      } else if (cr&&cr.w>2&&p.x>=cr.x&&p.x<=cr.x+cr.w&&p.y>=cr.y&&p.y<=cr.y+cr.h) {
-        onUndoPush(file.id); s.mode="move"; s.cropOrig={...cr}; s.moveStart={x:e.clientX,y:e.clientY};
-      } else if (p.x>=0&&p.x<=file.ec.width&&p.y>=0&&p.y<=file.ec.height) {
+      } else if(cr&&cr.w>2&&p.x>=cr.x&&p.x<=cr.x+cr.w&&p.y>=cr.y&&p.y<=cr.y+cr.h){
+        onUndoPush(file.id); s.mode="move"; s.cropOrig={...cr}; s.moveStartImg=p;
+      } else if(p.x>=0&&p.x<=file.ec.width&&p.y>=0&&p.y<=file.ec.height){
         onUndoPush(file.id); s.mode="new"; s.cropStart=p;
-        onCropChange(file.id,{x:p.x,y:p.y,w:0,h:0});
+        cropRef.current={x:p.x,y:p.y,w:0,h:0}; draw();
       }
     }
-    if (tool==="blur") {
-      if (!s.blurPushed){onUndoPush(file.id);s.blurPushed=true;}
-      s.mode="blur"; const p=s2i(e.clientX,e.clientY); if(p) doBlur(p.x,p.y);
+    if(toolRef.current==="blur"){
+      if(!s.blurPushed){onUndoPush(file.id);s.blurPushed=true;}
+      s.mode="blur"; const pd=getPointerData(e.clientX,e.clientY); if(pd) doBlur(pd.img.x,pd.img.y);
     }
-  },[tool,s2i,s2c,file,onCropChange,onUndoPush,doBlur]);
+  },[file,onUndoPush,draw]);
 
-  const onMouseMove = useCallback((e)=>{
+  const onMouseMove=useCallback((e)=>{
     const s=st.current;
-    const ratio=settings.w/settings.h;
+    const ratio=getRatio();
     const iW=file.ec.width, iH=file.ec.height;
 
-    if (s.isPan) {
-      const raw={x:s.panOrig.x+e.clientX-s.panStart.x, y:s.panOrig.y+e.clientY-s.panStart.y};
-      setPan(clamp(raw.x,raw.y,zoomRef.current));
-      // Also update blur circle position during pan
-      if (tool==="blur") {
+    if(s.isPan){
+      const np=clampPan(s.panOrig.x+e.clientX-s.panStart.x, s.panOrig.y+e.clientY-s.panStart.y, zoomRef.current);
+      panRef.current=np; draw();
+      if(toolRef.current==="blur"){
         const cont=contRef.current, circle=blurCircleRef.current;
-        if(cont&&circle) {
-          const r=cont.getBoundingClientRect();
-          const x=e.clientX-r.left, y=e.clientY-r.top;
-          const sz=blurCfg.size*zoomRef.current;
-          circle.style.left=(x-sz/2)+"px"; circle.style.top=(y-sz/2)+"px";
-          circle.style.width=sz+"px"; circle.style.height=sz+"px";
-          circle.style.display="block";
-        }
+        if(cont&&circle){const r=cont.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;const sz=blurCfgRef.current.size*zoomRef.current;circle.style.cssText=`display:block;left:${x-sz/2}px;top:${y-sz/2}px;width:${sz}px;height:${sz}px`;}
       }
       return;
     }
-    const p=s2i(e.clientX,e.clientY); if(!p) return;
-    const cp=s2c(e.clientX,e.clientY);
 
-    if (s.mode==="new"&&s.cropStart) {
+    const pd=getPointerData(e.clientX,e.clientY); if(!pd) return;
+    const p=pd.img;
+    let newCrop=null;
+
+    if(s.mode==="new"&&s.cropStart){
       const rawW=p.x-s.cropStart.x, rawH=p.y-s.cropStart.y;
       let cW=Math.abs(rawW), cH=Math.abs(rawH);
-      if (cW/(cH||0.001)>ratio) cH=cW/ratio; else cW=cH*ratio;
+      if(ratio){ if(cW/(cH||0.001)>ratio) cH=cW/ratio; else cW=cH*ratio; }
       const nx=rawW>=0?s.cropStart.x:s.cropStart.x-cW;
       const ny=rawH>=0?s.cropStart.y:s.cropStart.y-cH;
-      onCropChange(file.id, clampCrop({x:nx,y:ny,w:cW,h:cH}, iW, iH, ratio));
-    } else if (s.mode==="move"&&s.cropOrig) {
-      const op=s2i(s.moveStart.x,s.moveStart.y); if(!op) return;
-      onCropChange(file.id, clampCrop({...s.cropOrig, x:s.cropOrig.x+(p.x-op.x), y:s.cropOrig.y+(p.y-op.y)}, iW, iH, ratio));
-    } else if (s.mode==="handle"&&s.cropOrig) {
+      newCrop=clampCrop({x:nx,y:ny,w:cW,h:cH},iW,iH,ratio);
+    } else if(s.mode==="move"&&s.cropOrig){
+      const dx=p.x-s.moveStartImg.x, dy=p.y-s.moveStartImg.y;
+      newCrop=clampCrop({...s.cropOrig,x:s.cropOrig.x+dx,y:s.cropOrig.y+dy},iW,iH,ratio);
+    } else if(s.mode==="handle"&&s.cropOrig){
       const orig=s.cropOrig, hi=s.handleIdx, sp=s.cropStart;
       const dx=p.x-sp.x, dy=p.y-sp.y;
       let {x,y,w,h}={...orig};
-      const {hx,hy}=HANDLES[hi];
-      if (hx===0){x=orig.x+dx; w=orig.w-dx;}
-      if (hx===1){w=orig.w+dx;}
-      if (hy===0){y=orig.y+dy; h=orig.h-dy;}
-      if (hy===1){h=orig.h+dy;}
-      if (w<10) w=10; if (h<10) h=10;
-      if (hx===0.5){w=h*ratio; }
-      else if (hy===0.5){h=w/ratio;}
-      else { if(Math.abs(dx)>=Math.abs(dy)) h=w/ratio; else w=h*ratio; if(hx===0) x=orig.x+(orig.w-w); if(hy===0) y=orig.y+(orig.h-h); }
-      onCropChange(file.id, clampCrop({x,y,w,h}, iW, iH, null));
-    } else if (s.mode==="blur") {
+      const{hx,hy}=HANDLES[hi];
+      // Anchor-aware resize: keep opposite edge fixed, pre-clamp to image boundaries
+      if(hx===0){ const r=orig.x+orig.w; x=Math.max(0,Math.min(orig.x+dx,r-10)); w=r-x; }
+      if(hx===1){ w=Math.max(10,Math.min(orig.w+dx,iW-orig.x)); x=orig.x; }
+      if(hy===0){ const b=orig.y+orig.h; y=Math.max(0,Math.min(orig.y+dy,b-10)); h=b-y; }
+      if(hy===1){ h=Math.max(10,Math.min(orig.h+dy,iH-orig.y)); y=orig.y; }
+      // Ratio enforcement (only if lock is active)
+      if(ratio){
+        if(hx===0.5){w=h*ratio;x=orig.x+(orig.w-w)/2;}
+        else if(hy===0.5){h=w/ratio;y=orig.y+(orig.h-h)/2;}
+        else{if(Math.abs(dx)>=Math.abs(dy))h=w/ratio; else w=h*ratio; if(hx===0)x=orig.x+orig.w-w; if(hy===0)y=orig.y+orig.h-h;}
+      }
+      newCrop=clampCrop({x,y,w,h},iW,iH,ratio); // pass ratio so clampCrop maintains it after edge clamping
+    } else if(s.mode==="blur"){
       doBlur(p.x,p.y);
     }
 
-    // Dynamic cursor — only for crop tool
-    if (tool==="crop"&&cp) {
-      const cr=file.crop;
-      const hi2=cr&&cr.w>2?hitHandle(cp.px,cp.py,cr,cp.sc,cp.offX,cp.offY):-1;
-      const c=canvasRef.current;
-      if (!c) return;
-      if (hi2>=0) c.style.cursor=HANDLES[hi2].cx;
-      else if (cr&&cr.w>2&&p.x>=cr.x&&p.x<=cr.x+cr.w&&p.y>=cr.y&&p.y<=cr.y+cr.h) c.style.cursor="move";
-      else c.style.cursor="crosshair";
+    if(newCrop){ cropRef.current=newCrop; draw(); }
+
+    // Cursor — direct DOM, no setState
+    if(toolRef.current==="crop"){
+      const cr=cropRef.current;
+      const hi2=cr&&cr.w>2?hitHandle(pd.px,pd.py,cr,pd.sc,pd.offX,pd.offY):-1;
+      const cv=canvasRef.current; if(cv) cv.style.cursor=hi2>=0?HANDLES[hi2].cx:(cr&&cr.w>2&&p.x>=cr.x&&p.x<=cr.x+cr.w&&p.y>=cr.y&&p.y<=cr.y+cr.h?"move":"crosshair");
     }
-    // Blur circle cursor: move via direct DOM (zero latency, no re-render)
-    if (tool==="blur") {
+    if(toolRef.current==="blur"){
       const cont=contRef.current, circle=blurCircleRef.current;
-      if(cont&&circle) {
-        const r=cont.getBoundingClientRect();
-        const x=e.clientX-r.left, y=e.clientY-r.top;
-        const sz=blurCfg.size*zoomRef.current;
-        circle.style.left=(x-sz/2)+"px";
-        circle.style.top=(y-sz/2)+"px";
-        circle.style.width=sz+"px";
-        circle.style.height=sz+"px";
-        circle.style.display="block";
-      }
+      if(cont&&circle){const r=cont.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;const sz=blurCfgRef.current.size*zoomRef.current;circle.style.cssText=`display:block;position:absolute;border-radius:50%;border:1.5px solid rgba(255,255,255,0.75);box-shadow:0 0 0 1px rgba(0,0,0,0.5);pointer-events:none;box-sizing:border-box;left:${x-sz/2}px;top:${y-sz/2}px;width:${sz}px;height:${sz}px`;}
     }
-  },[tool,s2i,s2c,file,settings,clamp,onCropChange,doBlur]);
+  },[file,draw]);
 
-  const onMouseUp = useCallback(()=>{
-    const s=st.current; s.mode="none"; s.isPan=false; s.blurPushed=false; s.handleIdx=-1;
-  },[]);
+  const commitCrop=()=>{
+    const s=st.current;
+    if(s.mode==="new"||s.mode==="move"||s.mode==="handle") onCropChange(file.id,cropRef.current);
+    s.mode="none"; s.isPan=false; s.blurPushed=false; s.handleIdx=-1;
+    isDraggingRef.current = false;
+  };
+  const onMouseUp   =useCallback(()=>{ commitCrop(); },[file,onCropChange]);
+  const onMouseLeave=useCallback(()=>{ commitCrop(); if(blurCircleRef.current) blurCircleRef.current.style.display="none"; },[file,onCropChange]);
 
-  const onMouseLeave = useCallback(()=>{
-    const s=st.current; s.mode="none"; s.isPan=false; s.blurPushed=false; s.handleIdx=-1;
-    if(blurCircleRef.current) blurCircleRef.current.style.display="none";
-  },[]);
-
-  const onWheel = useCallback((e)=>{
+  const onWheel=useCallback((e)=>{
     e.preventDefault();
-    const minZ=fitZRef.current, iW=file.ec.width, iH=file.ec.height;
-    setZoom(z=>{
-      const nz=Math.max(minZ,Math.min(40,z*(e.deltaY<0?1.13:0.88)));
-      if(nz<=minZ) setPan({x:0,y:0}); else setPan(p=>clamp(p.x,p.y,nz));
-      return nz;
-    });
-  },[clamp,file]);
+    const minZ=fitZRef.current;
+    let nz=Math.max(minZ,Math.min(40,zoomRef.current*(e.deltaY<0?1.13:0.88)));
+    if(nz<=minZ){ nz=minZ; panRef.current={x:0,y:0}; }
+    else{ panRef.current=clampPan(panRef.current.x,panRef.current.y,nz); }
+    zoomRef.current=nz; draw();
+  },[draw]);
 
-  const autoCrop=()=>{ onUndoPush(file.id); const iW=file.ec.width,iH=file.ec.height,ta=settings.w/settings.h,ia=iW/iH; let cW=iW,cH=iH; if(ia>ta) cW=iH*ta; else cH=iW/ta; onCropChange(file.id,{x:(iW-cW)/2,y:(iH-cH)/2,w:cW,h:cH}); };
-  const clearCrop=()=>{ onUndoPush(file.id); onCropChange(file.id,null); };
+  // Wheel must be attached imperatively — React's onWheel is passive and can't preventDefault
+  useEffect(()=>{
+    const c=canvasRef.current; if(!c) return;
+    c.addEventListener("wheel",onWheel,{passive:false});
+    return()=>c.removeEventListener("wheel",onWheel);
+  },[onWheel]);
+
+  const autoCrop=()=>{
+    onUndoPush(file.id);
+    const iW=file.ec.width,iH=file.ec.height,ta=settingsRef2.current.w/settingsRef2.current.h,ia=iW/iH;
+    let cW=iW,cH=iH; if(ia>ta)cW=iH*ta; else cH=iW/ta;
+    const nc={x:(iW-cW)/2,y:(iH-cH)/2,w:cW,h:cH};
+    cropRef.current=nc; onCropChange(file.id,nc); draw();
+  };
+  const clearCrop=()=>{
+    onUndoPush(file.id); cropRef.current=null; onCropChange(file.id,null); draw();
+  };
 
   const {w:oW,h:oH}=settings, dv=gcd(oW,oH);
   const ratioLbl=`${oW/dv}:${oH/dv}`;
-  const curSt = tool==="blur" ? "none" : tool==="crop" ? "crosshair" : "default";
-
-  const oBtnSt=(active)=>({ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:active?600:400,border:"none",borderRadius:4,padding:"5px 10px",cursor:"pointer",background:active?"#7c5cff":"transparent",color:active?"#fff":"#555",display:"inline-flex",alignItems:"center",gap:5,transition:"all .12s" });
+  const oBtnSt=(active)=>({fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:active?600:400,border:"none",borderRadius:4,padding:"5px 10px",cursor:"pointer",background:active?"#7c5cff":"transparent",color:active?"#fff":"#555",display:"inline-flex",alignItems:"center",gap:5,transition:"all .12s"});
   const oTxtBtn=(label,onClick)=>(
-    <button onClick={onClick} style={{ fontFamily:"Inter,sans-serif",fontSize:11,border:"none",background:"transparent",color:"#505050",cursor:"pointer",padding:"5px 8px",borderRadius:4 }}>{label}</button>
+    <button onClick={onClick} style={{fontFamily:"Inter,sans-serif",fontSize:11,border:"none",background:"transparent",color:"#505050",cursor:"pointer",padding:"5px 8px",borderRadius:4}}>{label}</button>
   );
 
+  const PANEL_W = panelOpen ? 236 : 0;
   return (
-    <div style={{ position:"fixed",top:50,left:0,right:222,bottom:0,background:"#181818",display:"flex",flexDirection:"column",zIndex:100 }}
+    <div style={{position:"fixed",top:50,left:0,right:PANEL_W,bottom:0,background:"#181818",display:"flex",flexDirection:"column",zIndex:200}}
       onContextMenu={e=>e.preventDefault()}>
-      <div style={{ background:"#141414",borderBottom:"1px solid #242424",padding:"5px 12px",display:"flex",alignItems:"center",gap:4,flexShrink:0,flexWrap:"wrap" }}>
-        <button onClick={onClose} style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"1px solid #303030",borderRadius:5,padding:"5px 10px",cursor:"pointer",background:"transparent",color:"#d0d0d0",marginRight:8 }}>{t?.back||"← Back"}</button>
-        <div style={{ width:1,height:16,background:"#282828",marginRight:4 }} />
+      <div style={{background:"#141414",borderBottom:"1px solid #242424",padding:"5px 12px",display:"flex",alignItems:"center",gap:4,flexShrink:0,flexWrap:"wrap"}}>
+        <button onClick={onClose} style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"1px solid #303030",borderRadius:5,padding:"5px 10px",cursor:"pointer",background:"transparent",color:"#d0d0d0",marginRight:8}}>{t?.back||"← Back"}</button>
+        <div style={{width:1,height:16,background:"#282828",marginRight:4}}/>
         {["crop","blur"].map(tb=>(
           <button key={tb} onClick={()=>setTool(tb)} style={oBtnSt(tool===tb)}>
             {tb==="crop"?(t?.cropTool||"✂ Crop"):(t?.blurTool||"🖌 Blur Brush")}
           </button>
         ))}
-        {tool==="crop"&&<span style={{ fontSize:10,fontWeight:700,background:"#7c5cff",color:"#fff",borderRadius:3,padding:"2px 7px",marginLeft:2 }}>🔒 {ratioLbl}</span>}
-        <div style={{ width:1,height:16,background:"#282828",margin:"0 6px" }} />
-        {oTxtBtn(t?.autoCropBtn||"Auto Crop", autoCrop)}
-        {oTxtBtn(t?.clearCropBtn||"Clear Crop", clearCrop)}
-        <div style={{ flex:1 }} />
-        <span style={{ fontSize:10,color:"#444",fontFamily:"Inter,sans-serif",fontStyle:"italic" }}>{t?.rightClickHint||"Right-click = pan"}</span>
-        <div style={{ width:1,height:16,background:"#282828",margin:"0 8px" }} />
-        <span style={{ fontSize:11,color:"#383838",fontFamily:"Inter,sans-serif" }}>{file.name}</span>
+        {tool==="crop"&&(
+          <button onClick={()=>setFreeCrop(f=>!f)}
+            style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:700,borderRadius:3,padding:"2px 8px",marginLeft:2,cursor:"pointer",border:"none",
+              background:freeCrop?"rgba(245,158,11,0.15)":"#7c5cff",
+              color:freeCrop?"#f59e0b":"#fff"}}>
+            {freeCrop?(t?.freeCrop||"🔓 Free"):(t?.lockedCrop?.(ratioLbl)||`🔒 ${ratioLbl}`)}
+          </button>
+        )}
+        <div style={{width:1,height:16,background:"#282828",margin:"0 6px"}}/>
+        {oTxtBtn(t?.autoCropBtn||"Auto Crop",autoCrop)}
+        {oTxtBtn(t?.clearCropBtn||"Clear Crop",clearCrop)}
+        <div style={{flex:1}}/>
+        <span style={{fontSize:10,color:"#444",fontFamily:"Inter,sans-serif",fontStyle:"italic"}}>{t?.rightClickHint||"Right-click = pan"}</span>
+        <div style={{width:1,height:16,background:"#282828",margin:"0 8px"}}/>
+        <span style={{fontSize:11,color:"#383838",fontFamily:"Inter,sans-serif"}}>{file.name}</span>
       </div>
-      <div ref={contRef} style={{ flex:1,position:"relative",overflow:"hidden",cursor:curSt }}>
-        <canvas ref={canvasRef} style={{ display:"block", cursor: tool==="blur" ? "none" : "inherit" }}
+      <div ref={contRef} style={{flex:1,position:"relative",overflow:"hidden",cursor:tool==="blur"?"none":"crosshair",opacity:ready?1:0,transition:"opacity 0.08s"}}>
+        <canvas ref={canvasRef} style={{display:"block",cursor:tool==="blur"?"none":"inherit",willChange:"transform"}}
           onMouseDown={onMouseDown} onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp} onMouseLeave={onMouseLeave} onWheel={onWheel} />
-        {/* Blur circle — always mounted, moved via direct DOM for zero latency */}
-        <div ref={blurCircleRef} style={{
-          display:"none", position:"absolute", borderRadius:"50%",
-          border:"1.5px solid rgba(255,255,255,0.75)",
-          boxShadow:"0 0 0 1px rgba(0,0,0,0.5)",
-          pointerEvents:"none", boxSizing:"border-box",
-        }} />
+          onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}/>
+        <div ref={blurCircleRef} style={{display:"none",position:"absolute",borderRadius:"50%",border:"1.5px solid rgba(255,255,255,0.75)",boxShadow:"0 0 0 1px rgba(0,0,0,0.5)",pointerEvents:"none",boxSizing:"border-box"}}/>
       </div>
     </div>
   );
 }
 
-/* ── ZIRME Main ──────────────────────────────────────────────────────── */
-function ZIRME() {
-  const [files,    setFiles]    = useState([]);
-  const [selId,    setSelId]    = useState(null);
-  const [editId,   setEditId]   = useState(null);
-  const [settings, setSettings] = useState(()=>({
-    w:1024, h:1024, mode:"fill",
-    fmt: (()=>{ try{ return localStorage.getItem("zirme-fmt")||"png"; }catch(e){ return "png"; } })(),
-    quality:92,
-  }));
-  const [blurCfg,  setBlurCfg]  = useState({size:60,strength:12,hardness:30,opacity:85});
-  const [zipping,  setZipping]  = useState(false);
-  const [tick,     setTick]     = useState(0);
-  const [cellH,    setCellH]    = useState(380);
-  const [langOpen, setLangOpen] = useState(false);
-  const [howToOpen,setHowToOpen]= useState(false);
-  const langNames = { en: "English", es: "Español" };
-  const langRef = useRef(null);
+/* ── Preview Modal ────────────────────────────────────────────────────── */
+function PreviewModal({ file, settings, t, onClose }) {
+  const [dataUrl, setDataUrl] = useState(null);
+  const {w,h,mode,fmt,quality}=settings;
 
   useEffect(()=>{
-    const handler = (e) => { if(langRef.current && !langRef.current.contains(e.target)) setLangOpen(false); };
-    document.addEventListener("mousedown", handler);
-    return ()=>document.removeEventListener("mousedown", handler);
+    const src=file.ec, c=file.crop;
+    const sx=c?Math.max(0,c.x):0, sy=c?Math.max(0,c.y):0;
+    const sw=c?Math.min(c.w,src.width-sx):src.width, sh=c?Math.min(c.h,src.height-sy):src.height;
+    const out=document.createElement("canvas"); out.width=w; out.height=h;
+    const ctx=out.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h);
+    if(mode==="stretch") ctx.drawImage(src,sx,sy,sw,sh,0,0,w,h);
+    else if(mode==="fill"){const sc=Math.max(w/sw,h/sh),dw=sw*sc,dh=sh*sc;ctx.drawImage(src,sx,sy,sw,sh,(w-dw)/2,(h-dh)/2,dw,dh);}
+    else{const sc=Math.min(w/sw,h/sh),dw=sw*sc,dh=sh*sc;ctx.drawImage(src,sx,sy,sw,sh,(w-dw)/2,(h-dh)/2,dw,dh);}
+    const mime=fmt==="jpeg"?"image/jpeg":fmt==="png"?"image/png":"image/webp";
+    setDataUrl(out.toDataURL(mime,quality/100));
   },[]);
 
-  const [lang, setLang] = useState(()=>{ try{ return localStorage.getItem("zirme-lang")||"es"; }catch(e){ return "es"; } });
+  return (
+    <div id="preview-modal" onClick={onClose}>
+      <div className="pm-box" onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontFamily:"Inter",fontWeight:600,fontSize:13,color:"#d0d0d0"}}>{t.previewTitle} — {w}×{h}px · {fmt.toUpperCase()}{fmt!=="png"?` · ${quality}%`:""}</span>
+          <button onClick={onClose} style={{fontFamily:"Inter",fontSize:12,background:"transparent",border:"1px solid #303030",borderRadius:5,color:"#aaa",padding:"4px 12px",cursor:"pointer"}}>{t.previewClose}</button>
+        </div>
+        {dataUrl?<img src={dataUrl} alt="preview"/>:<div style={{color:"#555",padding:40}}>Loading…</div>}
+        <div style={{fontSize:10,color:"#555",fontFamily:"Inter"}}>{file.name}</div>
+      </div>
+    </div>
+  );
+}
 
-  const t = STRINGS[lang] || STRINGS.en;
+/* ── ZIRME Main ───────────────────────────────────────────────────────── */
+function ZIRME() {
+  const [files,    setFiles]   = useState([]);
+  const [selId,    setSelId]   = useState(null);
+  const [multiSel, setMultiSel]= useState(new Set());
+  const [editId,   setEditId]  = useState(null);
+  const [previewId,setPreviewId]=useState(null);
+  const [settings, setSettings]= useState(()=>{
+    let fmt="png"; try{fmt=localStorage.getItem("zirme-fmt")||"png";}catch(e){}
+    return {w:1024, h:1024, mode:"fill", fmt, quality:92, prefix:"", suffix:"",
+            renameMode:"keep", renameBase:"image", renameNum:true, renameStart:1};
+  });
+  const [blurCfg,  setBlurCfg] = useState({size:60,strength:12,hardness:30,opacity:85});
+  const [zipping,  setZipping] = useState(false);
+  const [zipPct,   setZipPct]  = useState(0);
+  const [tick,     setTick]    = useState(0);
+  const [cellH,    setCellH]   = useState(380);
+  const [panelOpen,setPanelOpen]= useState(true);
+  const [panelTab, setPanelTab] = useState("image");
+  const [howToOpen,setHowToOpen]= useState(false);
+  const [langOpen, setLangOpen] = useState(false);
+  const [lang,     setLang]    = useState(()=>{try{return localStorage.getItem("zirme-lang")||"es";}catch(e){return "es";}});
+  const langNames = {en:"English",es:"Español"};
+  const langRef = useRef(null);
+
+  const t = STRINGS[lang]||STRINGS.en;
+
+  useEffect(()=>{
+    const h=(e)=>{if(langRef.current&&!langRef.current.contains(e.target))setLangOpen(false);};
+    document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h);
+  },[]);
+  useEffect(()=>{try{localStorage.setItem("zirme-lang",lang);}catch(e){}
+    const ov=document.getElementById("drop-overlay");
+    if(ov){ov.querySelector(".label").textContent=t.dropLabel;ov.querySelector(".sub").textContent=t.dropFormats;}
+  },[lang,t]);
+  useEffect(()=>{try{localStorage.setItem("zirme-fmt",settings.fmt);}catch(e){};},[settings.fmt]);
 
   const filesRef    = useRef([]);
   const settingsRef = useRef(settings);
   useEffect(()=>{filesRef.current=files;},[files]);
   useEffect(()=>{settingsRef.current=settings;},[settings]);
 
-  // Persist lang
-  useEffect(()=>{
-    try{ localStorage.setItem("zirme-lang", lang); }catch(e){}
-    // Update static drop overlay text
-    const ov=document.getElementById("drop-overlay");
-    if(ov){
-      ov.querySelector(".label").textContent=t.dropLabel;
-      ov.querySelector(".sub").textContent=t.dropFormats;
-    }
-  },[lang, t]);
-
-  // Persist format
-  useEffect(()=>{
-    try{ localStorage.setItem("zirme-fmt", settings.fmt); }catch(e){}
-  },[settings.fmt]);
-
-  const changeLang = useCallback((l)=>{ setLang(l); },[]);
-
   const sel      = files.find(f=>f.id===selId)??null;
   const editFile = files.find(f=>f.id===editId)??null;
+  const previewFile = files.find(f=>f.id===previewId)??null;
   const canUndo  = (sel?.history||[]).length>0;
+  const canRedo  = (sel?.future||[]).length>0;
 
+  // Global keyboard shortcuts
   useEffect(()=>{
-    const h=()=>setTick(n=>n+1); window.addEventListener("resize",h); return ()=>window.removeEventListener("resize",h);
-  },[]);
-  useEffect(()=>{
-    const h=(e)=>{if((e.ctrlKey||e.metaKey)&&e.key==="z"){e.preventDefault();undoSel();}};
-    window.addEventListener("keydown",h); return ()=>window.removeEventListener("keydown",h);
+    const h=(e)=>{
+      if((e.ctrlKey||e.metaKey)&&e.key==="z"){e.preventDefault();undoSel();}
+      if((e.ctrlKey||e.metaKey)&&e.key==="y"){e.preventDefault();redoSel();}
+      if(e.key==="ArrowLeft"||e.key==="ArrowRight"){
+        e.preventDefault();
+        setSelId(prev=>{
+          const idx=filesRef.current.findIndex(f=>f.id===prev);
+          if(idx<0) return filesRef.current[0]?.id??null;
+          const next=e.key==="ArrowRight"?Math.min(idx+1,filesRef.current.length-1):Math.max(idx-1,0);
+          return filesRef.current[next]?.id??prev;
+        });
+      }
+    };
+    window.addEventListener("keydown",h); return()=>window.removeEventListener("keydown",h);
   },[selId]);
+
+  useEffect(()=>{ const h=()=>setTick(n=>n+1); window.addEventListener("resize",h); return()=>window.removeEventListener("resize",h); },[]);
 
   const pushUndo = useCallback((id)=>{
     setFiles(prev=>prev.map(f=>{
       if(f.id!==id) return f;
       const entry={snap:snapCanvas(f.ec),crop:f.crop};
-      return {...f,history:[...(f.history||[]),entry].slice(-30)};
+      return {...f,history:[...(f.history||[]),entry].slice(-30),future:[]};
     }));
   },[]);
 
@@ -895,21 +928,55 @@ function ZIRME() {
       if(f.id!==selId) return f;
       const hist=f.history||[]; if(!hist.length){showToast(t.toastNoUndo);return f;}
       const last=hist[hist.length-1];
+      const futureEntry={snap:snapCanvas(f.ec),crop:f.crop};
       f.ec.getContext("2d").clearRect(0,0,f.ec.width,f.ec.height);
       f.ec.getContext("2d").drawImage(last.snap,0,0);
       setTick(n=>n+1);
-      return {...f,history:hist.slice(0,-1),crop:last.crop};
+      return{...f,history:hist.slice(0,-1),future:[futureEntry,...(f.future||[])].slice(0,30),crop:last.crop};
     }));
-  },[selId, t]);
+  },[selId,t]);
+
+  const redoSel = useCallback(()=>{
+    setFiles(prev=>prev.map(f=>{
+      if(f.id!==selId) return f;
+      const fut=f.future||[]; if(!fut.length){showToast(t.toastNoRedo);return f;}
+      const next=fut[0];
+      const histEntry={snap:snapCanvas(f.ec),crop:f.crop};
+      f.ec.getContext("2d").clearRect(0,0,f.ec.width,f.ec.height);
+      f.ec.getContext("2d").drawImage(next.snap,0,0);
+      setTick(n=>n+1);
+      return{...f,future:fut.slice(1),history:[...(f.history||[]),histEntry].slice(-30),crop:next.crop};
+    }));
+  },[selId,t]);
 
   const setCropForId = useCallback((id,crop)=>{
     setFiles(prev=>prev.map(f=>f.id===id?{...f,crop}:f));
   },[]);
 
   const removeFile = useCallback((id)=>{
-    setFiles(prev=>{const n=prev.filter(f=>f.id!==id); if(selId===id) setSelId(n[0]?.id??null); return n;});
+    setFiles(prev=>{const n=prev.filter(f=>f.id!==id); if(selId===id)setSelId(n[0]?.id??null); return n;});
     if(editId===id) setEditId(null);
+    setMultiSel(s=>{const ns=new Set(s);ns.delete(id);return ns;});
   },[selId,editId]);
+
+  const handleSelect = useCallback((id, shift)=>{
+    if(shift){
+      setMultiSel(s=>{const ns=new Set(s); ns.has(id)?ns.delete(id):ns.add(id); return ns;});
+    } else {
+      setSelId(id); setMultiSel(new Set());
+    }
+  },[]);
+
+  const reorderFiles = useCallback((srcId,dstId)=>{
+    setFiles(prev=>{
+      const arr=[...prev];
+      const si=arr.findIndex(f=>f.id===srcId);
+      const di=arr.findIndex(f=>f.id===dstId);
+      if(si<0||di<0) return prev;
+      const [item]=arr.splice(si,1); arr.splice(di,0,item);
+      return arr;
+    });
+  },[]);
 
   const loadFiles = useCallback((fs)=>{
     Array.from(fs).forEach(file=>{
@@ -919,7 +986,7 @@ function ZIRME() {
       img.onload=()=>{
         const ec=document.createElement("canvas"); ec.width=img.naturalWidth; ec.height=img.naturalHeight;
         ec.getContext("2d").drawImage(img,0,0);
-        setFiles(prev=>[...prev,{id,file,name:file.name,orig:img,ec,thumb:img.src,crop:null,history:[]}]);
+        setFiles(prev=>[...prev,{id,file,name:file.name,orig:img,ec,thumb:img.src,crop:null,history:[],future:[]}]);
         setSelId(p=>p||id); setTick(n=>n+1);
       };
       img.src=URL.createObjectURL(file);
@@ -928,19 +995,26 @@ function ZIRME() {
   useEffect(()=>{window._zirmeDrop=loadFiles;},[loadFiles]);
 
   const autoCropAll = useCallback(()=>{
-    const {w:oW,h:oH}=settingsRef.current, ta=oW/oH;
+    const{w:oW,h:oH}=settingsRef.current,ta=oW/oH;
+    const targets=multiSel.size>0?[...multiSel]:filesRef.current.map(f=>f.id);
     setFiles(prev=>prev.map(f=>{
-      const iW=f.ec.width, iH=f.ec.height, ia=iW/iH;
-      let cW=iW,cH=iH; if(ia>ta) cW=iH*ta; else cH=iW/ta;
-      return {...f,crop:{x:(iW-cW)/2,y:(iH-cH)/2,w:cW,h:cH}};
+      if(!targets.includes(f.id)) return f;
+      const iW=f.ec.width,iH=f.ec.height,ia=iW/iH;
+      let cW=iW,cH=iH; if(ia>ta)cW=iH*ta; else cH=iW/ta;
+      return{...f,crop:{x:(iW-cW)/2,y:(iH-cH)/2,w:cW,h:cH}};
     }));
-    showToast(t.toastAutoCrop(filesRef.current.length));
-  },[t]);
+    showToast(multiSel.size>0?t.multiApplied(multiSel.size):t.toastAutoCrop(filesRef.current.length));
+  },[multiSel,t]);
 
-  const clearAllCrops=useCallback(()=>{setFiles(prev=>prev.map(f=>({...f,crop:null}))); showToast(t.toastCropsClear);},[t]);
+  const clearAllCrops = useCallback(()=>{
+    const targets=multiSel.size>0?[...multiSel]:filesRef.current.map(f=>f.id);
+    setFiles(prev=>prev.map(f=>targets.includes(f.id)?{...f,crop:null}:f));
+    showToast(multiSel.size>0?t.multiApplied(multiSel.size):t.toastCropsClear);
+  },[multiSel,t]);
 
-  const renderFile = useCallback((f)=>{
-    const {w,h,mode,fmt,quality}=settingsRef.current, src=f.ec, c=f.crop;
+  const renderFile = useCallback((f, idx)=>{
+    const{w,h,mode,fmt,quality,renameMode,renameBase,renameNum,renameStart}=settingsRef.current;
+    const src=f.ec, c=f.crop;
     const sx=c?Math.max(0,c.x):0, sy=c?Math.max(0,c.y):0;
     const sw=c?Math.min(c.w,src.width-sx):src.width, sh=c?Math.min(c.h,src.height-sy):src.height;
     const out=document.createElement("canvas"); out.width=w; out.height=h;
@@ -949,182 +1023,325 @@ function ZIRME() {
     else if(mode==="fill"){const sc=Math.max(w/sw,h/sh),dw=sw*sc,dh=sh*sc;ctx.drawImage(src,sx,sy,sw,sh,(w-dw)/2,(h-dh)/2,dw,dh);}
     else{const sc=Math.min(w/sw,h/sh),dw=sw*sc,dh=sh*sc;ctx.drawImage(src,sx,sy,sw,sh,(w-dw)/2,(h-dh)/2,dw,dh);}
     const mime=fmt==="jpeg"?"image/jpeg":fmt==="png"?"image/png":"image/webp";
-    return {out,mime,ext:fmt==="jpeg"?"jpg":fmt,quality};
+    let filename;
+    if(renameMode==="keep"){
+      filename=f.name.replace(/\.[^.]+$/,"");
+    } else {
+      const n=(renameStart+idx).toString().padStart(Math.max(2,renameStart.toString().length),String(renameStart).length>2?"0":"0");
+      filename=renameNum?(renameBase+"_"+n):renameBase;
+    }
+    return{out,mime,ext:fmt==="jpeg"?"jpg":fmt,quality,filename};
   },[]);
 
   const exportCurrent=useCallback(async()=>{
     if(!sel) return;
-    const {out,mime,ext,quality}=renderFile(sel);
+    const idx=filesRef.current.findIndex(f=>f.id===sel.id);
+    const{out,mime,ext,quality,filename}=renderFile(sel,idx);
     const blob=await new Promise(r=>out.toBlob(r,mime,quality/100));
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-    a.download=sel.name.replace(/\.[^.]+$/,"")+`.${ext}`; a.click();
+    a.download=`${filename}.${ext}`; a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),3000);
   },[sel,renderFile]);
 
   const exportZip=useCallback(async()=>{
-    if(!files.length) return; setZipping(true); showToast(t.zipGenerating);
+    if(!files.length) return; setZipping(true); setZipPct(0); setZipProgress(0);
     try{
-      const zip=new JSZip(), {fmt}=settingsRef.current, ext=fmt==="jpeg"?"jpg":fmt, cnt={};
-      for(const f of filesRef.current){
-        const {out,mime,quality}=renderFile(f);
+      const zip=new JSZip(),{fmt}=settingsRef.current,ext=fmt==="jpeg"?"jpg":fmt,cnt={};
+      const total=filesRef.current.length;
+      for(let i=0;i<total;i++){
+        const f=filesRef.current[i];
+        const{out,mime,quality,filename}=renderFile(f,i);
         const blob=await new Promise(r=>out.toBlob(r,mime,quality/100));
-        const base=f.name.replace(/\.[^.]+$/,""); cnt[base]=(cnt[base]||0)+1;
-        zip.file(cnt[base]>1?`${base}_${cnt[base]}.${ext}`:`${base}.${ext}`,blob);
+        cnt[filename]=(cnt[filename]||0)+1;
+        const finalName = cnt[filename]>1 ? filename+"_"+cnt[filename]+"."+ext : filename+"."+ext;
+        zip.file(finalName, blob);
+        const pct=(i+1)/total;
+        setZipPct(Math.round(pct*100)); setZipProgress(pct*0.85);
       }
-      const zb=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:6}});
+      setZipProgress(0.95);
+      const zb=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:6}},
+        meta=>{setZipProgress(0.95+meta.percent/100*0.05);});
       const a=document.createElement("a"); a.href=URL.createObjectURL(zb); a.download="zirme_export.zip"; a.click();
       setTimeout(()=>URL.revokeObjectURL(a.href),8000);
+      setZipProgress(1); setTimeout(()=>setZipProgress(0),600);
       showToast(t.toastZipReady(filesRef.current.length));
-    }catch(err){showToast(t.toastZipErr);}
-    setZipping(false);
-  },[files.length, renderFile, t]);
+    }catch(err){showToast(t.toastZipErr);setZipProgress(0);}
+    setZipping(false); setZipPct(0);
+  },[files.length,renderFile,t]);
 
-  // ── UI ────────────────────────────────────────────────────────────────
-
-  const {w:oW,h:oH}=settings, dv=gcd(oW,oH);
+  // ── UI ──────────────────────────────────────────────────────────────────
+  const{w:oW,h:oH}=settings,dv=gcd(oW,oH);
   const withCrop=files.filter(f=>f.crop?.w>2).length;
-
   const PURPLE="#7c5cff";
 
   const mBtn=(label,onClick,disabled,bg)=>(
-    <button onClick={onClick} disabled={!!disabled} style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"none",borderRadius:5,padding:"7px 14px",cursor:disabled?"not-allowed":"pointer",background:disabled?"#2e2e2e":(bg||PURPLE),color:disabled?"#666":"#fff",whiteSpace:"nowrap",transition:"opacity .12s" }}>{label}</button>
+    <button onClick={onClick} disabled={!!disabled} style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"none",borderRadius:5,padding:"7px 14px",cursor:disabled?"not-allowed":"pointer",background:disabled?"#2e2e2e":(bg||PURPLE),color:disabled?"#666":"#fff",whiteSpace:"nowrap",transition:"opacity .12s"}}>{label}</button>
   );
   const smBtn=(label,onClick)=>(
-    <button onClick={onClick} style={{ fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"6px 10px",cursor:"pointer",background:"transparent",color:"#aaa",width:"100%",marginBottom:6,textAlign:"left" }}>{label}</button>
+    <button onClick={onClick} style={{fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"6px 10px",cursor:"pointer",background:"transparent",color:"#aaa",width:"100%",marginBottom:6,textAlign:"left"}}>{label}</button>
   );
 
   return (
-    <div style={{ display:"flex",flexDirection:"column",height:"100vh",background:"#181818",color:"#d0d0d0" }}>
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#181818",color:"#d0d0d0"}}>
 
       {/* Header */}
-      <header style={{ background:"#141414",borderBottom:"1px solid #222",height:50,padding:"0 20px",display:"flex",alignItems:"center",gap:12,flexShrink:0 }}>
-        <div style={{ fontWeight:700,fontSize:19,letterSpacing:-0.5,color:"#fff" }}>ZIRME</div>
-        <div style={{ fontSize:11,color:"#888" }}>{t.subtitle}</div>
-        <div style={{ flex:1 }} />
-        {/* Language selector — custom dropdown */}
-        <div ref={langRef} style={{ position:"relative" }}>
-          <button onClick={()=>setLangOpen(o=>!o)} style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,background:"#1e1e1e",border:"1px solid #2a2a2a",borderRadius:5,color:"#aaa",padding:"5px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap" }}>
+      <header style={{background:"#141414",borderBottom:"1px solid #222",height:50,padding:"0 20px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+        <div style={{fontWeight:700,fontSize:19,letterSpacing:-0.5,color:"#fff"}}>ZIRME</div>
+        <div style={{fontSize:11,color:"#888"}}>{t.subtitle}</div>
+        <div style={{flex:1}}/>
+        {/* ZIP progress text */}
+        {zipping&&<span style={{fontSize:11,color:"#7c5cff",fontFamily:"Inter"}}>{zipPct}%</span>}
+        {/* Lang selector */}
+        <div ref={langRef} style={{position:"relative"}}>
+          <button onClick={()=>setLangOpen(o=>!o)} style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,background:"#1e1e1e",border:"1px solid #2a2a2a",borderRadius:5,color:"#aaa",padding:"5px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
             {langNames[lang]}
-            <span style={{ fontSize:10,color:"#555",marginLeft:2,display:"inline-block",transform:langOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform .15s" }}>▾</span>
+            <span style={{fontSize:10,color:"#555",marginLeft:2,display:"inline-block",transform:langOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform .15s"}}>▾</span>
           </button>
           {langOpen&&(
-            <div style={{ position:"absolute",top:"calc(100% + 6px)",right:0,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:6,overflow:"hidden",zIndex:9999,minWidth:"110px",boxShadow:"0 8px 24px rgba(0,0,0,0.5)" }}>
+            <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:6,overflow:"hidden",zIndex:9999,minWidth:"110px",boxShadow:"0 8px 24px rgba(0,0,0,0.5)"}}>
               {Object.entries(langNames).map(([code,name])=>(
-                <button key={code} onClick={()=>{ changeLang(code); setLangOpen(false); }}
-                  style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:code===lang?600:400,background:code===lang?"#2a2a2a":"transparent",color:code===lang?"#e0e0e0":"#888",border:"none",padding:"9px 14px",cursor:"pointer",width:"100%",textAlign:"left",display:"flex",alignItems:"center",gap:8,transition:"background .1s" }}
-                  onMouseEnter={e=>{ if(code!==lang) e.currentTarget.style.background="#222"; }}
-                  onMouseLeave={e=>{ if(code!==lang) e.currentTarget.style.background="transparent"; }}>
-                  {code===lang && <span style={{ color:"#7c5cff",fontSize:10 }}>●</span>}
-                  {code!==lang && <span style={{ fontSize:10,opacity:0 }}>●</span>}
+                <button key={code} onClick={()=>{setLang(code);setLangOpen(false);}}
+                  style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:code===lang?600:400,background:code===lang?"#2a2a2a":"transparent",color:code===lang?"#e0e0e0":"#888",border:"none",padding:"9px 14px",cursor:"pointer",width:"100%",textAlign:"left",display:"flex",alignItems:"center",gap:8}}
+                  onMouseEnter={e=>{if(code!==lang)e.currentTarget.style.background="#222";}}
+                  onMouseLeave={e=>{if(code!==lang)e.currentTarget.style.background="transparent";}}>
+                  {code===lang&&<span style={{color:"#7c5cff",fontSize:10}}>●</span>}
+                  {code!==lang&&<span style={{fontSize:10,opacity:0}}>●</span>}
                   {name}
                 </button>
               ))}
             </div>
           )}
         </div>
-        <div style={{ width:1,height:16,background:"#2a2a2a" }} />
+        <div style={{width:1,height:16,background:"#2a2a2a"}}/>
         <button onClick={undoSel} disabled={!canUndo} title="Ctrl+Z"
-          style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canUndo?"pointer":"not-allowed",background:"transparent",color:canUndo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canUndo?1:0.4 }}>
-          ↩ {canUndo ? t.undoCount((sel?.history||[]).length) : t.undo}
+          style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canUndo?"pointer":"not-allowed",background:"transparent",color:canUndo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canUndo?1:0.4}}>
+          ↩ {canUndo?t.undoCount((sel?.history||[]).length):t.undo}
         </button>
-        {mBtn(t.saveCurrent, exportCurrent, !sel, PURPLE)}
-        {mBtn(zipping ? t.zipGenerating : t.zipBtn(files.length), exportZip, !files.length||zipping, "#4f46e5")}
-        <label style={{ fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,background:PURPLE,border:"none",borderRadius:5,padding:"7px 14px",cursor:"pointer",color:"#fff",whiteSpace:"nowrap" }}>
+        <button onClick={redoSel} disabled={!canRedo} title="Ctrl+Y"
+          style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canRedo?"pointer":"not-allowed",background:"transparent",color:canRedo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canRedo?1:0.4}}>
+          ↪ {canRedo?t.redoCount((sel?.future||[]).length):t.redo}
+        </button>
+        {mBtn(t.saveCurrent,exportCurrent,!sel,PURPLE)}
+        {mBtn(zipping?`${t.zipGenerating} ${zipPct}%`:t.zipBtn(files.length),exportZip,!files.length||zipping,"#4f46e5")}
+        <label style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,background:PURPLE,border:"none",borderRadius:5,padding:"7px 14px",cursor:"pointer",color:"#fff",whiteSpace:"nowrap"}}>
           {t.add}
-          <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{ display:"none" }} />
+          <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{display:"none"}}/>
         </label>
       </header>
 
       {/* Body */}
-      <div style={{ flex:1,display:"flex",overflow:"hidden" }}>
+      <div style={{flex:1,display:"flex",overflow:"hidden"}}>
 
         {/* Grid */}
-        <div style={{ flex:1,overflowY:"auto",padding:16 }}>
+        <div style={{flex:1,overflowY:"auto",padding:16,position:"relative"}}>
+          {/* Multi-select hint */}
+          {multiSel.size>0&&(
+            <div style={{position:"sticky",top:0,zIndex:10,background:"rgba(124,92,255,0.12)",border:"1px solid rgba(124,92,255,0.3)",borderRadius:6,padding:"6px 12px",marginBottom:10,fontSize:11,color:"#a78bfa",display:"flex",alignItems:"center",gap:10}}>
+              <span>✓ {multiSel.size} {lang==="es"?"imágenes seleccionadas":"images selected"}</span>
+              <button onClick={()=>setMultiSel(new Set())} style={{background:"transparent",border:"none",color:"#666",cursor:"pointer",fontSize:12}}>✕</button>
+            </div>
+          )}
           {files.length===0?(
-            <div style={{ height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,color:"#282828" }}>
-              <div style={{ fontSize:64 }}>🖼</div>
-              <div style={{ fontSize:16,fontWeight:500 }}>{t.emptyHint}</div>
-              <div style={{ fontSize:12 }}>{t.emptySub}</div>
+            <div style={{height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,color:"#282828"}}>
+              <div style={{fontSize:64}}>🖼</div>
+              <div style={{fontSize:16,fontWeight:500}}>{t.emptyHint}</div>
+              <div style={{fontSize:12}}>{t.emptySub}</div>
             </div>
           ):(
             <JustifiedGrid
               files={files} cellH={cellH} settings={settings}
-              selId={selId} t={t} tick={tick}
-              onSelect={setSelId} onCropChange={setCropForId}
+              selId={selId} multiSel={multiSel} t={t} tick={tick}
+              onSelect={handleSelect} onCropChange={setCropForId}
               onUndoPush={pushUndo} onRemove={removeFile}
-              onEdit={setEditId} loadFiles={loadFiles}
+              onEdit={setEditId} onPreview={setPreviewId}
+              loadFiles={loadFiles} onReorder={reorderFiles}
             />
           )}
         </div>
 
+        {/* Panel toggle button — hidden while editor is active to avoid overlap */}
+        {!panelOpen&&!editFile&&(
+          <button onClick={()=>setPanelOpen(true)}
+            style={{position:"absolute",right:0,top:"50%",transform:"translateY(-50%)",zIndex:50,fontFamily:"Inter",fontSize:11,background:"#1e1e1e",border:"1px solid #2a2a2a",borderRadius:"6px 0 0 6px",color:"#666",padding:"12px 6px",cursor:"pointer",writingMode:"vertical-lr",letterSpacing:1}}>
+            {t.panelShow}
+          </button>
+        )}
+
         {/* Right panel */}
-        <aside style={{ width:228,background:"#1e1e1e",borderLeft:"1px solid #242424",overflowY:"auto",padding:"14px 16px",flexShrink:0 }}>
+        {panelOpen&&(
+        <aside style={{width:236,background:"#1e1e1e",borderLeft:"1px solid #242424",overflowY:"auto",padding:"10px 14px",flexShrink:0,display:"flex",flexDirection:"column"}}>
 
-          <span className="sec-title">{t.secThumbs}</span>
-          <label className="lbl">{t.thumbSize(cellH)}</label>
-          <input type="range" min={180} max={700} value={cellH} onChange={e=>setCellH(+e.target.value)} style={{ marginBottom:16 }} />
+          {/* Panel hide button */}
+          <button onClick={()=>setPanelOpen(false)}
+            style={{fontFamily:"Inter,sans-serif",fontSize:10,background:"transparent",border:"none",color:"#444",cursor:"pointer",textAlign:"right",padding:"2px 0",marginBottom:4}}>
+            {t.panelHide}
+          </button>
 
-          <span className="sec-title">{t.secOutput}</span>
-          <label className="lbl">{t.widthLbl}</label>
-          <input type="number" min={1} value={settings.w} onChange={e=>setSettings(s=>({...s,w:+e.target.value}))} />
-          <label className="lbl">{t.heightLbl}</label>
-          <input type="number" min={1} value={settings.h} onChange={e=>setSettings(s=>({...s,h:+e.target.value}))} />
-          <div style={{ fontSize:10,color:"#666",marginBottom:10 }}>{t.ratioLbl}: {oW/dv}:{oH/dv}</div>
-          <label className="lbl">{t.modeLbl}</label>
-          <select value={settings.mode} onChange={e=>setSettings(s=>({...s,mode:e.target.value}))}>
-            <option value="fill">{t.modeFill}</option>
-            <option value="fit">{t.modeFit}</option>
-            <option value="stretch">{t.modeStretch}</option>
-          </select>
-
-          <span className="sec-title">{t.secBlur}</span>
-          <label className="lbl">{t.sizeLbl(blurCfg.size)}</label>
-          <input type="range" min={5} max={500} value={blurCfg.size} onChange={e=>setBlurCfg(b=>({...b,size:+e.target.value}))} style={{ marginBottom:10 }} />
-          <label className="lbl">{t.strengthLbl(blurCfg.strength)}</label>
-          <input type="range" min={1} max={60} value={blurCfg.strength} onChange={e=>setBlurCfg(b=>({...b,strength:+e.target.value}))} style={{ marginBottom:10 }} />
-          <label className="lbl">{t.hardnessLbl(blurCfg.hardness)}</label>
-          <input type="range" min={0} max={95} value={blurCfg.hardness} onChange={e=>setBlurCfg(b=>({...b,hardness:+e.target.value}))} style={{ marginBottom:10 }} />
-          <label className="lbl">{t.opacityLbl(blurCfg.opacity)}</label>
-          <input type="range" min={10} max={100} value={blurCfg.opacity} onChange={e=>setBlurCfg(b=>({...b,opacity:+e.target.value}))} style={{ marginBottom:12 }} />
-
-          <span className="sec-title">{t.secBatch}</span>
-          <div style={{ fontSize:11,color:"#888",lineHeight:2.2,marginBottom:10 }}>
-            <div>{t.totalLbl} <span style={{ color:"#ccc" }}>{files.length}</span></div>
-            <div>{t.withCropLbl} <span style={{ color:withCrop===files.length&&files.length>0?"#22c55e":"#aaa" }}>{withCrop}</span></div>
-            <div>{t.noCropLbl} <span style={{ color:files.length-withCrop>0?"#f59e0b":"#aaa" }}>{files.length-withCrop}</span></div>
+          {/* Tabs */}
+          <div className="tab-bar">
+            <button className={"tab-btn "+(panelTab==="image"?"active":"inactive")} onClick={()=>setPanelTab("image")}>{t.tabImage}</button>
+            <button className={"tab-btn "+(panelTab==="export"?"active":"inactive")} onClick={()=>setPanelTab("export")}>{t.tabExport}</button>
           </div>
-          {smBtn(t.autoCropAll, autoCropAll)}
-          {smBtn(t.clearAllCrops, clearAllCrops)}
-          {files.length>0&&smBtn(t.deleteAll,()=>{setFiles([]);setSelId(null);setEditId(null);})}
 
-          <span className="sec-title">{t.secExport}</span>
-          <label className="lbl">{t.formatLbl}</label>
-          <select value={settings.fmt} onChange={e=>setSettings(s=>({...s,fmt:e.target.value}))}>
-            <option value="jpeg">JPG</option>
-            <option value="png">PNG</option>
-            <option value="webp">WebP</option>
-          </select>
-          {settings.fmt!=="png"&&<>
-            <label className="lbl">{t.qualityLbl(settings.quality)}</label>
-            <input type="range" min={1} max={100} value={settings.quality} onChange={e=>setSettings(s=>({...s,quality:+e.target.value}))} style={{ marginBottom:12 }} />
-          </>}
+          {/* ─── IMAGE TAB ─── */}
+          {panelTab==="image"&&(<>
+            <span className="sec-title">{t.secThumbs}</span>
+            <label className="lbl">{t.thumbSize(cellH)}</label>
+            <input type="range" min={180} max={700} value={cellH} onChange={e=>setCellH(+e.target.value)} style={{marginBottom:16}}/>
 
-          <button onClick={()=>setHowToOpen(o=>!o)} style={{ fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:700,color:"#6a6a6a",textTransform:"uppercase",letterSpacing:"1.8px",marginTop:18,paddingBottom:6,borderTop:"none",borderLeft:"none",borderRight:"none",borderBottom:"1px solid #2a2a2a",background:"transparent",cursor:"pointer",width:"100%",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:0 }}>
+            <span className="sec-title">{t.secOutput}</span>
+            <label className="lbl">{t.widthLbl}</label>
+            <input type="number" min={1} value={settings.w} onChange={e=>setSettings(s=>({...s,w:+e.target.value}))}/>
+            <label className="lbl">{t.heightLbl}</label>
+            <input type="number" min={1} value={settings.h} onChange={e=>setSettings(s=>({...s,h:+e.target.value}))}/>
+            <div style={{fontSize:10,color:"#666",marginBottom:10}}>{t.ratioLbl}: {oW/dv}:{oH/dv}</div>
+            <label className="lbl">{t.modeLbl}</label>
+            <select value={settings.mode} onChange={e=>setSettings(s=>({...s,mode:e.target.value}))}>
+              <option value="fill">{t.modeFill}</option>
+              <option value="fit">{t.modeFit}</option>
+              <option value="stretch">{t.modeStretch}</option>
+            </select>
+
+            <span className="sec-title">{t.secBlur}</span>
+            <label className="lbl">{t.sizeLbl(blurCfg.size)}</label>
+            <input type="range" min={5} max={500} value={blurCfg.size} onChange={e=>setBlurCfg(b=>({...b,size:+e.target.value}))} style={{marginBottom:10}}/>
+            <label className="lbl">{t.strengthLbl(blurCfg.strength)}</label>
+            <input type="range" min={1} max={60} value={blurCfg.strength} onChange={e=>setBlurCfg(b=>({...b,strength:+e.target.value}))} style={{marginBottom:10}}/>
+            <label className="lbl">{t.hardnessLbl(blurCfg.hardness)}</label>
+            <input type="range" min={0} max={95} value={blurCfg.hardness} onChange={e=>setBlurCfg(b=>({...b,hardness:+e.target.value}))} style={{marginBottom:10}}/>
+            <label className="lbl">{t.opacityLbl(blurCfg.opacity)}</label>
+            <input type="range" min={10} max={100} value={blurCfg.opacity} onChange={e=>setBlurCfg(b=>({...b,opacity:+e.target.value}))} style={{marginBottom:12}}/>
+
+            <span className="sec-title">{t.secBatch}</span>
+            <div style={{fontSize:11,color:"#888",lineHeight:2.2,marginBottom:10}}>
+              <div>{t.totalLbl} <span style={{color:"#ccc"}}>{files.length}</span></div>
+              <div>{t.withCropLbl} <span style={{color:withCrop===files.length&&files.length>0?"#22c55e":"#aaa"}}>{withCrop}</span></div>
+              <div>{t.noCropLbl} <span style={{color:files.length-withCrop>0?"#f59e0b":"#aaa"}}>{files.length-withCrop}</span></div>
+              {multiSel.size>0&&<div style={{color:"#a78bfa"}}>Selected {multiSel.size}</div>}
+            </div>
+            {smBtn(t.autoCropAll,autoCropAll)}
+            {smBtn(t.clearAllCrops,clearAllCrops)}
+            {files.length>0&&smBtn(t.deleteAll,()=>{setFiles([]);setSelId(null);setEditId(null);setMultiSel(new Set());})}
+          </>)}
+
+          {/* ─── EXPORT TAB ─── */}
+          {panelTab==="export"&&(<>
+            <span className="sec-title">{t.secExport}</span>
+            <label className="lbl">{t.formatLbl}</label>
+            <select value={settings.fmt} onChange={e=>setSettings(s=>({...s,fmt:e.target.value}))}>
+              <option value="jpeg">JPG</option>
+              <option value="png">PNG</option>
+              <option value="webp">WebP</option>
+            </select>
+            {settings.fmt!=="png"&&<>
+              <label className="lbl">{t.qualityLbl(settings.quality)}</label>
+              <input type="range" min={1} max={100} value={settings.quality} onChange={e=>setSettings(s=>({...s,quality:+e.target.value}))} style={{marginBottom:12}}/>
+            </>}
+
+            <span className="sec-title">{t.secRename}</span>
+
+            {/* Mode toggle */}
+            <div style={{display:"flex",gap:4,marginBottom:10}}>
+              {["keep","custom"].map(m=>(
+                <button key={m} onClick={()=>setSettings(s=>({...s,renameMode:m}))}
+                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"5px 0",cursor:"pointer",transition:"all .12s",
+                    background:settings.renameMode===m?"#7c5cff":"transparent",
+                    borderColor:settings.renameMode===m?"#7c5cff":"#2e2e2e",
+                    color:settings.renameMode===m?"#fff":"#555"}}>
+                  {m==="keep"?t.renameModeKeep:t.renameModeCustom}
+                </button>
+              ))}
+            </div>
+
+            {settings.renameMode==="keep"&&<>
+              {/* Keep original: just show prefix/suffix */}
+              <label className="lbl">{t.prefixLbl}</label>
+              <input type="text" placeholder="instagram_" value={settings.prefix||""} onChange={e=>setSettings(s=>({...s,prefix:e.target.value}))}/>
+              <label className="lbl">{t.suffixLbl}</label>
+              <input type="text" placeholder="_final" value={settings.suffix||""} onChange={e=>setSettings(s=>({...s,suffix:e.target.value}))}/>
+              {sel&&<div style={{fontSize:10,color:"#555",marginBottom:8,padding:"5px 8px",background:"#181818",borderRadius:4,wordBreak:"break-all"}}>
+                → {settings.prefix||""}{sel.name.replace(/\.[^.]+$/,"")}{settings.suffix||""}.{settings.fmt==="jpeg"?"jpg":settings.fmt}
+              </div>}
+            </>}
+
+            {settings.renameMode==="custom"&&<>
+              {/* Custom BIRME-style: base name + optional numbering */}
+              <label className="lbl">{t.renameBaseLbl}</label>
+              <input type="text" placeholder="image" value={settings.renameBase||"image"} onChange={e=>setSettings(s=>({...s,renameBase:e.target.value||"image"}))}/>
+
+              {/* Numbering toggle */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                <label className="lbl" style={{marginBottom:0}}>{t.renameNumberingLbl}</label>
+                <button onClick={()=>setSettings(s=>({...s,renameNum:!s.renameNum}))}
+                  style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"3px 8px",cursor:"pointer",transition:"all .12s",
+                    background:settings.renameNum?"#7c5cff":"transparent",
+                    borderColor:settings.renameNum?"#7c5cff":"#2e2e2e",
+                    color:settings.renameNum?"#fff":"#555"}}>
+                  {settings.renameNum?"ON":"OFF"}
+                </button>
+              </div>
+
+              {settings.renameNum&&<>
+                <label className="lbl">{t.renameStartLbl}</label>
+                <input type="number" min={0} value={settings.renameStart||1} onChange={e=>setSettings(s=>({...s,renameStart:Math.max(0,+e.target.value)}))}/>
+              </>}
+
+              {/* Preview list — show first 3 files */}
+              <label className="lbl" style={{marginTop:4}}>{t.renamePreviewLbl}</label>
+              <div style={{background:"#181818",borderRadius:4,padding:"6px 8px",marginBottom:8}}>
+                {files.slice(0,3).map((f,i)=>{
+                  const n=((settings.renameStart||1)+i).toString().padStart(2,"0");
+                  const name=settings.renameNum?((settings.renameBase||"image")+"_"+n):(settings.renameBase||"image");
+                  const ext=settings.fmt==="jpeg"?"jpg":settings.fmt;
+                  return(
+                    <div key={f.id} style={{fontSize:10,color:"#666",lineHeight:1.8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      <span style={{color:"#383838",marginRight:4}}>{i+1}.</span>{name}.{ext}
+                    </div>
+                  );
+                })}
+                {files.length>3&&<div style={{fontSize:10,color:"#333",marginTop:2}}>+{files.length-3} más…</div>}
+                {files.length===0&&<div style={{fontSize:10,color:"#333"}}>—</div>}
+              </div>
+            </>}
+            <div style={{marginTop:8}}>
+              {mBtn(t.saveCurrent,exportCurrent,!sel,PURPLE)}
+              <div style={{height:8}}/>
+              {mBtn(zipping?`${t.zipGenerating} ${zipPct}%`:t.zipBtn(files.length),exportZip,!files.length||zipping,"#4f46e5")}
+              {/* ZIP progress bar in panel */}
+              {zipping&&<div style={{marginTop:8,height:4,background:"#2a2a2a",borderRadius:2,overflow:"hidden"}}>
+                <div style={{height:"100%",background:"#7c5cff",width:zipPct+"%",transition:"width .2s",borderRadius:2}}/>
+              </div>}
+            </div>
+          </>)}
+
+          {/* How to use — always visible at bottom */}
+          <button onClick={()=>setHowToOpen(o=>!o)} style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:700,color:"#6a6a6a",textTransform:"uppercase",letterSpacing:"1.8px",marginTop:"auto",paddingTop:18,paddingBottom:6,borderTop:"none",borderLeft:"none",borderRight:"none",borderBottom:"1px solid #2a2a2a",background:"transparent",cursor:"pointer",width:"100%",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             {t.secHowTo}
-            <span style={{ fontSize:14,fontWeight:400,letterSpacing:0,transition:"transform .2s",display:"inline-block",transform:howToOpen?"rotate(90deg)":"rotate(0deg)" }}>›</span>
+            <span style={{fontSize:14,fontWeight:400,letterSpacing:0,transition:"transform .2s",display:"inline-block",transform:howToOpen?"rotate(90deg)":"rotate(0deg)"}}>›</span>
           </button>
           {howToOpen&&(
-            <div style={{ fontSize:10,color:"#666",lineHeight:2.6,marginTop:8 }}>
-              {t.howTo.map((line,i)=><div key={i}>{line}</div>)}
+            <div style={{marginTop:10,paddingBottom:10,display:"flex",flexDirection:"column",gap:2}}>
+              {t.howTo.map((item,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:5,background:"#181818"}}>
+                  <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0,opacity:0.7}}>{item.icon}</span>
+                  <span style={{fontSize:10,color:"#888",lineHeight:1.4}}>{item.text}</span>
+                </div>
+              ))}
             </div>
           )}
         </aside>
+        )}
       </div>
 
       {/* Edit overlay */}
       {editFile&&(
         <EditOverlay file={editFile} settings={settings} blurCfg={blurCfg} t={t}
-          onClose={()=>setEditId(null)} onCropChange={setCropForId} onUndoPush={pushUndo} />
+          onClose={()=>setEditId(null)} onCropChange={setCropForId} onUndoPush={pushUndo} panelOpen={panelOpen}/>
+      )}
+
+      {/* Preview modal */}
+      {previewFile&&(
+        <PreviewModal file={previewFile} settings={settings} t={t} onClose={()=>setPreviewId(null)}/>
       )}
     </div>
   );
