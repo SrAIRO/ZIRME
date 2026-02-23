@@ -11,16 +11,32 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/smartcrop@2.0.5/smartcrop.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body, #root { height: 100%; width: 100%; overflow: hidden; background: #181818; }
     body { font-family: 'Inter', sans-serif; color: #d0d0d0; }
 
     input[type=range] { -webkit-appearance: none; appearance: none; height: 3px; border-radius: 2px; background: #2e2e2e; outline: none; cursor: pointer; width: 100%; }
-    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: #7c5cff; cursor: pointer; box-shadow: 0 0 0 2px rgba(124,92,255,0.25); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: #7c5cff; cursor: pointer; box-shadow: 0 0 0 2px rgba(124,92,255,0.25); margin-top: -5px; }
     input[type=number] { background: #222; border: 1px solid #303030; border-radius: 5px; color: #d0d0d0; font-family: Inter,sans-serif; font-size: 12px; padding: 6px 8px; outline: none; width: 100%; margin-bottom: 8px; }
-    input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { 
+      opacity: 1;
+      cursor: pointer;
+      background: #2a2a2a;
+      border-left: 1px solid #383838;
+      margin-left: 4px;
+    }
+    input[type=number]::-webkit-inner-spin-button:hover,
+    input[type=number]::-webkit-outer-spin-button:hover {
+      background: #333;
+    }
     input[type=text] { background: #222; border: 1px solid #303030; border-radius: 5px; color: #d0d0d0; font-family: Inter,sans-serif; font-size: 12px; padding: 6px 8px; outline: none; width: 100%; margin-bottom: 8px; }
+    input[type=color] { -webkit-appearance: none; appearance: none; border: none; }
+    input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type=color]::-webkit-color-swatch { border: none; border-radius: 3px; }
+    input[type=color]::-moz-color-swatch { border: none; border-radius: 3px; }
     select { background: #222; border: 1px solid #303030; border-radius: 5px; color: #d0d0d0; font-family: Inter,sans-serif; font-size: 12px; padding: 6px 8px; outline: none; width: 100%; margin-bottom: 8px; cursor: pointer; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -55,9 +71,10 @@
     #drop-overlay .sub { font-size: 12px; color: #444; }
 
     /* Slider track */
-    input[type=range]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: linear-gradient(to right, #7c5cff var(--val, 50%), #2e2e2e var(--val, 50%)); }
+    input[type=range]::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: transparent; }
     input[type=range]::-moz-range-track { height: 3px; border-radius: 2px; background: #2e2e2e; }
     input[type=range]::-moz-range-progress { background: #7c5cff; height: 3px; border-radius: 2px; }
+    input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: #7c5cff; cursor: pointer; box-shadow: 0 0 0 2px rgba(124,92,255,0.25); border: none; }
 
     /* Panel typography */
     .sec-title { font-size: 10px; font-weight: 700; color: #6a6a6a; text-transform: uppercase; letter-spacing: 1.8px; margin-bottom: 10px; margin-top: 18px; padding-bottom: 6px; border-bottom: 1px solid #2a2a2a; display: block; }
@@ -68,6 +85,19 @@
     .tab-btn { flex: 1; font-family: Inter,sans-serif; font-size: 11px; font-weight: 500; border: none; border-radius: 4px; padding: 6px 0; cursor: pointer; transition: all .12s; }
     .tab-btn.active { background: #2e2e2e; color: #e0e0e0; }
     .tab-btn.inactive { background: transparent; color: #555; }
+    .sec-block { margin-top: 18px; }
+    .sec-block:first-child { margin-top: 0; }
+    .help-menu { position:absolute; top:calc(100% + 6px); right:0; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; overflow:hidden; z-index:9999; min-width:320px; max-width:360px; box-shadow:0 8px 24px rgba(0,0,0,0.55); max-height:70vh; overflow-y:auto; }
+    .help-menu::-webkit-scrollbar { width:4px; } .help-menu::-webkit-scrollbar-thumb { background:#333; border-radius:2px; }
+    .help-menu-item { font-family:Inter,sans-serif; font-size:11px; background:transparent; color:#bbb; border:none; padding:10px 14px; cursor:pointer; width:100%; text-align:left; display:flex; align-items:center; gap:10px; transition:background .1s; }
+    .help-menu-item:hover { background:#242424; color:#e0e0e0; }
+    .help-menu-sep { height:1px; background:#2a2a2a; margin:2px 0; }
+    .help-accordion { border:none; background:transparent; width:100%; padding:10px 14px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; font-family:Inter,sans-serif; font-size:10px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:1.2px; transition:color .12s; }
+    .help-accordion:hover { color:#bbb; }
+    .help-accordion-arrow { font-size:8px; transition:transform .2s; color:#666; }
+    .help-accordion-body { overflow:hidden; transition:max-height .25s ease, opacity .2s ease; }
+    .help-about-text { font-family:Inter,sans-serif; font-size:11px; color:#aaa; line-height:1.65; padding:0 14px 12px; }
+    .help-about-text a { color:#7c5cff; text-decoration:none; } .help-about-text a:hover { text-decoration:underline; }
 
     /* Progress bar */
     #zip-progress { position: fixed; top: 50px; left: 0; right: 0; height: 2px; background: #7c5cff; transform-origin: left; transform: scaleX(0); transition: transform .2s; z-index: 9990; }
@@ -112,39 +142,47 @@ const STRINGS = {
     add:"+ Add", dropLabel:"Drop your images here", dropFormats:"JPEG · PNG · WebP · any amount",
     emptyHint:"Drop images anywhere", emptySub:"or use the + Add button above",
     addMore:"Add more", noCrop:"no crop", editBtn:"✎ Edit", previewBtn:"👁 Preview",
-    back:"← Back", cropTool:"✂ Crop", blurTool:"🖌 Blur Brush",
-    autoCropBtn:"Auto Crop", clearCropBtn:"Clear Crop", rightClickHint:"Right-click = pan",
+    back:"← Back", cropTool:"Crop", blurTool:"Blur Brush",
+    autoCropBtn:"Auto Crop", smartCropBtn:"✦ Smart Crop", clearCropBtn:"Reset", rightClickHint:"Right-click = pan",
     freeCrop:"🔓 Free", lockedCrop:r=>`🔒 ${r}`,
-    secThumbs:"Thumbnail View", thumbSize:n=>`Size: ${n}px`,
-    secOutput:"Output Size", widthLbl:"Width (px)", heightLbl:"Height (px)",
-    ratioLbl:"Ratio", modeLbl:"Mode",
-    modeFill:"Fill — crop to fit", modeFit:"Fit — letterbox", modeStretch:"Stretch — distort",
-    secBlur:"Blur Brush", sizeLbl:n=>`Size: ${n}px`, strengthLbl:n=>`Strength: ${n}`,
-    hardnessLbl:n=>`Hardness: ${n}%`, opacityLbl:n=>`Opacity: ${n}%`,
-    secBatch:"Batch", totalLbl:"Total", withCropLbl:"Cropped", noCropLbl:"Not cropped",
-    autoCropAll:"⊠ Auto Crop All", clearAllCrops:"✕ Clear All Crops", deleteAll:"🗑 Delete All",
+    secThumbs:"View", thumbSize:n=>`Thumbnail Size ${n}px`,
+    secComposition:"Composition", secOutput:"Output Size", widthLbl:"Width", heightLbl:"Height",
+    ratioLbl:"Ratio", sizeFixed:"Fixed", sizeAutoW:"Auto Width", sizeAutoH:"Auto Height",
+    secBorder:"Border", borderWidthLbl:n=>`Thickness ${n}px`, borderColorLbl:"Border Color",
+    secWatermark:"Watermark", wmTextLbl:"Text", wmFontLbl:"Font", wmSizeLbl:n=>`Size: ${n}px`, wmColorLbl:"Color", wmOpacityLbl:n=>`Opacity: ${n}%`,
+    wmPosLbl:"Position", wmPosTL:"Top-left", wmPosTR:"Top-right", wmPosBL:"Bottom-left", wmPosBR:"Bottom-right", wmPosCenter:"Center",
+    secFocal:"Crop Focus", focalAutoLbl:"Automatic (auto detect)",
+    focalApplyAll:"⊡ Apply to all", focalApplyRunning:(d,t)=>`⊡ ${d}/${t}…`,
+    secActions:"Actions", clearAllCrops:"Restore Crops", applyToAll:"Apply to All", deleteAll:"🗑 Delete all",
+    totalLbl:"Total", withCropLbl:"Manual", noCropLbl:"Auto", multiLbl:"Multi",
+    secBlur:"Blur Brush", pixelateTool:"Pixelate Brush", sizeLbl:n=>`Size: ${n}px`, strengthLbl:n=>`Strength: ${n}`,
+    hardnessLbl:n=>`Hardness: ${n}%`, opacityLbl:n=>`Opacity: ${n}%`, pixelSizeLbl:n=>`Block: ${n}px`,
+    autoCropAll:"⊠ Auto Crop All", smartCropAll:"✦ Apply smart crop",
     secExport:"Export", formatLbl:"Format", qualityLbl:n=>`Quality: ${n}%`,
     prefixLbl:"Filename prefix", suffixLbl:"Filename suffix",
     secRename:"Filename", renameModeLbl:"Mode", renameModeKeep:"Keep original", renameModeCustom:"Custom name",
     renameBaseLbl:"Base name", renameNumberingLbl:"Numbering", renameStartLbl:"Start at",
     renamePreviewLbl:"Preview",
-    tabImage:"Image", tabExport:"Export",
+    tabImage:"Edit", tabExport:"Export",
     panelHide:"‹ Hide panel", panelShow:"› Show panel",
-    secHowTo:"How to use",
+    helpBtn:"Help", secHowTo:"How to use", secShortcuts:"Shortcuts", secAbout:"About ZIRME",
+    aboutText:"ZIRME is a browser-based image editing tool designed to crop, resize, and prepare batches of images quickly and accurately. It started as a personal project to solve a real need: processing multiple images with an efficient workflow, without relying on heavy software or online services that compromise privacy.\n\nAll processing happens locally in your browser. No image is ever uploaded to any server. You can also clone the repository and run it locally on your own machine. ZIRME features smart crop with focal point detection (powered by smartcrop.js), blur and pixelate brushes, batch renaming, multi-format export, and a full undo/redo system. It's open source and under active development.",
     howTo:[
       {icon:"🖱", text:"Drag on image → new crop"},
       {icon:"⬜", text:"White handles → resize crop"},
       {icon:"✋", text:"Inside crop → move it"},
       {icon:"✎",  text:"Edit button → zoom & blur brush"},
       {icon:"🖱", text:"Right-click in editor → pan"},
-      {icon:"⌨",  text:"Ctrl+Z / Ctrl+Y → undo / redo"},
-      {icon:"←",  text:"Arrow keys → navigate images"},
-      {icon:"⇧",  text:"Shift+click → multi-select"},
       {icon:"⠿",  text:"Drag thumbnails → reorder"},
+    ],
+    shortcuts:[
+      {icon:"⌨",  key:"Ctrl+Z / Ctrl+Y", text:"Undo / Redo"},
+      {icon:"←",  key:"← →", text:"Navigate images"},
+      {icon:"⇧",  key:"Shift+click", text:"Multi-select"},
     ],
     toastZipReady:n=>`✓ ZIP ready · ${n} images`, toastZipErr:"Error generating ZIP",
     toastNoUndo:"Nothing to undo", toastNoRedo:"Nothing to redo",
-    toastAutoCrop:n=>`✂ Auto crop applied to ${n} images`, toastCropsClear:"All crops cleared",
+    toastAutoCrop:n=>`✂ Auto crop applied to ${n} images`, toastSmartCrop:n=>`✦ Smart crop applied to ${n} images`, toastSmartCropErr:"✦ Smart crop failed, using auto crop", toastCropsClear:"All crops cleared",
     previewTitle:"Export Preview",
     previewClose:"Close",
     multiApplied:n=>`Applied to ${n} selected images`,
@@ -156,39 +194,47 @@ const STRINGS = {
     add:"+ Añadir", dropLabel:"Suelta tus imágenes aquí", dropFormats:"JPEG · PNG · WebP · cualquier cantidad",
     emptyHint:"Arrastra imágenes a cualquier parte", emptySub:"o usa el botón + Añadir en la parte superior",
     addMore:"Añadir más", noCrop:"sin recorte", editBtn:"✎ Editar", previewBtn:"👁 Vista previa",
-    back:"← Volver", cropTool:"✂ Recortar", blurTool:"🖌 Pincel de desenfoque",
-    autoCropBtn:"Recorte automático", clearCropBtn:"Limpiar recorte", rightClickHint:"Clic derecho = mover vista",
+    back:"← Volver", cropTool:"Recortar", blurTool:"Pincel de desenfoque",
+    autoCropBtn:"Recorte automático", smartCropBtn:"✦ Recorte inteligente", clearCropBtn:"Restablecer", rightClickHint:"Clic derecho = mover vista",
     freeCrop:"🔓 Libre", lockedCrop:r=>`🔒 ${r}`,
-    secThumbs:"Vista de miniaturas", thumbSize:n=>`Tamaño: ${n}px`,
-    secOutput:"Tamaño de salida", widthLbl:"Ancho (px)", heightLbl:"Alto (px)",
-    ratioLbl:"Ratio", modeLbl:"Modo",
-    modeFill:"Relleno — recortar al llenar", modeFit:"Ajuste — encajar con bordes", modeStretch:"Estirar — deformar",
-    secBlur:"Pincel de desenfoque", sizeLbl:n=>`Tamaño: ${n}px`, strengthLbl:n=>`Intensidad: ${n}`,
-    hardnessLbl:n=>`Dureza: ${n}%`, opacityLbl:n=>`Opacidad: ${n}%`,
-    secBatch:"Lote", totalLbl:"Total", withCropLbl:"Con recorte", noCropLbl:"Sin recorte",
-    autoCropAll:"⊠ Recorte Automático", clearAllCrops:"✕ Limpiar todos los recortes", deleteAll:"🗑 Eliminar todo",
+    secThumbs:"Vista", thumbSize:n=>`Tamaño de miniaturas ${n}px`,
+    secComposition:"Composición", secOutput:"Tamaño de salida", widthLbl:"Ancho", heightLbl:"Alto",
+    ratioLbl:"Ratio", sizeFixed:"Fijo", sizeAutoW:"Auto ancho", sizeAutoH:"Auto alto",
+    secBorder:"Marco", borderWidthLbl:n=>`Grosor de borde ${n}px`, borderColorLbl:"Color de borde",
+    secWatermark:"Marca de agua", wmTextLbl:"Texto", wmFontLbl:"Fuente", wmSizeLbl:n=>`Tamaño: ${n}px`, wmColorLbl:"Color", wmOpacityLbl:n=>`Opacidad: ${n}%`,
+    wmPosLbl:"Posición", wmPosTL:"Arriba-izq", wmPosTR:"Arriba-der", wmPosBL:"Abajo-izq", wmPosBR:"Abajo-der", wmPosCenter:"Centro",
+    secFocal:"Foco de recorte", focalAutoLbl:"Automático (detección inteligente)",
+    focalApplyAll:"⊡ Aplicar a todas", focalApplyRunning:(d,t)=>`⊡ ${d}/${t}…`,
+    secActions:"Acciones", clearAllCrops:"Restablecer recortes", applyToAll:"Aplicar a todas", deleteAll:"🗑 Eliminar todo",
+    totalLbl:"Total", withCropLbl:"Manual", noCropLbl:"Auto", multiLbl:"Multi",
+    secBlur:"Pincel de desenfoque", pixelateTool:"Pincel de pixelado", sizeLbl:n=>`Tamaño: ${n}px`, strengthLbl:n=>`Intensidad: ${n}`,
+    hardnessLbl:n=>`Dureza: ${n}%`, opacityLbl:n=>`Opacidad: ${n}%`, pixelSizeLbl:n=>`Bloque: ${n}px`,
+    autoCropAll:"⊠ Recorte Automático", smartCropAll:"✦ Aplicar recorte automático",
     secExport:"Exportar", formatLbl:"Formato", qualityLbl:n=>`Calidad: ${n}%`,
     prefixLbl:"Prefijo del nombre", suffixLbl:"Sufijo del nombre",
     secRename:"Nombre de archivo", renameModeLbl:"Modo", renameModeKeep:"Mantener original", renameModeCustom:"Nombre personalizado",
     renameBaseLbl:"Nombre base", renameNumberingLbl:"Numeración", renameStartLbl:"Empezar en",
     renamePreviewLbl:"Vista previa",
-    tabImage:"Imagen", tabExport:"Exportar",
+    tabImage:"Editar", tabExport:"Exportar",
     panelHide:"‹ Ocultar panel", panelShow:"› Mostrar panel",
-    secHowTo:"Cómo usar",
+    helpBtn:"Ayuda", secHowTo:"Cómo usar", secShortcuts:"Atajos", secAbout:"Acerca de ZIRME",
+    aboutText:"ZIRME es una herramienta de edición de imagen en navegador, diseñada para recortar, redimensionar y preparar lotes de imágenes de forma rápida y precisa. Nació como un proyecto personal para cubrir una necesidad real: poder procesar múltiples imágenes con un flujo de trabajo eficiente, sin depender de software pesado ni de servicios online que comprometan la privacidad.\n\nTodo el procesamiento ocurre localmente en tu navegador. Ninguna imagen se sube a ningún servidor. También puedes clonar el repositorio y ejecutarlo en local en tu propia máquina. ZIRME incluye recorte inteligente con detección de punto focal (basado en smartcrop.js), pinceles de desenfoque y pixelado, renombrado por lotes, exportación en múltiples formatos y un sistema completo de deshacer/rehacer. Es un proyecto de código abierto y en desarrollo activo.",
     howTo:[
       {icon:"🖱", text:"Arrastra sobre la imagen → nuevo recorte"},
       {icon:"⬜", text:"Tiradores blancos → redimensionar"},
       {icon:"✋", text:"Dentro del recorte → moverlo"},
       {icon:"✎",  text:"Botón editar → zoom y pincel de desenfoque"},
       {icon:"🖱", text:"Clic derecho en editor → mover vista"},
-      {icon:"⌨",  text:"Ctrl+Z / Ctrl+Y → deshacer / rehacer"},
-      {icon:"←",  text:"Flechas → navegar entre imágenes"},
-      {icon:"⇧",  text:"Shift+clic → selección múltiple"},
       {icon:"⠿",  text:"Arrastra miniaturas → reordenar"},
+    ],
+    shortcuts:[
+      {icon:"⌨",  key:"Ctrl+Z / Ctrl+Y", text:"Deshacer / Rehacer"},
+      {icon:"←",  key:"← →", text:"Navegar imágenes"},
+      {icon:"⇧",  key:"Shift+clic", text:"Selección múltiple"},
     ],
     toastZipReady:n=>`✓ ZIP listo · ${n} imágenes`, toastZipErr:"Error al generar ZIP",
     toastNoUndo:"No hay pasos para deshacer", toastNoRedo:"No hay pasos para rehacer",
-    toastAutoCrop:n=>`✂ Recorte automático aplicado a ${n} imágenes`, toastCropsClear:"Recortes eliminados",
+    toastAutoCrop:n=>`✂ Recorte automático aplicado a ${n} imágenes`, toastSmartCrop:n=>`✦ Recorte inteligente aplicado a ${n} imágenes`, toastSmartCropErr:"✦ Recorte inteligente falló, usando recorte automático", toastCropsClear:"Recortes eliminados",
     previewTitle:"Vista previa de exportación",
     previewClose:"Cerrar",
     multiApplied:n=>`Aplicado a ${n} imágenes seleccionadas`,
@@ -201,9 +247,55 @@ function showToast(msg) {
   t.textContent = msg; t.classList.add("show");
   clearTimeout(t._to); t._to = setTimeout(()=>t.classList.remove("show"), 2600);
 }
+/* ── Cross-browser range fill ─────────────────────────────────────────── */
+function paintRange(el) {
+  const min = parseFloat(el.min) || 0, max = parseFloat(el.max) || 100;
+  const pct = ((el.value - min) / (max - min)) * 100;
+  el.style.background = `linear-gradient(to right, #7c5cff ${pct}%, #2e2e2e ${pct}%)`;
+}
+// Listen for all input events on range sliders (captures React-driven changes too)
+document.addEventListener("input", e => { if (e.target.type === "range") paintRange(e.target); });
+// Observe DOM for new range inputs and paint them on insertion
+new MutationObserver(muts => {
+  for (const m of muts) for (const n of m.addedNodes) {
+    if (n.nodeType !== 1) continue;
+    if (n.tagName === "INPUT" && n.type === "range") paintRange(n);
+    else if (n.querySelectorAll) n.querySelectorAll('input[type=range]').forEach(paintRange);
+  }
+}).observe(document.body, { childList: true, subtree: true });
+// Paint any already-existing range inputs
+document.querySelectorAll('input[type=range]').forEach(paintRange);
+// Periodic repaint for React-driven value updates (lightweight, ~10 elements max)
+setInterval(() => document.querySelectorAll('input[type=range]').forEach(paintRange), 250);
+
 function setZipProgress(p) {
   const el = document.getElementById("zip-progress");
   if(el) el.style.transform = `scaleX(${p})`;
+}
+
+/* ── smartcrop helper ─────────────────────────────────────────────────── */
+// Wraps smartcrop.js with a graceful fallback to center-crop.
+// Accepts an HTMLCanvasElement (file.ec) and target dimensions.
+// Returns a crop object {x,y,w,h} in original image pixel space.
+async function runSmartCrop(canvas, outW, outH) {
+  if(typeof smartcrop === "undefined") return null;
+  try {
+    const result = await smartcrop.crop(canvas, { width: outW, height: outH, minScale: 1.0 });
+    const tc = result.topCrop;
+    return { x: Math.round(tc.x), y: Math.round(tc.y), w: Math.round(tc.width), h: Math.round(tc.height) };
+  } catch(e) {
+    return null; // caller falls back to center crop
+  }
+}
+
+/* ── focalCrop — anchor-based auto crop ───────────────────────────────── */
+// ax/ay ∈ {0=start, 0.5=center, 1=end}
+// The chosen anchor point determines which region of the image fills the output.
+function focalCrop(iW, iH, oW, oH, ax, ay) {
+  const ta=oW/oH, ia=iW/iH;
+  let cW=iW, cH=iH;
+  if(ia>ta) cW=iH*ta; else cH=iW/ta;
+  return { x:Math.round(ax*(iW-cW)), y:Math.round(ay*(iH-cH)), w:Math.round(cW), h:Math.round(cH) };
 }
 function snapCanvas(c) {
   const s = document.createElement("canvas"); s.width=c.width; s.height=c.height;
@@ -344,7 +436,18 @@ function ImageCell({ file, isSelected, isMultiSel, settings, cellH, t,
     const ctx=c.getContext("2d");
     const sc=W/img.width;
     ctx.fillStyle="#202020"; ctx.fillRect(0,0,W,H);
+    
+    // Draw image
     ctx.drawImage(img,0,0,W,H);
+    
+    // Draw border preview if enabled
+    if(settings.borderW > 0){
+      const borderSc = settings.borderW * sc; // Scale border to thumbnail size
+      ctx.strokeStyle = settings.borderColor;
+      ctx.lineWidth = borderSc * 2; // Double width for visibility
+      ctx.strokeRect(0, 0, W, H);
+    }
+    
     const cr=file.crop;
     if(cr?.w>2) drawCropShadow(ctx,cr,sc,0,0,img.width,img.height);
     // Filename bar
@@ -360,7 +463,7 @@ function ImageCell({ file, isSelected, isMultiSel, settings, cellH, t,
     } else {
       ctx.fillStyle="#444"; ctx.fillText(t?.noCrop||"no crop",6,15);
     }
-  },[file,file.crop,cellH,tick]);
+  },[file,file.crop,cellH,tick,settings.borderW,settings.borderColor]);
 
   const onMouseDown = useCallback((e)=>{
     if(e.button!==0) return;
@@ -465,6 +568,16 @@ function JustifiedGrid({ files, cellH, settings, selId, multiSel, t, tick,
 
   const rows = useMemo(()=>containerW>0?buildRows(files,cellH,containerW,GAP):[],[files,cellH,containerW]);
 
+  // Calculate if "Add More" button fits in the last row
+  const addBtnMinWidth = Math.round(cellH * 0.6);
+  const lastRowHasSpace = useMemo(() => {
+    if (rows.length === 0) return false;
+    const lastRow = rows[rows.length - 1];
+    const usedWidth = lastRow.reduce((sum, item) => sum + item.w, 0) + (lastRow.length - 1) * GAP;
+    const remainingWidth = containerW - usedWidth;
+    return remainingWidth >= (addBtnMinWidth + GAP);
+  }, [rows, containerW, addBtnMinWidth, GAP]);
+
   const handleDragStart = useCallback((id)=>setDragSrc(id),[]);
   const handleDragEnter = useCallback((id)=>setDragOver(id),[]);
   const handleDragEnd   = useCallback(()=>{
@@ -474,42 +587,90 @@ function JustifiedGrid({ files, cellH, settings, selId, multiSel, t, tick,
 
   return (
     <div ref={containerRef} style={{width:"100%"}}>
-      {rows.map((row,ri)=>(
-        <div key={ri} style={{display:"flex",gap:GAP,marginBottom:GAP,alignItems:"flex-start"}}>
-          {row.map(({file,w,h})=>(
-            <div key={file.id} style={{width:w,flexShrink:0}}>
-              <ImageCell file={file} isSelected={file.id===selId}
-                isMultiSel={multiSel.has(file.id)} settings={settings} cellH={h} t={t} tick={tick}
-                onSelect={onSelect} onCropChange={onCropChange}
-                onUndoPush={onUndoPush} onRemove={onRemove} onEdit={onEdit} onPreview={onPreview}
-                dragging={file.id===dragOver}
-                onDragStart={handleDragStart} onDragEnter={handleDragEnter} onDragEnd={handleDragEnd} />
-            </div>
-          ))}
+      {rows.map((row,ri)=>{
+        const isLastRow = ri === rows.length - 1;
+        const showButtonInRow = isLastRow && lastRowHasSpace && files.length > 0;
+        return (
+          <div key={ri} style={{display:"flex",gap:GAP,marginBottom:GAP,alignItems:"flex-start"}}>
+            {row.map(({file,w,h})=>(
+              <div key={file.id} style={{width:w,flexShrink:0}}>
+                <ImageCell file={file} isSelected={file.id===selId}
+                  isMultiSel={multiSel.has(file.id)} settings={settings} cellH={h} t={t} tick={tick}
+                  onSelect={onSelect} onCropChange={onCropChange}
+                  onUndoPush={onUndoPush} onRemove={onRemove} onEdit={onEdit} onPreview={onPreview}
+                  dragging={file.id===dragOver}
+                  onDragStart={handleDragStart} onDragEnter={handleDragEnter} onDragEnd={handleDragEnd} />
+              </div>
+            ))}
+            {/* Add More button in the last row only if there's space */}
+            {showButtonInRow && (
+              <label style={{height:cellH+"px",display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"2px dashed #252525",borderRadius:8,cursor:"pointer",color:"#303030",gap:8,transition:"all .15s",minWidth:addBtnMinWidth+"px",flexShrink:0}}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor="#383838";e.currentTarget.style.color="#555";}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor="#252525";e.currentTarget.style.color="#303030";}}>
+                <span style={{fontSize:28}}>+</span>
+                <span style={{fontSize:12,fontWeight:500}}>{t.addMore}</span>
+                <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{display:"none"}} />
+              </label>
+            )}
+          </div>
+        );
+      })}
+      {/* Add More button in new row if it doesn't fit in last row, or if no files */}
+      {(!lastRowHasSpace || files.length === 0) && (
+        <div style={{display:"flex",gap:GAP,marginBottom:GAP}}>
+          <label style={{height:cellH+"px",display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"2px dashed #252525",borderRadius:8,cursor:"pointer",color:"#303030",gap:8,transition:"all .15s",minWidth:addBtnMinWidth+"px",flexShrink:0}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="#383838";e.currentTarget.style.color="#555";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="#252525";e.currentTarget.style.color="#303030";}}>
+            <span style={{fontSize:28}}>+</span>
+            <span style={{fontSize:12,fontWeight:500}}>{t.addMore}</span>
+            <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{display:"none"}} />
+          </label>
         </div>
-      ))}
-      <label style={{height:cellH+"px",display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"2px dashed #252525",borderRadius:8,cursor:"pointer",color:"#303030",gap:8,transition:"all .15s",minWidth:Math.round(cellH*0.6)+"px",verticalAlign:"top"}}
-        onMouseEnter={e=>{e.currentTarget.style.borderColor="#383838";e.currentTarget.style.color="#555";}}
-        onMouseLeave={e=>{e.currentTarget.style.borderColor="#252525";e.currentTarget.style.color="#303030";}}>
-        <span style={{fontSize:28}}>+</span>
-        <span style={{fontSize:12,fontWeight:500}}>{t.addMore}</span>
-        <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{display:"none"}} />
-      </label>
+      )}
     </div>
   );
 }
 
+/* ── Tool SVG Icons ───────────────────────────────────────────────────── */
+const ToolIcon=({type,size=16,color="currentColor"})=>{
+  const s={crop:(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 2v4"/><path d="M6 6h12a2 2 0 0 1 2 2v8"/><path d="M18 22v-4"/>
+      <path d="M18 18H6a2 2 0 0 1-2-2V8"/><path d="M2 6h4"/><path d="M22 18h-4"/>
+    </svg>
+  ),blur:(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" opacity=".9"/><circle cx="12" cy="12" r="6" opacity=".5"/>
+      <circle cx="12" cy="12" r="9" opacity=".25"/>
+    </svg>
+  ),pixelate:(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke="none">
+      <rect x="3" y="3" width="5" height="5" rx=".5" opacity=".9"/>
+      <rect x="10" y="3" width="5" height="5" rx=".5" opacity=".5"/>
+      <rect x="17" y="3" width="5" height="5" rx=".5" opacity=".3"/>
+      <rect x="3" y="10" width="5" height="5" rx=".5" opacity=".5"/>
+      <rect x="10" y="10" width="5" height="5" rx=".5" opacity=".9"/>
+      <rect x="17" y="10" width="5" height="5" rx=".5" opacity=".5"/>
+      <rect x="3" y="17" width="5" height="5" rx=".5" opacity=".3"/>
+      <rect x="10" y="17" width="5" height="5" rx=".5" opacity=".5"/>
+      <rect x="17" y="17" width="5" height="5" rx=".5" opacity=".9"/>
+    </svg>
+  )};
+  return s[type]||null;
+};
+
 /* ── EditOverlay ──────────────────────────────────────────────────────── */
-function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndoPush, panelOpen }) {
+function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndoPush, panelOpen, onBlurCfgChange }) {
   const canvasRef     = useRef(null);
   const contRef       = useRef(null);
   const blurCircleRef = useRef(null);
   const frameRef      = useRef(0);
 
   // Tool state — only affects toolbar rendering, not draw loop
-  const [tool,     setTool]     = useState("crop");
-  const [freeCrop, setFreeCrop] = useState(false);
-  const [ready,    setReady]    = useState(false);
+  const [tool,           setTool]         = useState("crop");
+  const [freeCrop,       setFreeCrop]     = useState(false);
+  const [ready,          setReady]        = useState(false);
+  const [smartCropping,  setSmartCropping]= useState(false); // async smart-crop in progress
 
   // All hot-path values live in refs — NEVER setState during drag/pan/draw
   const zoomRef    = useRef(1);
@@ -641,6 +802,31 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     draw(); // direct draw, no setState
   };
 
+  // ── Pixelate helper ──────────────────────────────────────────────────
+  const doPixelate=(ix,iy)=>{
+    const{size,pixelSize=8,hardness,opacity}=blurCfgRef.current;
+    const ec=file.ec, ctx=ec.getContext("2d");
+    const r=size/2, bx=Math.round(ix-r), by=Math.round(iy-r);
+    if(bx+size<0||by+size<0||bx>ec.width||by>ec.height) return;
+    const ps=Math.max(2,pixelSize);
+    const tmp=document.createElement("canvas"); tmp.width=size; tmp.height=size;
+    const tc=tmp.getContext("2d");
+    // downscale then upscale for pixelation
+    const sm=document.createElement("canvas");
+    const sw=Math.max(1,Math.round(size/ps)), sh=Math.max(1,Math.round(size/ps));
+    sm.width=sw; sm.height=sh;
+    const sc=sm.getContext("2d"); sc.imageSmoothingEnabled=true;
+    sc.drawImage(ec,bx,by,size,size,0,0,sw,sh);
+    tc.imageSmoothingEnabled=false;
+    tc.drawImage(sm,0,0,sw,sh,0,0,size,size);
+    // radial mask
+    const g=tc.createRadialGradient(r,r,r*(hardness/100),r,r,r);
+    g.addColorStop(0,`rgba(0,0,0,${opacity/100})`); g.addColorStop(1,"rgba(0,0,0,0)");
+    tc.globalCompositeOperation="destination-in"; tc.fillStyle=g; tc.fillRect(0,0,size,size);
+    ctx.drawImage(tmp,bx,by);
+    draw();
+  };
+
   // ── Mouse handlers — all imperative, zero setState ─────────────────────
   const onMouseDown=useCallback((e)=>{
     isDraggingRef.current = true;
@@ -664,9 +850,10 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
         cropRef.current={x:p.x,y:p.y,w:0,h:0}; draw();
       }
     }
-    if(toolRef.current==="blur"){
+    if(toolRef.current==="blur"||toolRef.current==="pixelate"){
       if(!s.blurPushed){onUndoPush(file.id);s.blurPushed=true;}
-      s.mode="blur"; const pd=getPointerData(e.clientX,e.clientY); if(pd) doBlur(pd.img.x,pd.img.y);
+      s.mode=toolRef.current; const pd=getPointerData(e.clientX,e.clientY);
+      if(pd){ if(toolRef.current==="blur") doBlur(pd.img.x,pd.img.y); else doPixelate(pd.img.x,pd.img.y); }
     }
   },[file,onUndoPush,draw]);
 
@@ -678,7 +865,7 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     if(s.isPan){
       const np=clampPan(s.panOrig.x+e.clientX-s.panStart.x, s.panOrig.y+e.clientY-s.panStart.y, zoomRef.current);
       panRef.current=np; draw();
-      if(toolRef.current==="blur"){
+      if(toolRef.current==="blur"||toolRef.current==="pixelate"){
         const cont=contRef.current, circle=blurCircleRef.current;
         if(cont&&circle){const r=cont.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;const sz=blurCfgRef.current.size*zoomRef.current;circle.style.cssText=`display:block;left:${x-sz/2}px;top:${y-sz/2}px;width:${sz}px;height:${sz}px`;}
       }
@@ -718,6 +905,8 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
       newCrop=clampCrop({x,y,w,h},iW,iH,ratio); // pass ratio so clampCrop maintains it after edge clamping
     } else if(s.mode==="blur"){
       doBlur(p.x,p.y);
+    } else if(s.mode==="pixelate"){
+      doPixelate(p.x,p.y);
     }
 
     if(newCrop){ cropRef.current=newCrop; draw(); }
@@ -728,7 +917,7 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
       const hi2=cr&&cr.w>2?hitHandle(pd.px,pd.py,cr,pd.sc,pd.offX,pd.offY):-1;
       const cv=canvasRef.current; if(cv) cv.style.cursor=hi2>=0?HANDLES[hi2].cx:(cr&&cr.w>2&&p.x>=cr.x&&p.x<=cr.x+cr.w&&p.y>=cr.y&&p.y<=cr.y+cr.h?"move":"crosshair");
     }
-    if(toolRef.current==="blur"){
+    if(toolRef.current==="blur"||toolRef.current==="pixelate"){
       const cont=contRef.current, circle=blurCircleRef.current;
       if(cont&&circle){const r=cont.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;const sz=blurCfgRef.current.size*zoomRef.current;circle.style.cssText=`display:block;position:absolute;border-radius:50%;border:1.5px solid rgba(255,255,255,0.75);box-shadow:0 0 0 1px rgba(0,0,0,0.5);pointer-events:none;box-sizing:border-box;left:${x-sz/2}px;top:${y-sz/2}px;width:${sz}px;height:${sz}px`;}
     }
@@ -761,13 +950,31 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
 
   const autoCrop=()=>{
     onUndoPush(file.id);
-    const iW=file.ec.width,iH=file.ec.height,ta=settingsRef2.current.w/settingsRef2.current.h,ia=iW/iH;
-    let cW=iW,cH=iH; if(ia>ta)cW=iH*ta; else cH=iW/ta;
-    const nc={x:(iW-cW)/2,y:(iH-cH)/2,w:cW,h:cH};
+    const {w:oW,h:oH,focalPoint}=settingsRef2.current;
+    const {ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+    const nc=focalCrop(file.ec.width,file.ec.height,oW,oH,ax,ay);
     cropRef.current=nc; onCropChange(file.id,nc); draw();
   };
+
+  const smartAutoCrop=async()=>{
+    setSmartCropping(true);
+    onUndoPush(file.id);
+    const {w:oW,h:oH,focalPoint}=settingsRef2.current;
+    let nc=await runSmartCrop(file.ec,oW,oH);
+    if(!nc||nc.w<2||nc.h<2){
+      const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+      nc=focalCrop(file.ec.width,file.ec.height,oW,oH,ax,ay);
+      showToast(t?.toastSmartCropErr||"Smart crop failed, using focal point crop");
+    }
+    cropRef.current=nc; onCropChange(file.id,nc); draw();
+    setSmartCropping(false);
+  };
   const clearCrop=()=>{
-    onUndoPush(file.id); cropRef.current=null; onCropChange(file.id,null); draw();
+    onUndoPush(file.id);
+    const {w:oW,h:oH,focalPoint}=settingsRef2.current;
+    const {ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+    const nc={...focalCrop(file.ec.width,file.ec.height,oW,oH,ax,ay),auto:true};
+    cropRef.current=nc; onCropChange(file.id,nc); draw();
   };
 
   const {w:oW,h:oH}=settings, dv=gcd(oW,oH);
@@ -777,39 +984,80 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     <button onClick={onClick} style={{fontFamily:"Inter,sans-serif",fontSize:11,border:"none",background:"transparent",color:"#505050",cursor:"pointer",padding:"5px 8px",borderRadius:4}}>{label}</button>
   );
 
-  const PANEL_W = panelOpen ? 236 : 0;
+  const PANEL_W = panelOpen ? 360 : 0;
   return (
     <div style={{position:"fixed",top:50,left:0,right:PANEL_W,bottom:0,background:"#181818",display:"flex",flexDirection:"column",zIndex:200}}
       onContextMenu={e=>e.preventDefault()}>
-      <div style={{background:"#141414",borderBottom:"1px solid #242424",padding:"5px 12px",display:"flex",alignItems:"center",gap:4,flexShrink:0,flexWrap:"wrap"}}>
-        <button onClick={onClose} style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"1px solid #303030",borderRadius:5,padding:"5px 10px",cursor:"pointer",background:"transparent",color:"#d0d0d0",marginRight:8}}>{t?.back||"← Back"}</button>
-        <div style={{width:1,height:16,background:"#282828",marginRight:4}}/>
-        {["crop","blur"].map(tb=>(
-          <button key={tb} onClick={()=>setTool(tb)} style={oBtnSt(tool===tb)}>
-            {tb==="crop"?(t?.cropTool||"✂ Crop"):(t?.blurTool||"🖌 Blur Brush")}
-          </button>
-        ))}
+
+      {/* ── Top bar: back + file name ── */}
+      <div style={{background:"#141414",borderBottom:"1px solid #242424",padding:"5px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+        <button onClick={onClose} style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"1px solid #303030",borderRadius:5,padding:"5px 10px",cursor:"pointer",background:"transparent",color:"#d0d0d0"}}>{t?.back||"← Back"}</button>
+        <div style={{width:1,height:16,background:"#282828"}}/>
         {tool==="crop"&&(
           <button onClick={()=>setFreeCrop(f=>!f)}
-            style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:700,borderRadius:3,padding:"2px 8px",marginLeft:2,cursor:"pointer",border:"none",
-              background:freeCrop?"rgba(245,158,11,0.15)":"#7c5cff",
-              color:freeCrop?"#f59e0b":"#fff"}}>
-            {freeCrop?(t?.freeCrop||"🔓 Free"):(t?.lockedCrop?.(ratioLbl)||`🔒 ${ratioLbl}`)}
+            style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:700,borderRadius:3,padding:"3px 9px",cursor:"pointer",border:"none",
+              background:freeCrop?"rgba(245,158,11,0.15)":"rgba(124,92,255,0.15)",
+              color:freeCrop?"#f59e0b":"#a78bfa"}}>
+            {freeCrop?(t?.freeCrop||"🔓 Libre"):(t?.lockedCrop?.(ratioLbl)||`🔒 ${ratioLbl}`)}
           </button>
         )}
-        <div style={{width:1,height:16,background:"#282828",margin:"0 6px"}}/>
-        {oTxtBtn(t?.autoCropBtn||"Auto Crop",autoCrop)}
-        {oTxtBtn(t?.clearCropBtn||"Clear Crop",clearCrop)}
         <div style={{flex:1}}/>
-        <span style={{fontSize:10,color:"#444",fontFamily:"Inter,sans-serif",fontStyle:"italic"}}>{t?.rightClickHint||"Right-click = pan"}</span>
-        <div style={{width:1,height:16,background:"#282828",margin:"0 8px"}}/>
-        <span style={{fontSize:11,color:"#383838",fontFamily:"Inter,sans-serif"}}>{file.name}</span>
+        <span style={{fontSize:10,color:"#383838",fontFamily:"Inter,sans-serif",fontStyle:"italic"}}>{t?.rightClickHint||"Clic derecho = mover"}</span>
+        <div style={{width:1,height:16,background:"#282828"}}/>
+        <span style={{fontSize:11,color:"#383838",fontFamily:"Inter,sans-serif",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{file.name}</span>
       </div>
-      <div ref={contRef} style={{flex:1,position:"relative",overflow:"hidden",cursor:tool==="blur"?"none":"crosshair",opacity:ready?1:0,transition:"opacity 0.08s"}}>
-        <canvas ref={canvasRef} style={{display:"block",cursor:tool==="blur"?"none":"inherit",willChange:"transform"}}
-          onMouseDown={onMouseDown} onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}/>
-        <div ref={blurCircleRef} style={{display:"none",position:"absolute",borderRadius:"50%",border:"1.5px solid rgba(255,255,255,0.75)",boxShadow:"0 0 0 1px rgba(0,0,0,0.5)",pointerEvents:"none",boxSizing:"border-box"}}/>
+
+      {/* ── Main area: leftToolbar + canvas ── */}
+      <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+
+        {/* Left toolbar — tool selector with flyout for brush settings */}
+        <div style={{width:44,background:"#141414",borderRight:"1px solid #1e1e1e",display:"flex",flexDirection:"column",alignItems:"center",paddingTop:10,gap:2,flexShrink:0,position:"relative",zIndex:20}}>
+          {[{id:"crop",tip:t?.cropTool||"Crop"},{id:"blur",tip:t?.blurTool||"Blur"},{id:"pixelate",tip:t?.pixelateTool||"Pixelate"}].map(tb=>(
+            <button key={tb.id} onClick={()=>setTool(tb.id)}
+              title={tb.tip}
+              style={{width:34,height:34,border:"none",borderRadius:6,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .12s",
+                background:tool===tb.id?"rgba(124,92,255,0.18)":"transparent",
+                color:tool===tb.id?"#a78bfa":"#555"}}>
+              <ToolIcon type={tb.id} size={17} color={tool===tb.id?"#a78bfa":"#555"}/>
+            </button>
+          ))}
+
+          {/* Flyout brush settings panel */}
+          {(tool==="blur"||tool==="pixelate")&&(
+            <div style={{position:"absolute",left:44,top:0,width:200,background:"#1a1a1a",borderRight:"1px solid #242424",borderBottom:"1px solid #242424",padding:"12px 12px 8px",display:"flex",flexDirection:"column",gap:2,zIndex:30,boxShadow:"4px 0 16px rgba(0,0,0,0.3)"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#555",textTransform:"uppercase",letterSpacing:"1px",marginBottom:4}}>
+                {tool==="blur"?(t.secBlur):(t.pixelateTool)}
+              </div>
+              <label style={{fontSize:10,color:"#666",marginBottom:2}}>{t.sizeLbl(blurCfg.size)}</label>
+              <input type="range" min={5} max={500} value={blurCfg.size}
+                onChange={e=>onBlurCfgChange(b=>({...b,size:+e.target.value}))} style={{marginBottom:6}}/>
+              {tool==="blur"&&<>
+                <label style={{fontSize:10,color:"#666",marginBottom:2}}>{t.strengthLbl(blurCfg.strength)}</label>
+                <input type="range" min={1} max={60} value={blurCfg.strength}
+                  onChange={e=>onBlurCfgChange(b=>({...b,strength:+e.target.value}))} style={{marginBottom:6}}/>
+              </>}
+              {tool==="pixelate"&&<>
+                <label style={{fontSize:10,color:"#666",marginBottom:2}}>{t.pixelSizeLbl(blurCfg.pixelSize)}</label>
+                <input type="range" min={2} max={40} value={blurCfg.pixelSize}
+                  onChange={e=>onBlurCfgChange(b=>({...b,pixelSize:+e.target.value}))} style={{marginBottom:6}}/>
+              </>}
+              <label style={{fontSize:10,color:"#666",marginBottom:2}}>{t.hardnessLbl(blurCfg.hardness)}</label>
+              <input type="range" min={0} max={95} value={blurCfg.hardness}
+                onChange={e=>onBlurCfgChange(b=>({...b,hardness:+e.target.value}))} style={{marginBottom:6}}/>
+              <label style={{fontSize:10,color:"#666",marginBottom:2}}>{t.opacityLbl(blurCfg.opacity)}</label>
+              <input type="range" min={10} max={100} value={blurCfg.opacity}
+                onChange={e=>onBlurCfgChange(b=>({...b,opacity:+e.target.value}))} style={{marginBottom:2}}/>
+            </div>
+          )}
+        </div>
+
+        {/* Canvas area */}
+        <div ref={contRef} style={{flex:1,position:"relative",overflow:"hidden",cursor:(tool==="blur"||tool==="pixelate")?"none":"crosshair",opacity:ready?1:0,transition:"opacity 0.08s"}}>
+          <canvas ref={canvasRef} style={{display:"block",cursor:(tool==="blur"||tool==="pixelate")?"none":"inherit",willChange:"transform"}}
+            onMouseDown={onMouseDown} onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}/>
+          <div ref={blurCircleRef} style={{display:"none",position:"absolute",borderRadius:"50%",border:"1.5px solid rgba(255,255,255,0.75)",boxShadow:"0 0 0 1px rgba(0,0,0,0.5)",pointerEvents:"none",boxSizing:"border-box"}}/>
+        </div>
       </div>
     </div>
   );
@@ -818,26 +1066,49 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
 /* ── Preview Modal ────────────────────────────────────────────────────── */
 function PreviewModal({ file, settings, t, onClose }) {
   const [dataUrl, setDataUrl] = useState(null);
-  const {w,h,mode,fmt,quality}=settings;
+  const [dims, setDims] = useState({tw:0,th:0});
 
   useEffect(()=>{
-    const src=file.ec, c=file.crop;
-    const sx=c?Math.max(0,c.x):0, sy=c?Math.max(0,c.y):0;
-    const sw=c?Math.min(c.w,src.width-sx):src.width, sh=c?Math.min(c.h,src.height-sy):src.height;
-    const out=document.createElement("canvas"); out.width=w; out.height=h;
-    const ctx=out.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h);
-    if(mode==="stretch") ctx.drawImage(src,sx,sy,sw,sh,0,0,w,h);
-    else if(mode==="fill"){const sc=Math.max(w/sw,h/sh),dw=sw*sc,dh=sh*sc;ctx.drawImage(src,sx,sy,sw,sh,(w-dw)/2,(h-dh)/2,dw,dh);}
-    else{const sc=Math.min(w/sw,h/sh),dw=sw*sc,dh=sh*sc;ctx.drawImage(src,sx,sy,sw,sh,(w-dw)/2,(h-dh)/2,dw,dh);}
-    const mime=fmt==="jpeg"?"image/jpeg":fmt==="png"?"image/png":"image/webp";
+    const{w:ow,h:oh,focalPoint,fmt,quality,sizeMode,borderW,borderColor,wmText,wmFont,wmSize,wmColor,wmOpacity,wmPos}=settings;
+    const src=file.ec;
+    let w=ow, h=oh;
+    if(sizeMode==="autoW"){
+      let c=file.crop; if(!c||c.w<2){const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};c=focalCrop(src.width,src.height,src.width,h,ax,ay);} w=Math.round((c.w/c.h)*h);
+    } else if(sizeMode==="autoH"){
+      let c=file.crop; if(!c||c.w<2){const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};c=focalCrop(src.width,src.height,w,src.height,ax,ay);} h=Math.round((c.h/c.w)*w);
+    }
+    let c=file.crop;
+    if(!c||c.w<2){const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};c=focalCrop(src.width,src.height,w,h,ax,ay);}
+    const sx=Math.max(0,c.x),sy=Math.max(0,c.y),sw=Math.min(c.w,src.width-sx),sh=Math.min(c.h,src.height-sy);
+    const bw=borderW||0, totalW=w+bw*2, totalH=h+bw*2;
+    const out=document.createElement("canvas"); out.width=totalW; out.height=totalH;
+    const ctx=out.getContext("2d");
+    if(bw>0){ctx.fillStyle=borderColor||"#000";ctx.fillRect(0,0,totalW,totalH);}
+    ctx.fillStyle="#fff"; ctx.fillRect(bw,bw,w,h);
+    const sc=Math.min(w/sw,h/sh),dw=sw*sc,dh=sh*sc;
+    ctx.drawImage(src,sx,sy,sw,sh,bw+(w-dw)/2,bw+(h-dh)/2,dw,dh);
+    if(wmText&&wmText.trim()){
+      ctx.save(); ctx.globalAlpha=(wmOpacity||80)/100; ctx.fillStyle=wmColor||"#fff";
+      ctx.font=`${wmSize||24}px ${wmFont||"Inter"},sans-serif`; ctx.textBaseline="middle";
+      const pad=Math.max(12,Math.round(totalW*0.02)); let tx,ty;
+      if(wmPos==="tl"){ctx.textAlign="left";tx=bw+pad;ty=bw+pad+wmSize/2;}
+      else if(wmPos==="tr"){ctx.textAlign="right";tx=totalW-bw-pad;ty=bw+pad+wmSize/2;}
+      else if(wmPos==="bl"){ctx.textAlign="left";tx=bw+pad;ty=totalH-bw-pad-wmSize/2;}
+      else if(wmPos==="center"){ctx.textAlign="center";tx=totalW/2;ty=totalH/2;}
+      else{ctx.textAlign="right";tx=totalW-bw-pad;ty=totalH-bw-pad-wmSize/2;}
+      ctx.fillText(wmText,tx,ty); ctx.restore();
+    }
+    const mime=fmt==="jpeg"?"image/jpeg":fmt==="png"?"image/png":fmt==="avif"?"image/avif":"image/webp";
+    setDims({tw:totalW,th:totalH});
     setDataUrl(out.toDataURL(mime,quality/100));
   },[]);
 
+  const{fmt,quality}=settings;
   return (
     <div id="preview-modal" onClick={onClose}>
       <div className="pm-box" onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <span style={{fontFamily:"Inter",fontWeight:600,fontSize:13,color:"#d0d0d0"}}>{t.previewTitle} — {w}×{h}px · {fmt.toUpperCase()}{fmt!=="png"?` · ${quality}%`:""}</span>
+          <span style={{fontFamily:"Inter",fontWeight:600,fontSize:13,color:"#d0d0d0"}}>{t.previewTitle} · {dims.tw}×{dims.th}px · {fmt.toUpperCase()}{fmt!=="png"?` · ${quality}%`:""}</span>
           <button onClick={onClose} style={{fontFamily:"Inter",fontSize:12,background:"transparent",border:"1px solid #303030",borderRadius:5,color:"#aaa",padding:"4px 12px",cursor:"pointer"}}>{t.previewClose}</button>
         </div>
         {dataUrl?<img src={dataUrl} alt="preview"/>:<div style={{color:"#555",padding:40}}>Loading…</div>}
@@ -856,18 +1127,24 @@ function ZIRME() {
   const [previewId,setPreviewId]=useState(null);
   const [settings, setSettings]= useState(()=>{
     let fmt="png"; try{fmt=localStorage.getItem("zirme-fmt")||"png";}catch(e){}
-    return {w:1024, h:1024, mode:"fill", fmt, quality:92, prefix:"", suffix:"",
-            renameMode:"keep", renameBase:"image", renameNum:true, renameStart:1};
+    return {w:1024, h:1024, lockAspect:true, sizeMode:"fixed", focalAuto:true, focalPoint:{ax:0.5,ay:0.5}, fmt, quality:92, prefix:"", suffix:"",
+            renameMode:"keep", renameBase:"image", renameNum:true, renameStart:1,
+            borderW:0, borderColor:"#000000",
+            wmEnabled:false, wmText:"", wmFont:"Inter", wmSize:24, wmColor:"#ffffff", wmOpacity:80, wmPos:"br"};
   });
-  const [blurCfg,  setBlurCfg] = useState({size:60,strength:12,hardness:30,opacity:85});
+  const [blurCfg,  setBlurCfg] = useState({size:60,strength:12,hardness:30,opacity:85,pixelSize:8});
   const [zipping,  setZipping] = useState(false);
   const [zipPct,   setZipPct]  = useState(0);
+  const [smartBatch,setSmartBatch]=useState({running:false,done:0,total:0}); // smart crop batch progress
   const [tick,     setTick]    = useState(0);
   const [cellH,    setCellH]   = useState(380);
   const [panelOpen,setPanelOpen]= useState(true);
-  const [panelTab, setPanelTab] = useState("image");
-  const [howToOpen,setHowToOpen]= useState(false);
+  const [panelTab,  setPanelTab]  = useState("image");
+
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpTab,  setHelpTab]  = useState(null);
   const [langOpen, setLangOpen] = useState(false);
+  const helpRef = useRef(null);
   const [lang,     setLang]    = useState(()=>{try{return localStorage.getItem("zirme-lang")||"es";}catch(e){return "es";}});
   const langNames = {en:"English",es:"Español"};
   const langRef = useRef(null);
@@ -875,7 +1152,10 @@ function ZIRME() {
   const t = STRINGS[lang]||STRINGS.en;
 
   useEffect(()=>{
-    const h=(e)=>{if(langRef.current&&!langRef.current.contains(e.target))setLangOpen(false);};
+    const h=(e)=>{
+      if(langRef.current&&!langRef.current.contains(e.target)) setLangOpen(false);
+      if(helpRef.current&&!helpRef.current.contains(e.target)) setHelpOpen(false);
+    };
     document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h);
   },[]);
   useEffect(()=>{try{localStorage.setItem("zirme-lang",lang);}catch(e){}
@@ -886,8 +1166,10 @@ function ZIRME() {
 
   const filesRef    = useRef([]);
   const settingsRef = useRef(settings);
+  const editIdRef   = useRef(editId);
   useEffect(()=>{filesRef.current=files;},[files]);
   useEffect(()=>{settingsRef.current=settings;},[settings]);
+  useEffect(()=>{editIdRef.current=editId;},[editId]);
 
   const sel      = files.find(f=>f.id===selId)??null;
   const editFile = files.find(f=>f.id===editId)??null;
@@ -950,7 +1232,9 @@ function ZIRME() {
   },[selId,t]);
 
   const setCropForId = useCallback((id,crop)=>{
-    setFiles(prev=>prev.map(f=>f.id===id?{...f,crop}:f));
+    // When called from user interaction (drag/edit), mark as manual by removing auto flag
+    const manualCrop = crop ? {...crop, auto:false} : null;
+    setFiles(prev=>prev.map(f=>f.id===id?{...f,crop:manualCrop}:f));
   },[]);
 
   const removeFile = useCallback((id)=>{
@@ -983,10 +1267,21 @@ function ZIRME() {
       if(!file.type.startsWith("image/")) return;
       const id=`i${++_uid}`;
       const img=new Image();
-      img.onload=()=>{
+      img.onload=async()=>{
         const ec=document.createElement("canvas"); ec.width=img.naturalWidth; ec.height=img.naturalHeight;
         ec.getContext("2d").drawImage(img,0,0);
-        setFiles(prev=>[...prev,{id,file,name:file.name,orig:img,ec,thumb:img.src,crop:null,history:[],future:[]}]);
+        // Auto-crop on load — same logic as applyFocalAll, marked auto:true
+        const {w:oW,h:oH,focalAuto,focalPoint}=settingsRef.current;
+        let crop=null;
+        if(focalAuto){
+          const nc=await runSmartCrop(ec,oW,oH);
+          crop=nc&&nc.w>2?{...nc,auto:true}:null;
+        }
+        if(!crop){
+          const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+          crop={...focalCrop(ec.width,ec.height,oW,oH,ax,ay),auto:true};
+        }
+        setFiles(prev=>[...prev,{id,file,name:file.name,orig:img,ec,thumb:img.src,crop,history:[],future:[]}]);
         setSelId(p=>p||id); setTick(n=>n+1);
       };
       img.src=URL.createObjectURL(file);
@@ -994,43 +1289,183 @@ function ZIRME() {
   },[]);
   useEffect(()=>{window._zirmeDrop=loadFiles;},[loadFiles]);
 
-  const autoCropAll = useCallback(()=>{
-    const{w:oW,h:oH}=settingsRef.current,ta=oW/oH;
+  // Re-apply auto crop when output size or focal settings change
+  // — in edit mode: only recalculates the current image
+  // — in gallery mode: recalculates all auto-flagged images
+  useEffect(()=>{
+    const{w:oW,h:oH,focalAuto,focalPoint}=settings;
+    const currentEditId=editIdRef.current;
+    if(currentEditId){
+      // Edit mode: apply only to this image, mark as auto:false (user triggered via panel)
+      applySingleFocal(currentEditId);
+      return;
+    }
+    // Gallery mode: batch recalc for auto-flagged images
+    if(focalAuto){
+      const autoFiles=filesRef.current.filter(f=>f.crop?.auto!==false);
+      if(!autoFiles.length) return;
+      (async()=>{
+        for(const f of autoFiles){
+          const nc=await runSmartCrop(f.ec,oW,oH);
+          const crop=nc&&nc.w>2?{...nc,auto:true}:{...focalCrop(f.ec.width,f.ec.height,oW,oH,0.5,0.5),auto:true};
+          setFiles(prev=>prev.map(ff=>ff.id===f.id&&ff.crop?.auto!==false?{...ff,crop}:ff));
+        }
+      })();
+    } else {
+      const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+      setFiles(prev=>prev.map(f=>{
+        if(f.crop?.auto===false) return f;
+        return{...f,crop:{...focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay),auto:true}};
+      }));
+    }
+  },[settings.w,settings.h,settings.focalAuto,settings.focalPoint]);
+
+  // Unified focal-point crop — uses smartcrop when focalAuto is ON, anchor-based otherwise.
+  // Processes sequentially to avoid memory pressure on large galleries.
+  const applyFocalAll = useCallback(async()=>{
+    const{w:oW,h:oH,focalAuto,focalPoint}=settingsRef.current;
+    const targets=multiSel.size>0?[...multiSel]:filesRef.current.map(f=>f.id);
+    const total=targets.length; if(!total) return;
+    setSmartBatch({running:true,done:0,total});
+    let applied=0;
+    for(let i=0;i<targets.length;i++){
+      const id=targets[i];
+      const f=filesRef.current.find(ff=>ff.id===id);
+      if(!f){ setSmartBatch(s=>({...s,done:s.done+1})); continue; }
+      let nc=null;
+      if(focalAuto){
+        nc=await runSmartCrop(f.ec,oW,oH);
+      }
+      if(!nc||nc.w<2||nc.h<2){
+        // Anchor fallback (or primary when focalAuto is off)
+        const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+        nc=focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay);
+      }
+      const crop={...nc,auto:true};
+      setFiles(prev=>prev.map(ff=>ff.id===id?{...ff,crop}:ff));
+      applied++;
+      setSmartBatch(s=>({...s,done:s.done+1}));
+    }
+    setSmartBatch({running:false,done:0,total:0});
+    const msg=focalAuto
+      ? (t.toastSmartCrop?.(applied)||`✦ Smart crop applied to ${applied} images`)
+      : (t.toastAutoCrop?.(applied)||`✂ Crop applied to ${applied} images`);
+    showToast(multiSel.size>0?t.multiApplied(applied):msg);
+  },[multiSel,t]);
+
+  // Single-image focal crop — used when panel scope is "single" (editing mode)
+  const applySingleFocal = useCallback(async(fileId)=>{
+    const f=filesRef.current.find(ff=>ff.id===fileId);
+    if(!f) return;
+    const{w:oW,h:oH,focalAuto,focalPoint}=settingsRef.current;
+    let nc=null;
+    if(focalAuto){ nc=await runSmartCrop(f.ec,oW,oH); }
+    if(!nc||nc.w<2){
+      const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+      nc=focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay);
+    }
+    setCropForId(fileId,{...nc,auto:false});
+  },[]);
+
+  const resetSingleCrop = useCallback((fileId)=>{
+    const f=filesRef.current.find(ff=>ff.id===fileId);
+    if(!f) return;
+    const{w:oW,h:oH,focalPoint}=settingsRef.current;
+    const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+    setCropForId(fileId,{...focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay),auto:true});
+  },[]);
+
+  const clearAllCrops = useCallback(()=>{
+    const{w:oW,h:oH,focalPoint}=settingsRef.current;
+    const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
     const targets=multiSel.size>0?[...multiSel]:filesRef.current.map(f=>f.id);
     setFiles(prev=>prev.map(f=>{
       if(!targets.includes(f.id)) return f;
-      const iW=f.ec.width,iH=f.ec.height,ia=iW/iH;
-      let cW=iW,cH=iH; if(ia>ta)cW=iH*ta; else cH=iW/ta;
-      return{...f,crop:{x:(iW-cW)/2,y:(iH-cH)/2,w:cW,h:cH}};
+      return{...f,crop:{...focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay),auto:true}};
     }));
-    showToast(multiSel.size>0?t.multiApplied(multiSel.size):t.toastAutoCrop(filesRef.current.length));
-  },[multiSel,t]);
-
-  const clearAllCrops = useCallback(()=>{
-    const targets=multiSel.size>0?[...multiSel]:filesRef.current.map(f=>f.id);
-    setFiles(prev=>prev.map(f=>targets.includes(f.id)?{...f,crop:null}:f));
     showToast(multiSel.size>0?t.multiApplied(multiSel.size):t.toastCropsClear);
   },[multiSel,t]);
 
   const renderFile = useCallback((f, idx)=>{
-    const{w,h,mode,fmt,quality,renameMode,renameBase,renameNum,renameStart}=settingsRef.current;
-    const src=f.ec, c=f.crop;
-    const sx=c?Math.max(0,c.x):0, sy=c?Math.max(0,c.y):0;
-    const sw=c?Math.min(c.w,src.width-sx):src.width, sh=c?Math.min(c.h,src.height-sy):src.height;
-    const out=document.createElement("canvas"); out.width=w; out.height=h;
-    const ctx=out.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h);
-    if(mode==="stretch") ctx.drawImage(src,sx,sy,sw,sh,0,0,w,h);
-    else if(mode==="fill"){const sc=Math.max(w/sw,h/sh),dw=sw*sc,dh=sh*sc;ctx.drawImage(src,sx,sy,sw,sh,(w-dw)/2,(h-dh)/2,dw,dh);}
-    else{const sc=Math.min(w/sw,h/sh),dw=sw*sc,dh=sh*sc;ctx.drawImage(src,sx,sy,sw,sh,(w-dw)/2,(h-dh)/2,dw,dh);}
-    const mime=fmt==="jpeg"?"image/jpeg":fmt==="png"?"image/png":"image/webp";
-    let filename;
-    if(renameMode==="keep"){
-      filename=f.name.replace(/\.[^.]+$/,"");
-    } else {
-      const n=(renameStart+idx).toString().padStart(Math.max(2,renameStart.toString().length),String(renameStart).length>2?"0":"0");
-      filename=renameNum?(renameBase+"_"+n):renameBase;
+    const s=settingsRef.current;
+    const{focalPoint,fmt,quality,renameMode,renameBase,renameNum,renameStart,sizeMode,borderW,borderColor,wmEnabled,wmText,wmFont,wmSize,wmColor,wmOpacity,wmPos}=s;
+    const src=f.ec;
+
+    // ── Compute output dimensions based on sizeMode ──
+    let w=s.w, h=s.h;
+    if(sizeMode==="autoW"){
+      // fixed height, width auto from source aspect
+      let c=f.crop; if(!c||c.w<2){ const{ax,ay}=focalPoint||{ax:0.5,ay:0.5}; c=focalCrop(src.width,src.height,src.width,h,ax,ay); }
+      w=Math.round((c.w/c.h)*h);
+    } else if(sizeMode==="autoH"){
+      // fixed width, height auto from source aspect
+      let c=f.crop; if(!c||c.w<2){ const{ax,ay}=focalPoint||{ax:0.5,ay:0.5}; c=focalCrop(src.width,src.height,w,src.height,ax,ay); }
+      h=Math.round((c.h/c.w)*w);
     }
-    return{out,mime,ext:fmt==="jpeg"?"jpg":fmt,quality,filename};
+
+    // ── Crop ──
+    let c=f.crop;
+    if(!c||c.w<2){
+      const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+      c=focalCrop(src.width,src.height,w,h,ax,ay);
+    }
+    const sx=Math.max(0,c.x), sy=Math.max(0,c.y);
+    const sw=Math.min(c.w,src.width-sx), sh=Math.min(c.h,src.height-sy);
+
+    // ── Canvas with border ──
+    const bw=borderW||0;
+    const totalW=w+bw*2, totalH=h+bw*2;
+    const out=document.createElement("canvas"); out.width=totalW; out.height=totalH;
+    const ctx=out.getContext("2d");
+
+    // Draw border (fills the whole canvas first)
+    if(bw>0){ ctx.fillStyle=borderColor||"#000000"; ctx.fillRect(0,0,totalW,totalH); }
+
+    // Draw image area
+    ctx.fillStyle="#fff"; ctx.fillRect(bw,bw,w,h);
+    const sc=Math.min(w/sw,h/sh), dw=sw*sc, dh=sh*sc;
+    ctx.drawImage(src,sx,sy,sw,sh,bw+(w-dw)/2,bw+(h-dh)/2,dw,dh);
+
+    // ── Watermark ──
+    if(wmEnabled && wmText && wmText.trim()){
+      ctx.save();
+      ctx.globalAlpha=(wmOpacity||80)/100;
+      ctx.fillStyle=wmColor||"#ffffff";
+      ctx.font=`${wmSize||24}px ${wmFont||"Inter"},sans-serif`;
+      ctx.textBaseline="middle";
+      const tm=ctx.measureText(wmText);
+      const pad=Math.max(12,Math.round(totalW*0.02));
+      let tx,ty;
+      if(wmPos==="tl"){ ctx.textAlign="left"; tx=bw+pad; ty=bw+pad+wmSize/2; }
+      else if(wmPos==="tr"){ ctx.textAlign="right"; tx=totalW-bw-pad; ty=bw+pad+wmSize/2; }
+      else if(wmPos==="bl"){ ctx.textAlign="left"; tx=bw+pad; ty=totalH-bw-pad-wmSize/2; }
+      else if(wmPos==="center"){ ctx.textAlign="center"; tx=totalW/2; ty=totalH/2; }
+      else { /* br default */ ctx.textAlign="right"; tx=totalW-bw-pad; ty=totalH-bw-pad-wmSize/2; }
+      ctx.fillText(wmText,tx,ty);
+      ctx.restore();
+    }
+
+    // ── MIME ──
+    const mime=fmt==="jpeg"?"image/jpeg":fmt==="png"?"image/png":fmt==="avif"?"image/avif":"image/webp";
+
+    // ── Filename ──
+    let filename;
+    const origName=f.name.replace(/\.[^.]+$/,"");
+    if(renameMode==="keep"){
+      filename=(s.prefix||"")+origName+(s.suffix||"");
+    } else {
+      // Support ORIGINAL-NAME keyword
+      let base=renameBase||"image";
+      base=base.replace(/ORIGINAL-NAME/g,origName);
+      if(renameNum){
+        const n=(renameStart+idx).toString().padStart(Math.max(2,renameStart.toString().length),"0");
+        filename=base+"_"+n;
+      } else {
+        filename=base;
+      }
+    }
+    const ext=fmt==="jpeg"?"jpg":fmt;
+    return{out,mime,ext,quality,filename,w:totalW,h:totalH};
   },[]);
 
   const exportCurrent=useCallback(async()=>{
@@ -1071,26 +1506,97 @@ function ZIRME() {
 
   // ── UI ──────────────────────────────────────────────────────────────────
   const{w:oW,h:oH}=settings,dv=gcd(oW,oH);
-  const withCrop=files.filter(f=>f.crop?.w>2).length;
+  const manualCrop=files.filter(f=>f.crop?.auto===false).length;
+  const autoCrop=files.filter(f=>!f.crop || f.crop?.auto===true).length;
   const PURPLE="#7c5cff";
 
   const mBtn=(label,onClick,disabled,bg)=>(
-    <button onClick={onClick} disabled={!!disabled} style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"none",borderRadius:5,padding:"7px 14px",cursor:disabled?"not-allowed":"pointer",background:disabled?"#2e2e2e":(bg||PURPLE),color:disabled?"#666":"#fff",whiteSpace:"nowrap",transition:"opacity .12s"}}>{label}</button>
+    <button onClick={onClick} disabled={!!disabled} style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"none",borderRadius:5,padding:"7px 14px",cursor:disabled?"not-allowed":"pointer",background:disabled?"#2e2e2e":(bg||PURPLE),color:disabled?"#666":"#fff",whiteSpace:"nowrap",transition:"opacity .12s",width:"100%"}}>{label}</button>
   );
-  const smBtn=(label,onClick)=>(
-    <button onClick={onClick} style={{fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"6px 10px",cursor:"pointer",background:"transparent",color:"#aaa",width:"100%",marginBottom:6,textAlign:"left"}}>{label}</button>
+  const smBtn=(label,onClick,disabled)=>(
+    <button onClick={disabled?undefined:onClick} style={{fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"6px 10px",cursor:disabled?"not-allowed":"pointer",background:"transparent",color:disabled?"#555":"#aaa",width:"100%",marginBottom:6,textAlign:"left",opacity:disabled?0.6:1}}>{label}</button>
   );
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#181818",color:"#d0d0d0"}}>
 
       {/* Header */}
-      <header style={{background:"#141414",borderBottom:"1px solid #222",height:50,padding:"0 20px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+      <header style={{background:"#141414",borderBottom:"1px solid #222",height:50,padding:"0 12px 0 20px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
         <div style={{fontWeight:700,fontSize:19,letterSpacing:-0.5,color:"#fff"}}>ZIRME</div>
         <div style={{fontSize:11,color:"#888"}}>{t.subtitle}</div>
         <div style={{flex:1}}/>
-        {/* ZIP progress text */}
-        {zipping&&<span style={{fontSize:11,color:"#7c5cff",fontFamily:"Inter"}}>{zipPct}%</span>}
+        {/* Help ? button */}
+        <div ref={helpRef} style={{position:"relative"}}>
+          <button onClick={()=>setHelpOpen(o=>!o)}
+            style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,background:helpOpen?"#2a2a2a":"transparent",border:"1px solid #2a2a2a",borderRadius:5,color:helpOpen?"#d0d0d0":"#555",width:28,height:28,cursor:"pointer",lineHeight:1,transition:"all .12s",display:"flex",alignItems:"center",justifyContent:"center"}}
+            title={t.helpBtn||"Help"}>
+            ?
+          </button>
+          {helpOpen&&(
+            <div className="help-menu">
+
+              {/* Accordion: How to use */}
+              <button className="help-accordion" onClick={()=>setHelpTab(h=>h==="howto"?null:"howto")}>
+                <span>{t.secHowTo}</span>
+                <span className="help-accordion-arrow" style={{transform:helpTab==="howto"?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
+              </button>
+              <div className="help-accordion-body" style={{maxHeight:helpTab==="howto"?500:0,opacity:helpTab==="howto"?1:0,overflow:"hidden"}}>
+                {t.howTo.map((item,i)=>(
+                  <div key={i} className="help-menu-item" style={{cursor:"default",padding:"6px 14px"}}>
+                    <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0,opacity:0.7}}>{item.icon}</span>
+                    <span style={{fontSize:10,color:"#b0b0b0",lineHeight:1.4}}>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="help-menu-sep"/>
+
+              {/* Accordion: Shortcuts */}
+              <button className="help-accordion" onClick={()=>setHelpTab(h=>h==="shortcuts"?null:"shortcuts")}>
+                <span>{t.secShortcuts||"Atajos"}</span>
+                <span className="help-accordion-arrow" style={{transform:helpTab==="shortcuts"?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
+              </button>
+              <div className="help-accordion-body" style={{maxHeight:helpTab==="shortcuts"?300:0,opacity:helpTab==="shortcuts"?1:0,overflow:"hidden"}}>
+                {(t.shortcuts||[]).map((item,i)=>(
+                  <div key={i} className="help-menu-item" style={{cursor:"default",padding:"6px 14px",justifyContent:"space-between"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0,opacity:0.7}}>{item.icon}</span>
+                      <span style={{fontSize:10,color:"#999",fontFamily:"'SF Mono',Menlo,monospace",background:"#242424",padding:"3px 8px",borderRadius:4,border:"1px solid #2e2e2e"}}>{item.key}</span>
+                    </div>
+                    <span style={{fontSize:10,color:"#b0b0b0"}}>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="help-menu-sep"/>
+
+              {/* Accordion: About */}
+              <button className="help-accordion" onClick={()=>setHelpTab(h=>h==="about"?null:"about")}>
+                <span>{t.secAbout||"Acerca de ZIRME"}</span>
+                <span className="help-accordion-arrow" style={{transform:helpTab==="about"?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
+              </button>
+              <div className="help-accordion-body" style={{maxHeight:helpTab==="about"?600:0,opacity:helpTab==="about"?1:0,overflow:"hidden"}}>
+                <div className="help-about-text">
+                  {(t.aboutText||"").split("\n\n").map((p,i)=>(
+                    <p key={i} style={{margin:i===0?"4px 0 10px":"10px 0 4px"}}>{p}</p>
+                  ))}
+                  <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:6}}>
+                    <a href="https://github.com/SrAIRO/ZIRME.git" target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:6}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c5cff"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                      ZIRME en GitHub
+                    </a>
+                    <a href="https://github.com/jwagner/smartcrop-cli.git" target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:6}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c5cff"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                      smartcrop.js en GitHub
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+        </div>
+        <div style={{width:1,height:16,background:"#2a2a2a"}}/>
         {/* Lang selector */}
         <div ref={langRef} style={{position:"relative"}}>
           <button onClick={()=>setLangOpen(o=>!o)} style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,background:"#1e1e1e",border:"1px solid #2a2a2a",borderRadius:5,color:"#aaa",padding:"5px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
@@ -1112,7 +1618,6 @@ function ZIRME() {
             </div>
           )}
         </div>
-        <div style={{width:1,height:16,background:"#2a2a2a"}}/>
         <button onClick={undoSel} disabled={!canUndo} title="Ctrl+Z"
           style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canUndo?"pointer":"not-allowed",background:"transparent",color:canUndo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canUndo?1:0.4}}>
           ↩ {canUndo?t.undoCount((sel?.history||[]).length):t.undo}
@@ -1121,8 +1626,6 @@ function ZIRME() {
           style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canRedo?"pointer":"not-allowed",background:"transparent",color:canRedo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canRedo?1:0.4}}>
           ↪ {canRedo?t.redoCount((sel?.future||[]).length):t.redo}
         </button>
-        {mBtn(t.saveCurrent,exportCurrent,!sel,PURPLE)}
-        {mBtn(zipping?`${t.zipGenerating} ${zipPct}%`:t.zipBtn(files.length),exportZip,!files.length||zipping,"#4f46e5")}
         <label style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,background:PURPLE,border:"none",borderRadius:5,padding:"7px 14px",cursor:"pointer",color:"#fff",whiteSpace:"nowrap"}}>
           {t.add}
           <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{display:"none"}}/>
@@ -1169,7 +1672,7 @@ function ZIRME() {
 
         {/* Right panel */}
         {panelOpen&&(
-        <aside style={{width:236,background:"#1e1e1e",borderLeft:"1px solid #242424",overflowY:"auto",padding:"10px 14px",flexShrink:0,display:"flex",flexDirection:"column"}}>
+        <aside style={{width:360,background:"#1e1e1e",borderLeft:"1px solid #242424",overflowY:"auto",padding:"10px 14px",flexShrink:0,display:"flex",flexDirection:"column"}}>
 
           {/* Panel hide button */}
           <button onClick={()=>setPanelOpen(false)}
@@ -1183,160 +1686,325 @@ function ZIRME() {
             <button className={"tab-btn "+(panelTab==="export"?"active":"inactive")} onClick={()=>setPanelTab("export")}>{t.tabExport}</button>
           </div>
 
-          {/* ─── IMAGE TAB ─── */}
+          {/* ─── EDITAR TAB ─── */}
           {panelTab==="image"&&(<>
-            <span className="sec-title">{t.secThumbs}</span>
-            <label className="lbl">{t.thumbSize(cellH)}</label>
-            <input type="range" min={180} max={700} value={cellH} onChange={e=>setCellH(+e.target.value)} style={{marginBottom:16}}/>
 
-            <span className="sec-title">{t.secOutput}</span>
-            <label className="lbl">{t.widthLbl}</label>
-            <input type="number" min={1} value={settings.w} onChange={e=>setSettings(s=>({...s,w:+e.target.value}))}/>
-            <label className="lbl">{t.heightLbl}</label>
-            <input type="number" min={1} value={settings.h} onChange={e=>setSettings(s=>({...s,h:+e.target.value}))}/>
-            <div style={{fontSize:10,color:"#666",marginBottom:10}}>{t.ratioLbl}: {oW/dv}:{oH/dv}</div>
-            <label className="lbl">{t.modeLbl}</label>
-            <select value={settings.mode} onChange={e=>setSettings(s=>({...s,mode:e.target.value}))}>
-              <option value="fill">{t.modeFill}</option>
-              <option value="fit">{t.modeFit}</option>
-              <option value="stretch">{t.modeStretch}</option>
-            </select>
-
-            <span className="sec-title">{t.secBlur}</span>
-            <label className="lbl">{t.sizeLbl(blurCfg.size)}</label>
-            <input type="range" min={5} max={500} value={blurCfg.size} onChange={e=>setBlurCfg(b=>({...b,size:+e.target.value}))} style={{marginBottom:10}}/>
-            <label className="lbl">{t.strengthLbl(blurCfg.strength)}</label>
-            <input type="range" min={1} max={60} value={blurCfg.strength} onChange={e=>setBlurCfg(b=>({...b,strength:+e.target.value}))} style={{marginBottom:10}}/>
-            <label className="lbl">{t.hardnessLbl(blurCfg.hardness)}</label>
-            <input type="range" min={0} max={95} value={blurCfg.hardness} onChange={e=>setBlurCfg(b=>({...b,hardness:+e.target.value}))} style={{marginBottom:10}}/>
-            <label className="lbl">{t.opacityLbl(blurCfg.opacity)}</label>
-            <input type="range" min={10} max={100} value={blurCfg.opacity} onChange={e=>setBlurCfg(b=>({...b,opacity:+e.target.value}))} style={{marginBottom:12}}/>
-
-            <span className="sec-title">{t.secBatch}</span>
-            <div style={{fontSize:11,color:"#888",lineHeight:2.2,marginBottom:10}}>
-              <div>{t.totalLbl} <span style={{color:"#ccc"}}>{files.length}</span></div>
-              <div>{t.withCropLbl} <span style={{color:withCrop===files.length&&files.length>0?"#22c55e":"#aaa"}}>{withCrop}</span></div>
-              <div>{t.noCropLbl} <span style={{color:files.length-withCrop>0?"#f59e0b":"#aaa"}}>{files.length-withCrop}</span></div>
-              {multiSel.size>0&&<div style={{color:"#a78bfa"}}>Selected {multiSel.size}</div>}
-            </div>
-            {smBtn(t.autoCropAll,autoCropAll)}
-            {smBtn(t.clearAllCrops,clearAllCrops)}
-            {files.length>0&&smBtn(t.deleteAll,()=>{setFiles([]);setSelId(null);setEditId(null);setMultiSel(new Set());})}
-          </>)}
-
-          {/* ─── EXPORT TAB ─── */}
-          {panelTab==="export"&&(<>
-            <span className="sec-title">{t.secExport}</span>
-            <label className="lbl">{t.formatLbl}</label>
-            <select value={settings.fmt} onChange={e=>setSettings(s=>({...s,fmt:e.target.value}))}>
-              <option value="jpeg">JPG</option>
-              <option value="png">PNG</option>
-              <option value="webp">WebP</option>
-            </select>
-            {settings.fmt!=="png"&&<>
-              <label className="lbl">{t.qualityLbl(settings.quality)}</label>
-              <input type="range" min={1} max={100} value={settings.quality} onChange={e=>setSettings(s=>({...s,quality:+e.target.value}))} style={{marginBottom:12}}/>
-            </>}
-
-            <span className="sec-title">{t.secRename}</span>
-
-            {/* Mode toggle */}
-            <div style={{display:"flex",gap:4,marginBottom:10}}>
-              {["keep","custom"].map(m=>(
-                <button key={m} onClick={()=>setSettings(s=>({...s,renameMode:m}))}
-                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"5px 0",cursor:"pointer",transition:"all .12s",
-                    background:settings.renameMode===m?"#7c5cff":"transparent",
-                    borderColor:settings.renameMode===m?"#7c5cff":"#2e2e2e",
-                    color:settings.renameMode===m?"#fff":"#555"}}>
-                  {m==="keep"?t.renameModeKeep:t.renameModeCustom}
-                </button>
-              ))}
+            {/* VISTA */}
+            <div className="sec-block">
+              <span className="sec-title">{t.secThumbs}</span>
+              <label className="lbl">{t.thumbSize(cellH)}</label>
+              <input type="range" min={180} max={700} value={cellH} onChange={e=>setCellH(+e.target.value)} style={{marginBottom:6}}/>
             </div>
 
-            {settings.renameMode==="keep"&&<>
-              {/* Keep original: just show prefix/suffix */}
-              <label className="lbl">{t.prefixLbl}</label>
-              <input type="text" placeholder="instagram_" value={settings.prefix||""} onChange={e=>setSettings(s=>({...s,prefix:e.target.value}))}/>
-              <label className="lbl">{t.suffixLbl}</label>
-              <input type="text" placeholder="_final" value={settings.suffix||""} onChange={e=>setSettings(s=>({...s,suffix:e.target.value}))}/>
-              {sel&&<div style={{fontSize:10,color:"#555",marginBottom:8,padding:"5px 8px",background:"#181818",borderRadius:4,wordBreak:"break-all"}}>
-                → {settings.prefix||""}{sel.name.replace(/\.[^.]+$/,"")}{settings.suffix||""}.{settings.fmt==="jpeg"?"jpg":settings.fmt}
-              </div>}
-            </>}
+            {/* COMPOSICIÓN */}
+            <div className="sec-block">
+              <span className="sec-title">{t.secComposition}</span>
 
-            {settings.renameMode==="custom"&&<>
-              {/* Custom BIRME-style: base name + optional numbering */}
-              <label className="lbl">{t.renameBaseLbl}</label>
-              <input type="text" placeholder="image" value={settings.renameBase||"image"} onChange={e=>setSettings(s=>({...s,renameBase:e.target.value||"image"}))}/>
-
-              {/* Numbering toggle */}
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                <label className="lbl" style={{marginBottom:0}}>{t.renameNumberingLbl}</label>
-                <button onClick={()=>setSettings(s=>({...s,renameNum:!s.renameNum}))}
-                  style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"3px 8px",cursor:"pointer",transition:"all .12s",
-                    background:settings.renameNum?"#7c5cff":"transparent",
-                    borderColor:settings.renameNum?"#7c5cff":"#2e2e2e",
-                    color:settings.renameNum?"#fff":"#555"}}>
-                  {settings.renameNum?"ON":"OFF"}
-                </button>
+              {/* Tamaño de salida - botones */}
+              <label className="lbl">{t.secOutput}</label>
+              <div style={{display:"flex",gap:4,marginBottom:12,background:"#181818",borderRadius:6,padding:3,border:"1px solid #242424"}}>
+                {["fixed","autoW","autoH"].map(m=>(
+                  <button key={m} onClick={()=>setSettings(s=>({...s,sizeMode:m}))}
+                    style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:settings.sizeMode===m?600:400,border:"none",borderRadius:4,padding:"7px 4px",cursor:"pointer",transition:"all .12s",
+                      background:settings.sizeMode===m?"#7c5cff":"transparent",
+                      color:settings.sizeMode===m?"#fff":"#555",whiteSpace:"nowrap"}}>
+                    {m==="fixed"?t.sizeFixed:m==="autoW"?t.sizeAutoW:t.sizeAutoH}
+                  </button>
+                ))}
               </div>
 
-              {settings.renameNum&&<>
-                <label className="lbl">{t.renameStartLbl}</label>
-                <input type="number" min={0} value={settings.renameStart||1} onChange={e=>setSettings(s=>({...s,renameStart:Math.max(0,+e.target.value)}))}/>
+              {/* Bloquear proporción - solo en modo fixed */}
+              {settings.sizeMode==="fixed"&&<>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                  <label className="lbl" style={{marginBottom:0}}>{lang==="es"?"Bloquear proporción":"Lock aspect ratio"}</label>
+                  <button onClick={()=>setSettings(s=>({...s,lockAspect:!s.lockAspect}))}
+                    style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"3px 10px",cursor:"pointer",transition:"all .12s",
+                      background:settings.lockAspect?"#7c5cff":"transparent",
+                      borderColor:settings.lockAspect?"#7c5cff":"#2e2e2e",
+                      color:settings.lockAspect?"#fff":"#555"}}>
+                    {settings.lockAspect?"ON":"OFF"}
+                  </button>
+                </div>
               </>}
 
-              {/* Preview list — show first 3 files */}
-              <label className="lbl" style={{marginTop:4}}>{t.renamePreviewLbl}</label>
-              <div style={{background:"#181818",borderRadius:4,padding:"6px 8px",marginBottom:8}}>
-                {files.slice(0,3).map((f,i)=>{
-                  const n=((settings.renameStart||1)+i).toString().padStart(2,"0");
-                  const name=settings.renameNum?((settings.renameBase||"image")+"_"+n):(settings.renameBase||"image");
-                  const ext=settings.fmt==="jpeg"?"jpg":settings.fmt;
-                  return(
-                    <div key={f.id} style={{fontSize:10,color:"#666",lineHeight:1.8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                      <span style={{color:"#383838",marginRight:4}}>{i+1}.</span>{name}.{ext}
-                    </div>
-                  );
-                })}
-                {files.length>3&&<div style={{fontSize:10,color:"#333",marginTop:2}}>+{files.length-3} más…</div>}
-                {files.length===0&&<div style={{fontSize:10,color:"#333"}}>—</div>}
+              {/* Ancho */}
+              {settings.sizeMode!=="autoW"&&<>
+                <label className="lbl">{t.widthLbl}</label>
+                <input type="number" min={1} value={settings.w} onChange={e=>{
+                  const newW = +e.target.value;
+                  if(settings.lockAspect && settings.sizeMode==="fixed"){
+                    const ratio = settings.w / settings.h;
+                    setSettings(s=>({...s, w:newW, h:Math.round(newW/ratio)}));
+                  } else {
+                    setSettings(s=>({...s, w:newW}));
+                  }
+                }} style={{marginBottom:8}}/>
+              </>}
+
+              {/* Alto */}
+              {settings.sizeMode!=="autoH"&&<>
+                <label className="lbl">{t.heightLbl}</label>
+                <input type="number" min={1} value={settings.h} onChange={e=>{
+                  const newH = +e.target.value;
+                  if(settings.lockAspect && settings.sizeMode==="fixed"){
+                    const ratio = settings.w / settings.h;
+                    setSettings(s=>({...s, h:newH, w:Math.round(newH*ratio)}));
+                  } else {
+                    setSettings(s=>({...s, h:newH}));
+                  }
+                }} style={{marginBottom:8}}/>
+              </>}
+
+              {settings.sizeMode==="fixed"&&<div style={{fontSize:10,color:"#555",marginBottom:4}}>{t.ratioLbl}: {oW/dv}:{oH/dv}</div>}
+
+              {/* Foco de recorte */}
+              <label className="lbl" style={{marginTop:12}}>{t.secFocal}</label>
+              <div style={{display:"flex",gap:4,marginBottom:10,background:"#181818",borderRadius:6,padding:3,border:"1px solid #242424"}}>
+                <button onClick={()=>setSettings(s=>({...s,focalAuto:true}))}
+                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:settings.focalAuto?600:400,border:"none",borderRadius:4,padding:"7px 4px",cursor:"pointer",transition:"all .12s",background:settings.focalAuto?"#7c5cff":"transparent",color:settings.focalAuto?"#fff":"#555"}}>
+                  {lang==="es"?"Auto":"Auto"}
+                </button>
+                <button onClick={()=>setSettings(s=>({...s,focalAuto:false}))}
+                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:!settings.focalAuto?600:400,border:"none",borderRadius:4,padding:"7px 4px",cursor:"pointer",transition:"all .12s",background:!settings.focalAuto?"#7c5cff":"transparent",color:!settings.focalAuto?"#fff":"#555"}}>
+                  {lang==="es"?"Manual":"Manual"}
+                </button>
               </div>
-            </>}
-            <div style={{marginTop:8}}>
-              {mBtn(t.saveCurrent,exportCurrent,!sel,PURPLE)}
-              <div style={{height:8}}/>
-              {mBtn(zipping?`${t.zipGenerating} ${zipPct}%`:t.zipBtn(files.length),exportZip,!files.length||zipping,"#4f46e5")}
-              {/* ZIP progress bar in panel */}
+
+              {!settings.focalAuto&&(()=>{
+                const pts=[{ax:0,ay:0},{ax:0.5,ay:0},{ax:1,ay:0},{ax:0,ay:0.5},{ax:0.5,ay:0.5},{ax:1,ay:0.5},{ax:0,ay:1},{ax:0.5,ay:1},{ax:1,ay:1}];
+                const fp=settings.focalPoint||{ax:0.5,ay:0.5};
+                return (
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4,marginBottom:10,padding:"8px",background:"#181818",borderRadius:6,border:"1px solid #2a2a2a"}}>
+                    {pts.map(({ax,ay},i)=>{
+                      const active=fp.ax===ax&&fp.ay===ay;
+                      return (
+                        <button key={i} onClick={()=>setSettings(s=>({...s,focalPoint:{ax,ay}}))}
+                          style={{aspectRatio:"1",border:"1.5px solid "+(active?"#7c5cff":"#252525"),borderRadius:5,background:active?"rgba(124,92,255,0.18)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .12s",padding:0}}>
+                          <div style={{width:7,height:7,borderRadius:"50%",background:active?"#7c5cff":"#333",boxShadow:active?"0 0 0 2px rgba(124,92,255,0.35)":"none",transition:"all .12s"}}/>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* MARCO */}
+            <div className="sec-block">
+              <span className="sec-title">{t.secBorder}</span>
+              <label className="lbl">{t.borderWidthLbl(settings.borderW)}</label>
+              <input type="range" min={0} max={100} value={settings.borderW} onChange={e=>setSettings(s=>({...s,borderW:+e.target.value}))} style={{marginBottom:8}}/>
+              {settings.borderW>0&&<>
+                <label className="lbl">{t.borderColorLbl}</label>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+                  <input type="color" value={settings.borderColor} onChange={e=>setSettings(s=>({...s,borderColor:e.target.value}))}
+                    style={{width:28,height:28,border:"1px solid #303030",borderRadius:4,padding:0,cursor:"pointer",background:"transparent"}}/>
+                  <input type="text" value={settings.borderColor} onChange={e=>setSettings(s=>({...s,borderColor:e.target.value}))}
+                    style={{flex:1,marginBottom:0,fontFamily:"monospace",fontSize:11}}/>
+                </div>
+              </>}
+            </div>
+
+            {/* ACCIONES */}
+            <div className="sec-block">
+              <span className="sec-title">{t.secActions}</span>
+              <div style={{display:"flex",gap:8,marginBottom:12}}>
+                <button onClick={clearAllCrops}
+                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"7px 10px",cursor:"pointer",background:"transparent",color:"#aaa",textAlign:"center"}}>
+                  {t.clearAllCrops}
+                </button>
+                <button onClick={applyFocalAll}
+                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"7px 10px",cursor:"pointer",background:"transparent",color:"#aaa",textAlign:"center"}}>
+                  {t.applyToAll}
+                </button>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{background:"#202020",borderRadius:5,padding:"8px 10px",fontSize:10,color:"#666"}}>
+                  <div style={{marginBottom:2}}>{t.totalLbl}</div>
+                  <div style={{fontSize:16,fontWeight:600,color:"#888"}}>{files.length}</div>
+                </div>
+                <div style={{background:"#202020",borderRadius:5,padding:"8px 10px",fontSize:10,color:"#666"}}>
+                  <div style={{marginBottom:2}}>{t.withCropLbl}</div>
+                  <div style={{fontSize:16,fontWeight:600,color:"#a78bfa"}}>{manualCrop}</div>
+                </div>
+                <div style={{background:"#202020",borderRadius:5,padding:"8px 10px",fontSize:10,color:"#666"}}>
+                  <div style={{marginBottom:2}}>{t.noCropLbl}</div>
+                  <div style={{fontSize:16,fontWeight:600,color:"#888"}}>{autoCrop}</div>
+                </div>
+                <div style={{background:"#202020",borderRadius:5,padding:"8px 10px",fontSize:10,color:"#666"}}>
+                  <div style={{marginBottom:2}}>{t.multiLbl}</div>
+                  <div style={{fontSize:16,fontWeight:600,color:"#a78bfa"}}>{multiSel.size}</div>
+                </div>
+              </div>
+            </div>
+
+          </>)}
+
+                    {/* ─── EXPORT TAB ─── */}
+          {panelTab==="export"&&(<>
+
+            {/* FORMATO */}
+            <div className="sec-block">
+              <span className="sec-title">{t.secExport}</span>
+              <label className="lbl">{lang==="es"?"Formato":"Format"}</label>
+              <select value={settings.fmt} onChange={e=>setSettings(s=>({...s,fmt:e.target.value}))}>
+                <option value="jpeg">JPG</option>
+                <option value="png">PNG</option>
+                <option value="webp">WebP</option>
+                <option value="avif">AVIF</option>
+              </select>
+              {settings.fmt!=="png"&&<>
+                <label className="lbl">{t.qualityLbl?.(settings.quality)||`Calidad: ${settings.quality}%`}</label>
+                <input type="range" min={1} max={100} value={settings.quality} onChange={e=>setSettings(s=>({...s,quality:+e.target.value}))} style={{marginBottom:6}}/>
+              </>}
+            </div>
+
+            {/* MARCA DE AGUA */}
+            <div className="sec-block">
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <span className="sec-title" style={{marginBottom:0,marginTop:0,borderBottom:"none",paddingBottom:0}}>
+                  {lang==="es"?"Marca de agua":"Watermark"}
+                </span>
+                <button onClick={()=>setSettings(s=>({...s,wmEnabled:!s.wmEnabled}))}
+                  style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"3px 10px",cursor:"pointer",transition:"all .12s",
+                    background:settings.wmEnabled?"#7c5cff":"transparent",
+                    borderColor:settings.wmEnabled?"#7c5cff":"#2e2e2e",
+                    color:settings.wmEnabled?"#fff":"#555"}}>
+                  {settings.wmEnabled?"ON":"OFF"}
+                </button>
+              </div>
+              <div style={{height:1,background:"#2a2a2a",marginBottom:10}}/>
+
+              {settings.wmEnabled&&<>
+                {/* Tipo: Texto / Imagen */}
+                <label className="lbl">{lang==="es"?"Tipo":"Type"}</label>
+                <div style={{display:"flex",gap:4,marginBottom:10}}>
+                  {["texto","imagen"].map(m=>(
+                    <button key={m} onClick={()=>setSettings(s=>({...s,wmType:m}))}
+                      style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"6px 0",cursor:"pointer",transition:"all .12s",
+                        background:(settings.wmType||"texto")===m?"#7c5cff":"transparent",
+                        borderColor:(settings.wmType||"texto")===m?"#7c5cff":"#2e2e2e",
+                        color:(settings.wmType||"texto")===m?"#fff":"#555"}}>
+                      {m==="texto"?(lang==="es"?"Texto":"Text"):(lang==="es"?"Imagen":"Image")}
+                    </button>
+                  ))}
+                </div>
+
+                <label className="lbl">{lang==="es"?"Texto":"Text"}</label>
+                <input type="text" placeholder="WATERMARK" value={settings.wmText||""} onChange={e=>setSettings(s=>({...s,wmText:e.target.value}))}/>
+
+                <label className="lbl">{lang==="es"?"Fuente":"Font"}</label>
+                <select value={settings.wmFont} onChange={e=>setSettings(s=>({...s,wmFont:e.target.value}))}>
+                  <option value="Inter">Inter</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Times New Roman">Times New Roman</option>
+                  <option value="Courier New">Courier New</option>
+                </select>
+
+                <label className="lbl">{lang==="es"?`Tamaño ${settings.wmSize}px`:`Size ${settings.wmSize}px`}</label>
+                <input type="range" min={8} max={200} value={settings.wmSize} onChange={e=>setSettings(s=>({...s,wmSize:+e.target.value}))} style={{marginBottom:8}}/>
+
+                <label className="lbl">{lang==="es"?"Color":"Color"}</label>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+                  <input type="color" value={settings.wmColor} onChange={e=>setSettings(s=>({...s,wmColor:e.target.value}))}
+                    style={{width:28,height:28,border:"1px solid #303030",borderRadius:4,padding:0,cursor:"pointer",background:"transparent"}}/>
+                  <input type="text" value={settings.wmColor} onChange={e=>setSettings(s=>({...s,wmColor:e.target.value}))}
+                    style={{flex:1,marginBottom:0,fontFamily:"monospace",fontSize:11}}/>
+                </div>
+
+                <label className="lbl">{lang==="es"?`Opacidad ${settings.wmOpacity}%`:`Opacity ${settings.wmOpacity}%`}</label>
+                <input type="range" min={5} max={100} value={settings.wmOpacity} onChange={e=>setSettings(s=>({...s,wmOpacity:+e.target.value}))} style={{marginBottom:8}}/>
+
+                <label className="lbl">{lang==="es"?"Posición":"Position"}</label>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:3,marginBottom:6}}>
+                  {[
+                    {k:"tl",l:lang==="es"?"Sup. Izq":"Top Left"},
+                    {k:"center-top",l:""},
+                    {k:"tr",l:lang==="es"?"Sup. Der":"Top Right"},
+                    {k:"bl",l:lang==="es"?"Inf. Izq":"Bot Left"},
+                    {k:"center",l:lang==="es"?"Centro":"Center"},
+                    {k:"br",l:lang==="es"?"Inf. Der":"Bot Right"}
+                  ].map(({k,l},i)=>(
+                    i===1?<div key="spacer" />:
+                    <button key={k} onClick={()=>setSettings(s=>({...s,wmPos:k}))}
+                      style={{fontFamily:"Inter,sans-serif",fontSize:9,fontWeight:settings.wmPos===k?600:400,border:"1px solid",borderRadius:4,padding:"5px 2px",cursor:"pointer",transition:"all .12s",
+                        background:settings.wmPos===k?"#7c5cff":"transparent",
+                        borderColor:settings.wmPos===k?"#7c5cff":"#2a2a2a",
+                        color:settings.wmPos===k?"#fff":"#555"}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </>}
+            </div>
+
+            {/* NOMBRE DE ARCHIVO */}
+            <div className="sec-block">
+              <span className="sec-title">{lang==="es"?"Nombre de archivo":"Filename"}</span>
+              <div style={{display:"flex",gap:4,marginBottom:10}}>
+                {["keep","custom"].map(m=>(
+                  <button key={m} onClick={()=>setSettings(s=>({...s,renameMode:m}))}
+                    style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"6px 0",cursor:"pointer",transition:"all .12s",
+                      background:settings.renameMode===m?"#7c5cff":"transparent",
+                      borderColor:settings.renameMode===m?"#7c5cff":"#2e2e2e",
+                      color:settings.renameMode===m?"#fff":"#555"}}>
+                    {m==="keep"?(lang==="es"?"Mantener":"Keep"):(lang==="es"?"Personalizar":"Custom")}
+                  </button>
+                ))}
+              </div>
+
+              {settings.renameMode==="keep"&&<>
+                <label className="lbl">{lang==="es"?"Prefijo":"Prefix"}</label>
+                <input type="text" placeholder="instagram_" value={settings.prefix||""} onChange={e=>setSettings(s=>({...s,prefix:e.target.value}))}/>
+                <label className="lbl">{lang==="es"?"Sufijo":"Suffix"}</label>
+                <input type="text" placeholder="_final" value={settings.suffix||""} onChange={e=>setSettings(s=>({...s,suffix:e.target.value}))}/>
+              </>}
+
+              {settings.renameMode==="custom"&&<>
+                <label className="lbl">{lang==="es"?"Nombre base":"Base name"}</label>
+                <input type="text" placeholder="image" value={settings.renameBase||"image"} onChange={e=>setSettings(s=>({...s,renameBase:e.target.value||"image"}))}/>
+                <div style={{fontSize:9,color:"#444",marginTop:-4,marginBottom:8,padding:"0 2px"}}>
+                  {lang==="es"?"Usa ORIGINAL-NAME para insertar el nombre original":"Use ORIGINAL-NAME to insert original filename"}
+                </div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <label className="lbl" style={{marginBottom:0}}>{lang==="es"?"Numeración":"Numbering"}</label>
+                  <button onClick={()=>setSettings(s=>({...s,renameNum:!s.renameNum}))}
+                    style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"3px 8px",cursor:"pointer",transition:"all .12s",
+                      background:settings.renameNum?"#7c5cff":"transparent",
+                      borderColor:settings.renameNum?"#7c5cff":"#2e2e2e",
+                      color:settings.renameNum?"#fff":"#555"}}>
+                    {settings.renameNum?"ON":"OFF"}
+                  </button>
+                </div>
+                {settings.renameNum&&<>
+                  <label className="lbl">{lang==="es"?"Empezar en":"Start at"}</label>
+                  <input type="number" min={0} value={settings.renameStart||1} onChange={e=>setSettings(s=>({...s,renameStart:Math.max(0,+e.target.value)}))}/>
+                </>}
+              </>}
+            </div>
+
+            {/* DESCARGAR */}
+            <div className="sec-block">
+              <span className="sec-title">{lang==="es"?"Descargar":"Download"}</span>
+              <div style={{display:"flex",gap:8}}>
+                <div style={{flex:1}}>{mBtn(t.saveCurrent,exportCurrent,!sel,PURPLE)}</div>
+                <div style={{flex:1}}>{mBtn(zipping?`${t.zipGenerating} ${zipPct}%`:t.zipBtn(files.length),exportZip,!files.length||zipping,"#4f46e5")}</div>
+              </div>
               {zipping&&<div style={{marginTop:8,height:4,background:"#2a2a2a",borderRadius:2,overflow:"hidden"}}>
                 <div style={{height:"100%",background:"#7c5cff",width:zipPct+"%",transition:"width .2s",borderRadius:2}}/>
               </div>}
             </div>
           </>)}
 
-          {/* How to use — always visible at bottom */}
-          <button onClick={()=>setHowToOpen(o=>!o)} style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:700,color:"#6a6a6a",textTransform:"uppercase",letterSpacing:"1.8px",marginTop:"auto",paddingTop:18,paddingBottom:6,borderTop:"none",borderLeft:"none",borderRight:"none",borderBottom:"1px solid #2a2a2a",background:"transparent",cursor:"pointer",width:"100%",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            {t.secHowTo}
-            <span style={{fontSize:14,fontWeight:400,letterSpacing:0,transition:"transform .2s",display:"inline-block",transform:howToOpen?"rotate(90deg)":"rotate(0deg)"}}>›</span>
-          </button>
-          {howToOpen&&(
-            <div style={{marginTop:10,paddingBottom:10,display:"flex",flexDirection:"column",gap:2}}>
-              {t.howTo.map((item,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:5,background:"#181818"}}>
-                  <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0,opacity:0.7}}>{item.icon}</span>
-                  <span style={{fontSize:10,color:"#888",lineHeight:1.4}}>{item.text}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </aside>
+                  </aside>
         )}
       </div>
 
       {/* Edit overlay */}
       {editFile&&(
         <EditOverlay file={editFile} settings={settings} blurCfg={blurCfg} t={t}
-          onClose={()=>setEditId(null)} onCropChange={setCropForId} onUndoPush={pushUndo} panelOpen={panelOpen}/>
+          onClose={()=>setEditId(null)} onCropChange={setCropForId} onUndoPush={pushUndo} panelOpen={panelOpen} onBlurCfgChange={setBlurCfg}/>
       )}
 
       {/* Preview modal */}
