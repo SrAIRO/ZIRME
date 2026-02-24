@@ -691,6 +691,11 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
   useEffect(()=>{ blurCfgRef.current=blurCfg; },[blurCfg]);
   useEffect(()=>{ settingsRef2.current=settings; },[settings]);
   useEffect(()=>{ fileRef.current=file; },[file]); // keeps fileRef current without recreating drawNow
+  
+  // Redraw when border settings change
+  useEffect(()=>{
+    draw();
+  }, [settings.borderW, settings.borderColor, draw]);
 
   // Fires synchronously BEFORE browser paint → no blank-frame window.
   // Calls drawNow() directly (not draw/RAF) so canvas is updated in the same commit frame.
@@ -717,7 +722,19 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     ctx.save();
     ctx.translate(W/2+p.x, H/2+p.y); ctx.scale(z,z); ctx.translate(-iW/2,-iH/2);
     ctx.drawImage(img,0,0);
+    
+    // Draw border preview if enabled
+    const borderW = settingsRef2.current.borderW || 0;
+    const borderColor = settingsRef2.current.borderColor || "#ffffff";
     const cr=cropRef.current;
+    
+    if(borderW > 0 && cr && cr.w > 2) {
+      // Draw border around crop area
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = borderW;
+      ctx.strokeRect(cr.x, cr.y, cr.w, cr.h);
+    }
+    
     if(cr&&cr.w>2) drawCropShadow(ctx,cr,1,0,0,iW,iH);
     ctx.restore();
     ctx.font="500 11px Inter,sans-serif"; ctx.fillStyle="rgba(150,150,150,0.5)";
@@ -1115,6 +1132,47 @@ function PreviewModal({ file, settings, t, onClose }) {
         <div style={{fontSize:10,color:"#555",fontFamily:"Inter"}}>{file.name}</div>
       </div>
     </div>
+  );
+}
+
+/* ── Buy Me a Coffee Button Component ───────────────────────────────────── */
+function BuyMeACoffeeButton({ lang }) {
+  const text = lang === 'es' ? 'Cómprame un café' : 'Buy me a coffee';
+  
+  return (
+    <a 
+      href="https://www.buymeacoffee.com/airos" 
+      target="_blank" 
+      rel="noopener noreferrer"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '5px 12px',
+        background: '#7c5cff',
+        color: '#fff',
+        borderRadius: '6px',
+        textDecoration: 'none',
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '12px',
+        fontWeight: '600',
+        transition: 'all .15s',
+        border: 'none',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = '#6a4ce6';
+        e.currentTarget.style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = '#7c5cff';
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
+    >
+      <span style={{fontSize: '16px'}}>☕</span>
+      <span>{text}</span>
+    </a>
   );
 }
 
@@ -1525,6 +1583,11 @@ function ZIRME() {
         <div style={{fontWeight:700,fontSize:19,letterSpacing:-0.5,color:"#fff"}}>ZIRME</div>
         <div style={{fontSize:11,color:"#888"}}>{t.subtitle}</div>
         <div style={{flex:1}}/>
+        
+        {/* Buy Me a Coffee Button */}
+        <BuyMeACoffeeButton lang={lang} />
+        
+        <div style={{width:1,height:16,background:"#2a2a2a"}}/>
         {/* Help ? button */}
         <div ref={helpRef} style={{position:"relative"}}>
           <button onClick={()=>setHelpOpen(o=>!o)}
