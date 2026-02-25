@@ -13,10 +13,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/smartcrop@2.0.5/smartcrop.js"></script>
   
-  <!-- ML Libraries para detección avanzada (carga lazy) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js"></script>
+  <!-- ML Libraries se cargan dinámicamente cuando el usuario las necesita -->
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body, #root { height: 100%; width: 100%; overflow: hidden; background: #181818; }
@@ -337,9 +334,65 @@ async function runSmartCrop(canvas, outW, outH) {
 /* ── ML-based Detection Functions ─────────────────────────────────────── */
 let faceApiLoaded = false;
 let cocoSsdModel = null;
+let mlLibsLoading = false;
+let mlLibsLoaded = false;
+
+// Helper para cargar scripts dinámicamente
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    // Verificar si ya está cargado
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+// Cargar todas las ML libraries de una vez
+async function ensureMLLibs() {
+  if (mlLibsLoaded) return true;
+  if (mlLibsLoading) {
+    // Esperar a que termine la carga en progreso
+    return new Promise(resolve => {
+      const check = setInterval(() => {
+        if (mlLibsLoaded || !mlLibsLoading) {
+          clearInterval(check);
+          resolve(mlLibsLoaded);
+        }
+      }, 100);
+    });
+  }
+  
+  mlLibsLoading = true;
+  try {
+    await Promise.all([
+      loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0'),
+      loadScript('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js')
+    ]);
+    // COCO-SSD depende de TensorFlow, cargar después
+    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3');
+    mlLibsLoaded = true;
+    return true;
+  } catch(e) {
+    console.warn("ML libraries load failed:", e);
+    return false;
+  } finally {
+    mlLibsLoading = false;
+  }
+}
 
 async function loadFaceApi() {
-  if(faceApiLoaded || typeof faceapi === "undefined") return faceApiLoaded;
+  if(faceApiLoaded) return true;
+  
+  // Asegurar que las ML libs estén cargadas
+  const libsOk = await ensureMLLibs();
+  if(!libsOk || typeof faceapi === "undefined") return false;
+  
   try {
     await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model');
     faceApiLoaded = true;
@@ -351,7 +404,12 @@ async function loadFaceApi() {
 }
 
 async function loadCocoSsd() {
-  if(cocoSsdModel || typeof cocoSsd === "undefined") return !!cocoSsdModel;
+  if(cocoSsdModel) return true;
+  
+  // Asegurar que las ML libs estén cargadas
+  const libsOk = await ensureMLLibs();
+  if(!libsOk || typeof cocoSsd === "undefined") return false;
+  
   try {
     cocoSsdModel = await cocoSsd.load();
     return true;
@@ -383,12 +441,28 @@ async function detectFacesCrop(canvas, outW, outH, adjustToTargetSize = true) {
     const targetRatio = outW / outH;
     
     if(adjustToTargetSize) {
-      // MODO: Ajustar al tamaño objetivo (mantener outW × outH)
-      // Intentar que el crop sea exactamente del tamaño objetivo
-      let cropW = outW;
-      let cropH = outH;
+      // MODO: Mantener tamaño mínimo (no bajar del objetivo, pero puede ser mayor)
+      // Calcular el crop óptimo para la cara detectada con margen
+      const margin = 0.5; // 50% de margen alrededor de la cara
+      let cropW = box.width * (1 + margin * 2);
+      let cropH = box.height * (1 + margin * 2);
       
-      // Si el tamaño objetivo es más grande que la imagen, reducir proporcionalmente
+      // Ajustar al ratio objetivo
+      const currentRatio = cropW / cropH;
+      if(currentRatio > targetRatio) {
+        cropH = cropW / targetRatio;
+      } else {
+        cropW = cropH * targetRatio;
+      }
+      
+      // CRÍTICO: No permitir que sea menor que el tamaño objetivo
+      if(cropW < outW || cropH < outH) {
+        const scale = Math.max(outW / cropW, outH / cropH);
+        cropW = cropW * scale;
+        cropH = cropH * scale;
+      }
+      
+      // Si es más grande que el canvas, escalar
       if(cropW > canvas.width || cropH > canvas.height) {
         const scale = Math.min(canvas.width / cropW, canvas.height / cropH);
         cropW = cropW * scale;
@@ -473,7 +547,13 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true) {
     
     let [x, y, width, height] = bestPerson.bbox;
     
-    // Intentar detectar rostro para excluir la cabeza
+    // SIEMPRE omitir la cabeza (asumiendo que el 20% superior del cuerpo es la cabeza)
+    // Esto funciona incluso cuando la cara está tapada por un teléfono
+    const headHeight = height * 0.25; // 25% superior = cabeza + cuello
+    y = y + headHeight;
+    height = height - headHeight;
+    
+    // Si además se detectó la cara, ajustar más precisamente desde clavícula
     if(faceLoaded) {
       try {
         const faceDetections = await faceapi.detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions());
@@ -485,26 +565,46 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true) {
             return currentSize > bestSize ? current : best;
           });
           
-          // Ajustar el inicio del crop para empezar desde el cuello (debajo de la cara)
-          const neckY = face.box.y + face.box.height + face.box.height * 0.1; // 10% debajo de la cara
-          if(neckY > y && neckY < y + height) {
-            // Ajustar altura y posición Y para empezar desde el cuello
-            height = height - (neckY - y);
+          // Ajustar el inicio del crop para empezar desde la clavícula (debajo de la cara)
+          const neckY = face.box.y + face.box.height + face.box.height * 0.5; // 50% debajo de la cara = clavícula
+          if(neckY > bestPerson.bbox[1] && neckY < bestPerson.bbox[1] + bestPerson.bbox[3]) {
+            // Usar la detección de cara si está disponible (más precisa)
+            const originalY = bestPerson.bbox[1];
             y = neckY;
+            height = bestPerson.bbox[3] - (neckY - originalY);
           }
         }
       } catch(e) {
-        // Si falla la detección de rostro, continuar con el cuerpo completo
+        // Si falla la detección de rostro, usar el 25% que ya calculamos arriba
       }
     }
     
     const targetRatio = outW / outH;
     
     if(adjustToTargetSize) {
-      // MODO: Ajustar al tamaño objetivo
-      let cropW = outW;
-      let cropH = outH;
+      // MODO: Mantener tamaño mínimo (no bajar del objetivo, pero puede ser mayor)
+      // Calcular el crop óptimo para el cuerpo detectado
+      let cropW = width * 1.1; // 10% de margen alrededor del cuerpo
+      let cropH = height * 1.1;
       
+      // Ajustar al ratio objetivo
+      const currentRatio = cropW / cropH;
+      if(currentRatio > targetRatio) {
+        // Crop es más ancho, ajustar altura
+        cropH = cropW / targetRatio;
+      } else {
+        // Crop es más alto, ajustar ancho
+        cropW = cropH * targetRatio;
+      }
+      
+      // CRÍTICO: No permitir que sea menor que el tamaño objetivo
+      if(cropW < outW || cropH < outH) {
+        const scale = Math.max(outW / cropW, outH / cropH);
+        cropW = cropW * scale;
+        cropH = cropH * scale;
+      }
+      
+      // Si es más grande que el canvas, escalar
       if(cropW > canvas.width || cropH > canvas.height) {
         const scale = Math.min(canvas.width / cropW, canvas.height / cropH);
         cropW = cropW * scale;
@@ -839,6 +939,19 @@ function ImageCell({ file, isSelected, isMultiSel, settings, cellH, t,
   );
 }
 
+// OPTIMIZACIÓN: React.memo previene re-renders cuando las props no han cambiado
+const ImageCellMemo = React.memo(ImageCell, (prevProps, nextProps) => {
+  // Solo re-renderizar si cambió algo relevante de ESTA imagen específica
+  return prevProps.file.id === nextProps.file.id &&
+         prevProps.file.crop === nextProps.file.crop &&
+         prevProps.file.ec === nextProps.file.ec &&
+         prevProps.isSelected === nextProps.isSelected &&
+         prevProps.isMultiSel === nextProps.isMultiSel &&
+         prevProps.cellH === nextProps.cellH &&
+         prevProps.dragging === nextProps.dragging &&
+         prevProps.tick === nextProps.tick;
+});
+
 /* ── JustifiedGrid ────────────────────────────────────────────────────── */
 function JustifiedGrid({ files, cellH, settings, selId, multiSel, t, tick,
     onSelect, onCropChange, onUndoPush, onRemove, onEdit, onPreview, loadFiles, onReorder }) {
@@ -883,7 +996,7 @@ function JustifiedGrid({ files, cellH, settings, selId, multiSel, t, tick,
           <div key={ri} style={{display:"flex",gap:GAP,marginBottom:GAP,alignItems:"flex-start"}}>
             {row.map(({file,w,h})=>(
               <div key={file.id} style={{width:w,flexShrink:0}}>
-                <ImageCell file={file} isSelected={file.id===selId}
+                <ImageCellMemo file={file} isSelected={file.id===selId}
                   isMultiSel={multiSel.has(file.id)} settings={settings} cellH={h} t={t} tick={tick}
                   onSelect={onSelect} onCropChange={onCropChange}
                   onUndoPush={onUndoPush} onRemove={onRemove} onEdit={onEdit} onPreview={onPreview}
@@ -944,6 +1057,19 @@ const ToolIcon=({type,size=16,color="currentColor"})=>{
       <rect x="10" y="17" width="5" height="5" rx=".5" opacity=".5"/>
       <rect x="17" y="17" width="5" height="5" rx=".5" opacity=".9"/>
     </svg>
+  ),eraser:(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="10" width="10" height="10" rx="1" transform="rotate(-45 8 15)" opacity=".7"/>
+      <circle cx="12" cy="8" r="2.5" opacity=".9"/>
+      <circle cx="16" cy="12" r="2" opacity=".5"/>
+      <line x1="2" y1="22" x2="14" y2="22" strokeWidth="2.5"/>
+    </svg>
+  ),annotate:(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 17 L3 21 L7 21 L19 9 L15 5 Z" opacity=".7"/>
+      <line x1="14" y1="6" x2="18" y2="10" opacity=".9"/>
+      <circle cx="20" cy="4" r="1.5" fill={color}/>
+    </svg>
   )};
   return s[type]||null;
 };
@@ -960,6 +1086,34 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
   const [freeCrop,       setFreeCrop]     = useState(false);
   const [ready,          setReady]        = useState(false);
   const [smartCropping,  setSmartCropping]= useState(false); // async smart-crop in progress
+  
+  // NUEVAS HERRAMIENTAS: Estados de configuración
+  const [eraserCfg, setEraserCfg] = useState({
+    size: 50,
+    mode: "transparent", // "transparent" | "solid" | "smart"
+    color: "#ffffff",  // Blanco por defecto (más visible)
+    opacity: 100,
+    hardness: 50
+  });
+  
+  const [annotateCfg, setAnnotateCfg] = useState({
+    mode: "draw", // "draw" | "text"
+    color: "#ffffff",  // Blanco por defecto
+    thickness: 3,
+    opacity: 80,
+    hardness: 70,
+    font: "Inter",
+    fontSize: 24
+  });
+  
+  // Estado para editor de texto interactivo (tipo Photoshop)
+  const [activeText, setActiveText] = useState(null); // {x, y, width, height, text, editing, dragging}
+  
+  // Estado para color picker personalizado (evitar popup nativo)
+  const [showColorPicker, setShowColorPicker] = useState({show: false, target: null}); // target: "eraser" | "annotate"
+  
+  // Estado para handles de color dial
+  const [colorDialHandles, setColorDialHandles] = useState({eraser: 0, annotate: 0}); // 0-1 position
 
   // All hot-path values live in refs — NEVER setState during drag/pan/draw
   const zoomRef    = useRef(1);
@@ -969,6 +1123,8 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
   const toolRef    = useRef("crop");
   const freeCropRef= useRef(false);
   const blurCfgRef = useRef(blurCfg);
+  const eraserCfgRef = useRef(eraserCfg);
+  const annotateCfgRef = useRef(annotateCfg);
   const settingsRef2 = useRef(settings);
 
   const isDraggingRef = useRef(false);   // true while any drag/pan gesture is live
@@ -978,6 +1134,8 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
   useEffect(()=>{ toolRef.current=tool; },[tool]);
   useEffect(()=>{ freeCropRef.current=freeCrop; },[freeCrop]);
   useEffect(()=>{ blurCfgRef.current=blurCfg; },[blurCfg]);
+  useEffect(()=>{ eraserCfgRef.current=eraserCfg; },[eraserCfg]);
+  useEffect(()=>{ annotateCfgRef.current=annotateCfg; },[annotateCfg]);
   useEffect(()=>{ settingsRef2.current=settings; },[settings]);
   useEffect(()=>{ fileRef.current=file; },[file]); // keeps fileRef current without recreating drawNow
   
@@ -1133,6 +1291,201 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     draw();
   };
 
+  // ── NUEVO: Eraser helper ────────────────────────────────────────────────
+  const doEraser=(ix,iy)=>{
+    const{size,mode,color,opacity,hardness=50}=eraserCfgRef.current;
+    const ec=file.ec, ctx=ec.getContext("2d");
+    const r = size/2;
+    
+    if(mode === "transparent"){
+      // Borrar a transparencia con hardness
+      const tmp=document.createElement("canvas"); tmp.width=size; tmp.height=size;
+      const tc=tmp.getContext("2d");
+      tc.fillStyle = "rgba(0,0,0,1)";
+      tc.beginPath();
+      tc.arc(r, r, r, 0, Math.PI*2);
+      tc.fill();
+      
+      // Aplicar gradient de hardness
+      const g=tc.createRadialGradient(r,r,r*(hardness/100),r,r,r);
+      g.addColorStop(0,`rgba(0,0,0,${opacity/100})`);
+      g.addColorStop(1,"rgba(0,0,0,0)");
+      tc.globalCompositeOperation="destination-in";
+      tc.fillStyle=g;
+      tc.fillRect(0,0,size,size);
+      
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.drawImage(tmp, Math.round(ix-r), Math.round(iy-r));
+      ctx.globalCompositeOperation = "source-over";
+      
+    } else if(mode === "solid"){
+      // Rellenar con color sólido con hardness
+      const tmp=document.createElement("canvas"); tmp.width=size; tmp.height=size;
+      const tc=tmp.getContext("2d");
+      tc.fillStyle = color;
+      tc.beginPath();
+      tc.arc(r, r, r, 0, Math.PI*2);
+      tc.fill();
+      
+      // Aplicar gradient de hardness
+      const g=tc.createRadialGradient(r,r,r*(hardness/100),r,r,r);
+      g.addColorStop(0,`rgba(0,0,0,${opacity/100})`);
+      g.addColorStop(1,"rgba(0,0,0,0)");
+      tc.globalCompositeOperation="destination-in";
+      tc.fillStyle=g;
+      tc.fillRect(0,0,size,size);
+      
+      ctx.drawImage(tmp, Math.round(ix-r), Math.round(iy-r));
+      
+    } else if(mode === "smart"){
+      // Smart fill FINAL: Pure Gaussian Blur
+      // SIN proyección radial, SIN ángulos → SIN efecto espiral
+      const bx=Math.round(ix-r), by=Math.round(iy-r);
+      if(bx+size<0||by+size<0||bx>ec.width||by>ec.height) return;
+      
+      // Capturar área expandida (2.5x para tener contexto)
+      const expandSize = size * 2.5;
+      const expandR = expandSize / 2;
+      const expandBx = Math.round(ix - expandR);
+      const expandBy = Math.round(iy - expandR);
+      
+      const expandCanvas = document.createElement("canvas");
+      expandCanvas.width = expandSize;
+      expandCanvas.height = expandSize;
+      const ectx = expandCanvas.getContext("2d");
+      
+      // Dibujar área expandida
+      ectx.drawImage(ec, expandBx, expandBy, expandSize, expandSize, 0, 0, expandSize, expandSize);
+      
+      // Aplicar blur gaussiano nativo del navegador
+      const blurAmount = Math.max(8, Math.min(20, r/3));
+      ectx.filter = `blur(${blurAmount}px)`;
+      ectx.drawImage(expandCanvas, 0, 0);
+      ectx.filter = "none";
+      
+      // Extraer solo la parte central (área del pincel)
+      const tmp = document.createElement("canvas");
+      tmp.width = size;
+      tmp.height = size;
+      const tc = tmp.getContext("2d");
+      
+      // Copiar desde el centro del área blurred
+      const offsetX = expandR - r;
+      const offsetY = expandR - r;
+      tc.drawImage(expandCanvas, offsetX, offsetY, size, size, 0, 0, size, size);
+      
+      // Aplicar máscara circular con hardness
+      const maskCanvas = document.createElement("canvas");
+      maskCanvas.width = size;
+      maskCanvas.height = size;
+      const mc = maskCanvas.getContext("2d");
+      
+      const g = mc.createRadialGradient(r,r,r*(hardness/100),r,r,r);
+      g.addColorStop(0,`rgba(0,0,0,${opacity/100})`);
+      g.addColorStop(1,"rgba(0,0,0,0)");
+      mc.fillStyle = g;
+      mc.fillRect(0,0,size,size);
+      
+      tc.globalCompositeOperation = "destination-in";
+      tc.drawImage(maskCanvas, 0, 0);
+      tc.globalCompositeOperation = "source-over";
+      
+      ctx.drawImage(tmp,bx,by);
+    }
+    
+    ctx.globalAlpha = 1;
+    draw();
+  };
+
+  // ── NUEVO: Annotate helper ──────────────────────────────────────────────
+  const doAnnotate=(ix,iy)=>{
+    const{mode,color,thickness,opacity,hardness=70}=annotateCfgRef.current;
+    const ec=file.ec, ctx=ec.getContext("2d");
+    const s=st.current;
+    
+    if(mode === "draw"){
+      // Modo dibujo con hardness
+      if(s.lastX !== undefined && s.lastY !== undefined){
+        // Dibujar línea con hardness usando múltiples segmentos
+        const dx = ix - s.lastX;
+        const dy = iy - s.lastY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const steps = Math.max(1, Math.floor(dist / 2));
+        
+        for(let i=0; i<=steps; i++){
+          const t = i / steps;
+          const x = s.lastX + dx * t;
+          const y = s.lastY + dy * t;
+          
+          // Crear canvas temporal para hardness
+          const size = thickness * 2.5;
+          const tmp=document.createElement("canvas");
+          tmp.width=size; tmp.height=size;
+          const tc=tmp.getContext("2d");
+          
+          const r = thickness / 2;
+          tc.fillStyle = color;
+          tc.beginPath();
+          tc.arc(size/2, size/2, r, 0, Math.PI*2);
+          tc.fill();
+          
+          // Aplicar gradient de hardness
+          const g=tc.createRadialGradient(size/2,size/2,r*(hardness/100),size/2,size/2,r);
+          g.addColorStop(0,`rgba(0,0,0,${opacity/100})`);
+          g.addColorStop(1,"rgba(0,0,0,0)");
+          tc.globalCompositeOperation="destination-in";
+          tc.fillStyle=g;
+          tc.fillRect(0,0,size,size);
+          
+          ctx.drawImage(tmp, Math.round(x-size/2), Math.round(y-size/2));
+        }
+      } else {
+        // Primer punto: dibujar círculo
+        const size = thickness * 2.5;
+        const tmp=document.createElement("canvas");
+        tmp.width=size; tmp.height=size;
+        const tc=tmp.getContext("2d");
+        
+        const r = thickness / 2;
+        tc.fillStyle = color;
+        tc.beginPath();
+        tc.arc(size/2, size/2, r, 0, Math.PI*2);
+        tc.fill();
+        
+        const g=tc.createRadialGradient(size/2,size/2,r*(hardness/100),size/2,size/2,r);
+        g.addColorStop(0,`rgba(0,0,0,${opacity/100})`);
+        g.addColorStop(1,"rgba(0,0,0,0)");
+        tc.globalCompositeOperation="destination-in";
+        tc.fillStyle=g;
+        tc.fillRect(0,0,size,size);
+        
+        ctx.drawImage(tmp, Math.round(ix-size/2), Math.round(iy-size/2));
+      }
+      
+      s.lastX = ix;
+      s.lastY = iy;
+    }
+    // Modo text se maneja en onMouseDown (click para colocar texto)
+    
+    draw();
+  };
+
+  // Helper para renderizar texto correctamente (evitar inversión)
+  const renderTextToCanvas = (text, x, y) => {
+    if(!text || !text.trim()) return;
+    const ctx = file.ec.getContext("2d");
+    ctx.save();
+    ctx.font = `${annotateCfg.fontSize}px ${annotateCfg.font}`;
+    ctx.fillStyle = annotateCfg.color;
+    ctx.globalAlpha = annotateCfg.opacity / 100;
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    ctx.direction = "ltr";
+    ctx.fillText(text.trim(), x, y);
+    ctx.restore();
+    draw();
+  };
+
   // ── Mouse handlers — all imperative, zero setState ─────────────────────
   const onMouseDown=useCallback((e)=>{
     isDraggingRef.current = true;
@@ -1156,10 +1509,31 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
         cropRef.current={x:p.x,y:p.y,w:0,h:0}; draw();
       }
     }
-    if(toolRef.current==="blur"||toolRef.current==="pixelate"){
+    if(toolRef.current==="blur"||toolRef.current==="pixelate"||toolRef.current==="eraser"||toolRef.current==="annotate"){
       if(!s.blurPushed){onUndoPush(file.id);s.blurPushed=true;}
       s.mode=toolRef.current; const pd=getPointerData(e.clientX,e.clientY);
-      if(pd){ if(toolRef.current==="blur") doBlur(pd.img.x,pd.img.y); else doPixelate(pd.img.x,pd.img.y); }
+      if(pd){ 
+        if(toolRef.current==="blur") doBlur(pd.img.x,pd.img.y); 
+        else if(toolRef.current==="pixelate") doPixelate(pd.img.x,pd.img.y);
+        else if(toolRef.current==="eraser") doEraser(pd.img.x,pd.img.y);
+        else if(toolRef.current==="annotate") {
+          const cfg = annotateCfgRef.current;
+          if(cfg.mode === "text"){
+            // Modo texto: crear editor interactivo
+            setActiveText({
+              x: pd.px,  // Posición en canvas pixels
+              y: pd.py,
+              imgX: pd.img.x,  // Posición en imagen
+              imgY: pd.img.y,
+              text: "",
+              editing: true
+            });
+          } else {
+            // Modo draw: iniciar trazo
+            s.lastX=pd.img.x; s.lastY=pd.img.y;
+          }
+        }
+      }
     }
   },[file,onUndoPush,draw]);
 
@@ -1213,6 +1587,10 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
       doBlur(p.x,p.y);
     } else if(s.mode==="pixelate"){
       doPixelate(p.x,p.y);
+    } else if(s.mode==="eraser"){
+      doEraser(p.x,p.y);
+    } else if(s.mode==="annotate"){
+      doAnnotate(p.x,p.y);
     }
 
     if(newCrop){ cropRef.current=newCrop; draw(); }
@@ -1223,9 +1601,48 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
       const hi2=cr&&cr.w>2?hitHandle(pd.px,pd.py,cr,pd.sc,pd.offX,pd.offY):-1;
       const cv=canvasRef.current; if(cv) cv.style.cursor=hi2>=0?HANDLES[hi2].cx:(cr&&cr.w>2&&p.x>=cr.x&&p.x<=cr.x+cr.w&&p.y>=cr.y&&p.y<=cr.y+cr.h?"move":"crosshair");
     }
-    if(toolRef.current==="blur"||toolRef.current==="pixelate"){
+    if(toolRef.current==="blur"||toolRef.current==="pixelate"||toolRef.current==="eraser"||toolRef.current==="annotate"){
       const cont=contRef.current, circle=blurCircleRef.current;
-      if(cont&&circle){const r=cont.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;const sz=blurCfgRef.current.size*zoomRef.current;circle.style.cssText=`display:block;position:absolute;border-radius:50%;border:1.5px solid rgba(255,255,255,0.75);box-shadow:0 0 0 1px rgba(0,0,0,0.5);pointer-events:none;box-sizing:border-box;left:${x-sz/2}px;top:${y-sz/2}px;width:${sz}px;height:${sz}px`;}
+      if(cont&&circle){
+        const r=cont.getBoundingClientRect();
+        const x=e.clientX-r.left,y=e.clientY-r.top;
+        const cfg = toolRef.current==="eraser" ? eraserCfgRef.current : 
+                    toolRef.current==="annotate" ? annotateCfgRef.current :
+                    blurCfgRef.current;
+        
+        // Para annotate, mostrar el tamaño real del pincel con hardness
+        let sz, borderColor, bgGradient;
+        if(toolRef.current==="annotate" && cfg.mode==="draw"){
+          sz = cfg.thickness * 2.5; // Tamaño real del pincel
+          borderColor = cfg.color;
+          // Crear gradiente radial que muestra el hardness
+          const hardnessRadius = (cfg.hardness || 70) / 100;
+          bgGradient = `radial-gradient(circle, ${cfg.color}${Math.round(cfg.opacity*2.55).toString(16).padStart(2,'0')} ${hardnessRadius*50}%, transparent ${hardnessRadius*100}%)`;
+        } else if(toolRef.current==="annotate" && cfg.mode==="text"){
+          sz = cfg.fontSize * 0.7; // Aproximación del tamaño de texto
+          borderColor = cfg.color;
+          bgGradient = `radial-gradient(circle, ${cfg.color}20 0%, transparent 70%)`;
+        } else if(toolRef.current==="eraser"){
+          sz = cfg.size;
+          borderColor = "rgba(255,255,255,0.75)";
+          if(cfg.mode==="transparent"){
+            bgGradient = "radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)";
+          } else if(cfg.mode==="solid"){
+            const hardnessRadius = (cfg.hardness || 50) / 100;
+            bgGradient = `radial-gradient(circle, ${cfg.color}${Math.round(cfg.opacity*2.55).toString(16).padStart(2,'0')} ${hardnessRadius*50}%, transparent ${hardnessRadius*100}%)`;
+          } else {
+            bgGradient = "radial-gradient(circle, rgba(124,92,255,0.2) 0%, transparent 70%)";
+          }
+        } else {
+          sz = cfg.size;
+          borderColor = "rgba(255,255,255,0.75)";
+          bgGradient = "transparent";
+        }
+        
+        const scaledSz = sz * zoomRef.current;
+        
+        circle.style.cssText=`display:block;position:absolute;border-radius:50%;border:2px solid ${borderColor};box-shadow:0 0 0 1px rgba(0,0,0,0.5);pointer-events:none;box-sizing:border-box;left:${x-scaledSz/2}px;top:${y-scaledSz/2}px;width:${scaledSz}px;height:${scaledSz}px;background:${bgGradient}`;
+      }
     }
   },[file,draw]);
 
@@ -1233,6 +1650,7 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     const s=st.current;
     if(s.mode==="new"||s.mode==="move"||s.mode==="handle") onCropChange(file.id,cropRef.current);
     s.mode="none"; s.isPan=false; s.blurPushed=false; s.handleIdx=-1;
+    s.lastX=undefined; s.lastY=undefined; // Reset para annotate
     isDraggingRef.current = false;
   };
   const onMouseUp   =useCallback(()=>{ commitCrop(); },[file,onCropChange]);
@@ -1318,7 +1736,13 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
 
         {/* Left toolbar — tool selector with flyout for brush settings */}
         <div style={{width:44,background:"#141414",borderRight:"1px solid #1e1e1e",display:"flex",flexDirection:"column",alignItems:"center",paddingTop:10,gap:2,flexShrink:0,position:"relative",zIndex:20}}>
-          {[{id:"crop",tip:t?.cropTool||"Crop"},{id:"blur",tip:t?.blurTool||"Blur"},{id:"pixelate",tip:t?.pixelateTool||"Pixelate"}].map(tb=>(
+          {[
+            {id:"crop",tip:t?.cropTool||"Crop"},
+            {id:"blur",tip:t?.blurTool||"Blur"},
+            {id:"pixelate",tip:t?.pixelateTool||"Pixelate"},
+            {id:"eraser",tip:t?.blurTool ? "Borrador" : "Eraser"},
+            {id:"annotate",tip:t?.blurTool ? "Anotar" : "Annotate"}
+          ].map(tb=>(
             <button key={tb.id} onClick={()=>setTool(tb.id)}
               title={tb.tip}
               style={{width:34,height:34,border:"none",borderRadius:6,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .12s",
@@ -1355,14 +1779,502 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
                 onChange={e=>onBlurCfgChange(b=>({...b,opacity:+e.target.value}))} style={{marginBottom:2}}/>
             </div>
           )}
+          
+          {/* NUEVO: Panel de configuración ERASER */}
+          {tool==="eraser"&&(
+            <div style={{position:"absolute",left:44,top:0,width:240,background:"#1a1a1a",borderRight:"1px solid #242424",borderBottom:"1px solid #242424",padding:"12px 12px 8px",display:"flex",flexDirection:"column",gap:6,zIndex:30,boxShadow:"4px 0 16px rgba(0,0,0,0.3)"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#555",textTransform:"uppercase",letterSpacing:"1px",marginBottom:4}}>
+                {t?.blurTool ? "BORRADOR" : "ERASER"}
+              </div>
+              
+              <label style={{fontSize:10,color:"#666",marginBottom:2}}>
+                {t?.blurTool ? `Tamaño: ${eraserCfg.size}px` : `Size: ${eraserCfg.size}px`}
+              </label>
+              <input type="range" min={10} max={500} value={eraserCfg.size}
+                onChange={e=>setEraserCfg(c=>({...c,size:+e.target.value}))} style={{marginBottom:6}}/>
+              
+              <label style={{fontSize:10,color:"#666",marginBottom:2}}>
+                {t?.blurTool ? `Dureza: ${eraserCfg.hardness}%` : `Hardness: ${eraserCfg.hardness}%`}
+              </label>
+              <input type="range" min={0} max={95} value={eraserCfg.hardness}
+                onChange={e=>setEraserCfg(c=>({...c,hardness:+e.target.value}))} style={{marginBottom:6}}/>
+              
+              <label style={{fontSize:10,color:"#666",marginBottom:2}}>
+                {t?.blurTool ? "Modo" : "Mode"}
+              </label>
+              <div style={{display:"flex",gap:4,marginBottom:6}}>
+                {[
+                  {id:"transparent",label:t?.blurTool?"Transparente":"Transparent"},
+                  {id:"solid",label:t?.blurTool?"Color":"Solid"},
+                  {id:"smart",label:t?.blurTool?"Inteligente":"Smart"}
+                ].map(m=>(
+                  <button key={m.id} onClick={()=>setEraserCfg(c=>({...c,mode:m.id}))}
+                    style={{flex:1,fontSize:9,fontWeight:eraserCfg.mode===m.id?600:400,padding:"4px 6px",borderRadius:4,border:"1px solid",cursor:"pointer",
+                      background:eraserCfg.mode===m.id?"rgba(124,92,255,0.2)":"transparent",
+                      borderColor:eraserCfg.mode===m.id?"#7c5cff":"#2a2a2a",
+                      color:eraserCfg.mode===m.id?"#a78bfa":"#666"}}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              
+              {eraserCfg.mode==="solid"&&(<>
+                <label style={{fontSize:10,color:"#666",marginBottom:2}}>
+                  {t?.blurTool ? "Color" : "Color"}
+                </label>
+                <div style={{display:"flex",gap:4,marginBottom:4}}>
+                  {["#ffffff","#000000","#ff0000","#00ff00","#0000ff","#ffff00"].map(c=>(
+                    <button key={c} onClick={()=>setEraserCfg(cfg=>({...cfg,color:c}))}
+                      style={{width:32,height:32,border:"2px solid",borderRadius:6,cursor:"pointer",background:c,
+                        borderColor:eraserCfg.color===c?"#7c5cff":"#2a2a2a",
+                        boxShadow:eraserCfg.color===c?"0 0 0 2px rgba(124,92,255,0.3)":"none"}}/>
+                  ))}
+                </div>
+                
+                {/* Color dial visual integrado con handle */}
+                <div style={{marginBottom:6}}>
+                  <div style={{position:"relative"}}>
+                    <div style={{
+                      width:"100%",
+                      height:20,
+                      borderRadius:10,
+                      background:"linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)",
+                      border:"1px solid #2a2a2a",
+                      cursor:"pointer"
+                    }}
+                      onMouseDown={e=>{
+                        const dial = e.currentTarget;
+                        const updateColor = (clientX) => {
+                          const rect = dial.getBoundingClientRect();
+                          const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+                          const hue = (x / rect.width) * 360;
+                          const color = `hsl(${hue}, 100%, 50%)`;
+                          const temp = document.createElement("div");
+                          temp.style.color = color;
+                          document.body.appendChild(temp);
+                          const computed = getComputedStyle(temp).color;
+                          document.body.removeChild(temp);
+                          const match = computed.match(/\d+/g);
+                          if(match){
+                            const hex = "#" + match.slice(0,3).map(n => parseInt(n).toString(16).padStart(2,'0')).join('');
+                            setEraserCfg(c=>({...c,color:hex}));
+                            setColorDialHandles(h=>({...h, eraser: x / rect.width}));
+                          }
+                        };
+                        
+                        updateColor(e.clientX);
+                        
+                        const onMove = (me) => {
+                          updateColor(me.clientX);
+                        };
+                        
+                        const onUp = () => {
+                          document.removeEventListener("mousemove", onMove);
+                          document.removeEventListener("mouseup", onUp);
+                        };
+                        
+                        document.addEventListener("mousemove", onMove);
+                        document.addEventListener("mouseup", onUp);
+                      }}
+                    />
+                    
+                    {/* Handle arrastrable */}
+                    <div style={{
+                      position:"absolute",
+                      left:`calc(${colorDialHandles.eraser * 100}% - 6px)`,
+                      top:-2,
+                      width:12,
+                      height:24,
+                      background:"#fff",
+                      border:"2px solid #000",
+                      borderRadius:6,
+                      cursor:"grab",
+                      boxShadow:"0 2px 4px rgba(0,0,0,0.3)",
+                      pointerEvents:"none"
+                    }}/>
+                  </div>
+                  
+                  {/* Brightness slider */}
+                  <input type="range" min={0} max={100} defaultValue={100}
+                    onChange={e=>{
+                      const bright = e.target.value;
+                      const temp = document.createElement("div");
+                      temp.style.color = eraserCfg.color;
+                      document.body.appendChild(temp);
+                      const computed = getComputedStyle(temp).color;
+                      document.body.removeChild(temp);
+                      const match = computed.match(/\d+/g);
+                      if(match){
+                        const r = Math.round(parseInt(match[0]) * bright / 100);
+                        const g = Math.round(parseInt(match[1]) * bright / 100);
+                        const b = Math.round(parseInt(match[2]) * bright / 100);
+                        const hex = "#" + [r,g,b].map(n => n.toString(16).padStart(2,'0')).join('');
+                        setEraserCfg(c=>({...c,color:hex}));
+                      }
+                    }}
+                    style={{width:"100%",marginTop:6}}
+                  />
+                </div>
+                
+                {/* Preview y HEX manual */}
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
+                  <div style={{width:40,height:32,borderRadius:4,border:"1px solid #2a2a2a",background:eraserCfg.color}}/>
+                  <input
+                    type="text"
+                    value={eraserCfg.color}
+                    onChange={e=>{
+                      let val = e.target.value;
+                      if(!val.startsWith('#')) val = '#' + val;
+                      if(/^#[0-9A-Fa-f]{0,6}$/.test(val)){
+                        setEraserCfg(c=>({...c,color:val.length===7?val:c.color}));
+                      }
+                    }}
+                    placeholder="#ffffff"
+                    style={{flex:1,padding:"6px 8px",background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#d0d0d0",fontSize:11,fontFamily:"monospace"}}
+                  />
+                </div>
+              </>)}
+              
+              <label style={{fontSize:10,color:"#666",marginBottom:2}}>
+                {t?.blurTool ? `Opacidad: ${eraserCfg.opacity}%` : `Opacity: ${eraserCfg.opacity}%`}
+              </label>
+              <input type="range" min={10} max={100} value={eraserCfg.opacity}
+                onChange={e=>setEraserCfg(c=>({...c,opacity:+e.target.value}))} style={{marginBottom:6}}/>
+            </div>
+          )}
+          
+          {/* NUEVO: Panel de configuración ANNOTATE */}
+          {tool==="annotate"&&(
+            <div style={{position:"absolute",left:44,top:0,width:240,background:"#1a1a1a",borderRight:"1px solid #242424",borderBottom:"1px solid #242424",padding:"12px 12px 8px",display:"flex",flexDirection:"column",gap:6,zIndex:30,boxShadow:"4px 0 16px rgba(0,0,0,0.3)"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#555",textTransform:"uppercase",letterSpacing:"1px",marginBottom:4}}>
+                {t?.blurTool ? "ANOTAR" : "ANNOTATE"}
+              </div>
+              
+              {/* Modo: Dibujar / Texto */}
+              <div style={{display:"flex",gap:4,marginBottom:6}}>
+                {[
+                  {id:"draw",label:t?.blurTool?"Dibujar":"Draw"},
+                  {id:"text",label:t?.blurTool?"Texto":"Text"}
+                ].map(m=>(
+                  <button key={m.id} onClick={()=>setAnnotateCfg(c=>({...c,mode:m.id}))}
+                    style={{flex:1,fontSize:9,fontWeight:annotateCfg.mode===m.id?600:400,padding:"5px 8px",borderRadius:4,border:"1px solid",cursor:"pointer",
+                      background:annotateCfg.mode===m.id?"rgba(124,92,255,0.2)":"transparent",
+                      borderColor:annotateCfg.mode===m.id?"#7c5cff":"#2a2a2a",
+                      color:annotateCfg.mode===m.id?"#a78bfa":"#666"}}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              
+              <label style={{fontSize:10,color:"#666",marginBottom:2}}>
+                {t?.blurTool ? "Color" : "Color"}
+              </label>
+              <div style={{display:"flex",gap:4,marginBottom:4}}>
+                {["#ffffff","#000000","#ff0000","#00ff00","#0000ff","#ffff00"].map(c=>(
+                  <button key={c} onClick={()=>setAnnotateCfg(cfg=>({...cfg,color:c}))}
+                    style={{width:32,height:32,border:"2px solid",borderRadius:6,cursor:"pointer",background:c,
+                      borderColor:annotateCfg.color===c?"#7c5cff":"#2a2a2a",
+                      boxShadow:annotateCfg.color===c?"0 0 0 2px rgba(124,92,255,0.3)":"none"}}/>
+                ))}
+              </div>
+              
+              {/* Color dial visual integrado con handle */}
+              <div style={{marginBottom:6}}>
+                <div style={{position:"relative"}}>
+                  <div style={{
+                    width:"100%",
+                    height:20,
+                    borderRadius:10,
+                    background:"linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)",
+                    border:"1px solid #2a2a2a",
+                    cursor:"pointer"
+                  }}
+                    onMouseDown={e=>{
+                      const dial = e.currentTarget;
+                      const updateColor = (clientX) => {
+                        const rect = dial.getBoundingClientRect();
+                        const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+                        const hue = (x / rect.width) * 360;
+                        const color = `hsl(${hue}, 100%, 50%)`;
+                        const temp = document.createElement("div");
+                        temp.style.color = color;
+                        document.body.appendChild(temp);
+                        const computed = getComputedStyle(temp).color;
+                        document.body.removeChild(temp);
+                        const match = computed.match(/\d+/g);
+                        if(match){
+                          const hex = "#" + match.slice(0,3).map(n => parseInt(n).toString(16).padStart(2,'0')).join('');
+                          setAnnotateCfg(c=>({...c,color:hex}));
+                          setColorDialHandles(h=>({...h, annotate: x / rect.width}));
+                        }
+                      };
+                      
+                      updateColor(e.clientX);
+                      
+                      const onMove = (me) => {
+                        updateColor(me.clientX);
+                      };
+                      
+                      const onUp = () => {
+                        document.removeEventListener("mousemove", onMove);
+                        document.removeEventListener("mouseup", onUp);
+                      };
+                      
+                      document.addEventListener("mousemove", onMove);
+                      document.addEventListener("mouseup", onUp);
+                    }}
+                  />
+                  
+                  {/* Handle arrastrable */}
+                  <div style={{
+                    position:"absolute",
+                    left:`calc(${colorDialHandles.annotate * 100}% - 6px)`,
+                    top:-2,
+                    width:12,
+                    height:24,
+                    background:"#fff",
+                    border:"2px solid #000",
+                    borderRadius:6,
+                    cursor:"grab",
+                    boxShadow:"0 2px 4px rgba(0,0,0,0.3)",
+                    pointerEvents:"none"
+                  }}/>
+                </div>
+                
+                {/* Brightness slider */}
+                <input type="range" min={0} max={100} defaultValue={100}
+                  onChange={e=>{
+                    const bright = e.target.value;
+                    const temp = document.createElement("div");
+                    temp.style.color = annotateCfg.color;
+                    document.body.appendChild(temp);
+                    const computed = getComputedStyle(temp).color;
+                    document.body.removeChild(temp);
+                    const match = computed.match(/\d+/g);
+                    if(match){
+                      const r = Math.round(parseInt(match[0]) * bright / 100);
+                      const g = Math.round(parseInt(match[1]) * bright / 100);
+                      const b = Math.round(parseInt(match[2]) * bright / 100);
+                      const hex = "#" + [r,g,b].map(n => n.toString(16).padStart(2,'0')).join('');
+                      setAnnotateCfg(c=>({...c,color:hex}));
+                    }
+                  }}
+                  style={{width:"100%",marginTop:6}}
+                />
+              </div>
+              
+              {/* Preview y HEX manual */}
+              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
+                <div style={{width:40,height:32,borderRadius:4,border:"1px solid #2a2a2a",background:annotateCfg.color}}/>
+                <input
+                  type="text"
+                  value={annotateCfg.color}
+                  onChange={e=>{
+                    let val = e.target.value;
+                    if(!val.startsWith('#')) val = '#' + val;
+                    if(/^#[0-9A-Fa-f]{0,6}$/.test(val)){
+                      setAnnotateCfg(c=>({...c,color:val.length===7?val:c.color}));
+                    }
+                  }}
+                  placeholder="#ffffff"
+                  style={{flex:1,padding:"6px 8px",background:"#141414",border:"1px solid #2a2a2a",borderRadius:4,color:"#d0d0d0",fontSize:11,fontFamily:"monospace"}}
+                />
+              </div>
+              
+              {annotateCfg.mode==="draw"&&(<>
+                <label style={{fontSize:10,color:"#666",marginBottom:2}}>
+                  {t?.blurTool ? `Grosor: ${annotateCfg.thickness}px` : `Thickness: ${annotateCfg.thickness}px`}
+                </label>
+                <input type="range" min={1} max={30} value={annotateCfg.thickness}
+                  onChange={e=>setAnnotateCfg(c=>({...c,thickness:+e.target.value}))} style={{marginBottom:6}}/>
+                
+                <label style={{fontSize:10,color:"#666",marginBottom:2}}>
+                  {t?.blurTool ? `Dureza: ${annotateCfg.hardness}%` : `Hardness: ${annotateCfg.hardness}%`}
+                </label>
+                <input type="range" min={0} max={95} value={annotateCfg.hardness}
+                  onChange={e=>setAnnotateCfg(c=>({...c,hardness:+e.target.value}))} style={{marginBottom:6}}/>
+              </>)}
+              
+              {annotateCfg.mode==="text"&&(<>
+                <label style={{fontSize:10,color:"#666",marginBottom:2}}>
+                  {t?.blurTool ? "Fuente" : "Font"}
+                </label>
+                <select value={annotateCfg.font} onChange={e=>setAnnotateCfg(c=>({...c,font:e.target.value}))}
+                  style={{padding:"5px 8px",borderRadius:4,border:"1px solid #2a2a2a",background:"#141414",color:"#d0d0d0",fontSize:11,marginBottom:6,cursor:"pointer"}}>
+                  <option value="Inter">Inter</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Helvetica">Helvetica</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Times New Roman">Times New Roman</option>
+                  <option value="Courier New">Courier New</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Comic Sans MS">Comic Sans MS</option>
+                </select>
+                
+                <label style={{fontSize:10,color:"#666",marginBottom:2}}>
+                  {t?.blurTool ? `Tamaño: ${annotateCfg.fontSize}px` : `Size: ${annotateCfg.fontSize}px`}
+                </label>
+                <input type="range" min={12} max={120} value={annotateCfg.fontSize}
+                  onChange={e=>setAnnotateCfg(c=>({...c,fontSize:+e.target.value}))} style={{marginBottom:6}}/>
+              </>)}
+              
+              <label style={{fontSize:10,color:"#666",marginBottom:2}}>
+                {t?.blurTool ? `Opacidad: ${annotateCfg.opacity}%` : `Opacity: ${annotateCfg.opacity}%`}
+              </label>
+              <input type="range" min={10} max={100} value={annotateCfg.opacity}
+                onChange={e=>setAnnotateCfg(c=>({...c,opacity:+e.target.value}))} style={{marginBottom:6}}/>
+            </div>
+          )}
         </div>
 
         {/* Canvas area */}
-        <div ref={contRef} style={{flex:1,position:"relative",overflow:"hidden",cursor:(tool==="blur"||tool==="pixelate")?"none":"crosshair",opacity:ready?1:0,transition:"opacity 0.08s"}}>
-          <canvas ref={canvasRef} style={{display:"block",cursor:(tool==="blur"||tool==="pixelate")?"none":"inherit",willChange:"transform"}}
+        <div ref={contRef} style={{flex:1,position:"relative",overflow:"hidden",cursor:(tool==="blur"||tool==="pixelate"||tool==="eraser"||tool==="annotate")?"none":"crosshair",opacity:ready?1:0,transition:"opacity 0.08s"}}>
+          <canvas ref={canvasRef} style={{display:"block",cursor:(tool==="blur"||tool==="pixelate"||tool==="eraser"||tool==="annotate")?"none":"inherit",willChange:"transform"}}
             onMouseDown={onMouseDown} onMouseMove={onMouseMove}
             onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}/>
-          <div ref={blurCircleRef} style={{display:"none",position:"absolute",borderRadius:"50%",border:"1.5px solid rgba(255,255,255,0.75)",boxShadow:"0 0 0 1px rgba(0,0,0,0.5)",pointerEvents:"none",boxSizing:"border-box"}}/>
+          <div ref={blurCircleRef} style={{
+            display:"none",
+            position:"absolute",
+            borderRadius:"50%",
+            border: tool==="annotate" ? `2px solid ${annotateCfg.color}` : "1.5px solid rgba(255,255,255,0.75)",
+            boxShadow:"0 0 0 1px rgba(0,0,0,0.5)",
+            pointerEvents:"none",
+            boxSizing:"border-box",
+            opacity: tool==="annotate" ? annotateCfg.opacity/100 : tool==="eraser" && eraserCfg.mode==="transparent" ? 0.3 : 1,
+            background: tool==="eraser" && eraserCfg.mode==="transparent" 
+              ? "rgba(255,255,255,0.15)" 
+              : tool==="eraser" && eraserCfg.mode==="solid"
+              ? eraserCfg.color+"40"
+              : "transparent"
+          }}/>
+          
+          {/* Editor de texto interactivo (modo Annotate > Text) */}
+          {/* Editor de texto tipo Photoshop - Editable en vivo */}
+          {activeText && activeText.editing && (
+            <div
+              style={{
+                position: "absolute",
+                left: activeText.x,
+                top: activeText.y,
+                minWidth: 100,
+                maxWidth: 600,
+                cursor: "move",
+                zIndex: 1000,
+                userSelect: "none"
+              }}
+              onMouseDown={e => {
+                if(e.target.tagName !== "DIV" || !e.target.contentEditable) {
+                  // Drag del container
+                  e.stopPropagation();
+                  const startX = e.clientX;
+                  const startY = e.clientY;
+                  const startLeft = activeText.x;
+                  const startTop = activeText.y;
+                  
+                  const onMove = (me) => {
+                    const dx = me.clientX - startX;
+                    const dy = me.clientY - startY;
+                    setActiveText({...activeText, x: startLeft + dx, y: startTop + dy});
+                  };
+                  
+                  const onUp = () => {
+                    document.removeEventListener("mousemove", onMove);
+                    document.removeEventListener("mouseup", onUp);
+                  };
+                  
+                  document.addEventListener("mousemove", onMove);
+                  document.addEventListener("mouseup", onUp);
+                }
+              }}
+            >
+              {/* Barra superior con botones */}
+              <div style={{
+                display: "flex",
+                gap: 4,
+                marginBottom: 4,
+                background: "rgba(26,26,26,0.95)",
+                padding: "4px 6px",
+                borderRadius: "4px 4px 0 0",
+                border: `1px solid ${annotateCfg.color}`
+              }}>
+                <button
+                  onClick={() => {
+                    const textEl = document.getElementById("liveTextEditor");
+                    const text = textEl ? textEl.value : activeText.text;
+                    if(text && text.trim()){
+                      renderTextToCanvas(text, activeText.imgX, activeText.imgY);
+                    }
+                    setActiveText(null);
+                  }}
+                  style={{flex:1,padding:"3px 8px",background:"#7c5cff",color:"#fff",border:"none",borderRadius:3,cursor:"pointer",fontSize:10,fontWeight:600}}
+                >
+                  ✓ {t?.blurTool ? "Aplicar" : "Apply"}
+                </button>
+                <button
+                  onClick={() => setActiveText(null)}
+                  style={{padding:"3px 8px",background:"#444",color:"#ccc",border:"none",borderRadius:3,cursor:"pointer",fontSize:10}}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              {/* Editor de texto en vivo */}
+              <textarea
+                id="liveTextEditor"
+                autoFocus
+                value={activeText.text === (t?.blurTool ? "Escribe aquí..." : "Type here...") ? "" : activeText.text}
+                onChange={e => setActiveText({...activeText, text: e.target.value})}
+                onFocus={e => {
+                  if(e.target.value === "" || e.target.value === (t?.blurTool ? "Escribe aquí..." : "Type here...")){
+                    setActiveText({...activeText, text: ""});
+                  }
+                }}
+                onKeyDown={e => {
+                  if(e.key === "Escape"){
+                    setActiveText(null);
+                  } else if(e.ctrlKey && e.key === "Enter"){
+                    e.preventDefault();
+                    const text = e.target.value;
+                    if(text && text.trim()){
+                      renderTextToCanvas(text, activeText.imgX, activeText.imgY);
+                    }
+                    setActiveText(null);
+                  }
+                }}
+                placeholder={t?.blurTool ? "Escribe aquí..." : "Type here..."}
+                style={{
+                  outline: "none",
+                  padding: "8px 12px",
+                  minWidth: 200,
+                  minHeight: 60,
+                  background: "rgba(0,0,0,0.2)",
+                  border: `2px solid ${annotateCfg.color}`,
+                  borderRadius: "0 0 4px 4px",
+                  color: annotateCfg.color,
+                  fontFamily: annotateCfg.font,
+                  fontSize: annotateCfg.fontSize,
+                  opacity: annotateCfg.opacity / 100,
+                  whiteSpace: "pre-wrap",
+                  cursor: "text",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                  resize: "both"
+                }}
+              />
+              
+              {/* Hint */}
+              <div style={{
+                marginTop: 4,
+                fontSize: 9,
+                color: "#666",
+                textAlign: "center",
+                background: "rgba(26,26,26,0.8)",
+                padding: "2px 6px",
+                borderRadius: 3
+              }}>
+                {t?.blurTool ? "Arrastra para mover • Click ✓ para aplicar" : "Drag to move • Click ✓ to apply"}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1666,11 +2578,29 @@ function ZIRME() {
     
     const autoFiles=filesRef.current.filter(f=>f.crop?.auto!==false);
     if(!autoFiles.length) return;
+    
+    // OPTIMIZACIÓN: Procesar en lotes
     (async()=>{
-      for(const f of autoFiles){
-        const nc=await runSmartCrop(f.ec,oW,oH);
-        const crop=nc&&nc.w>2?{...nc,auto:true}:{...focalCrop(f.ec.width,f.ec.height,oW,oH,0.5,0.5),auto:true};
-        setFiles(prev=>prev.map(ff=>ff.id===f.id&&ff.crop?.auto!==false?{...ff,crop}:ff));
+      const BATCH_SIZE = 10;
+      const batches = [];
+      for(let i = 0; i < autoFiles.length; i += BATCH_SIZE) {
+        batches.push(autoFiles.slice(i, i + BATCH_SIZE));
+      }
+      
+      for(const batch of batches) {
+        const results = await Promise.all(
+          batch.map(async f => {
+            const nc = await runSmartCrop(f.ec, oW, oH);
+            const crop = nc&&nc.w>2 ? {...nc,auto:true} : {...focalCrop(f.ec.width,f.ec.height,oW,oH,0.5,0.5),auto:true};
+            return { id: f.id, crop };
+          })
+        );
+        
+        // Un solo setState por lote
+        setFiles(prev => prev.map(ff => {
+          const result = results.find(r => r.id === ff.id);
+          return result && ff.crop?.auto!==false ? {...ff, crop: result.crop} : ff;
+        }));
       }
     })();
   },[settings.w,settings.h,settings.focalPoint]);
@@ -1701,31 +2631,55 @@ function ZIRME() {
     const total=targets.length; if(!total) return;
     setSmartBatch({running:true,done:0,total});
     let applied=0;
-    for(let i=0;i<targets.length;i++){
-      const id=targets[i];
-      const f=filesRef.current.find(ff=>ff.id===id);
-      if(!f){ setSmartBatch(s=>({...s,done:s.done+1})); continue; }
-      let nc=null;
-      
-      // Usar detección ML según el modo
-      if(detectionMode === "face"){
-        nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
-      } else if(detectionMode === "body"){
-        nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize);
-      } else if(focalAuto && detectionMode === "auto"){
-        nc = await runSmartCrop(f.ec, oW, oH);
-      }
-      
-      if(!nc||nc.w<2||nc.h<2){
-        // Anchor fallback (or primary when focalAuto is off)
-        const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
-        nc=focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay);
-      }
-      const crop={...nc,auto:true};
-      setFiles(prev=>prev.map(ff=>ff.id===id?{...ff,crop}:ff));
-      applied++;
-      setSmartBatch(s=>({...s,done:s.done+1}));
+    
+    // OPTIMIZACIÓN: Procesar en lotes de 10 para mejor performance
+    const BATCH_SIZE = 10;
+    const batches = [];
+    for(let i = 0; i < targets.length; i += BATCH_SIZE) {
+      batches.push(targets.slice(i, i + BATCH_SIZE));
     }
+    
+    for(const batch of batches) {
+      // Procesar lote en paralelo
+      const results = await Promise.all(
+        batch.map(async id => {
+          const f = filesRef.current.find(ff => ff.id === id);
+          if(!f) return null;
+          
+          let nc = null;
+          
+          // Usar detección ML según el modo
+          if(detectionMode === "face"){
+            nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
+          } else if(detectionMode === "body"){
+            nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize);
+          } else if(focalAuto && detectionMode === "auto"){
+            nc = await runSmartCrop(f.ec, oW, oH);
+          }
+          
+          if(!nc||nc.w<2||nc.h<2){
+            // Anchor fallback (or primary when focalAuto is off)
+            const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+            nc=focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay);
+          }
+          
+          return { id, crop: {...nc, auto:true} };
+        })
+      );
+      
+      // Un solo setState por lote (en lugar de uno por imagen)
+      const validResults = results.filter(r => r !== null);
+      if(validResults.length > 0) {
+        setFiles(prev => prev.map(ff => {
+          const result = validResults.find(r => r.id === ff.id);
+          return result ? {...ff, crop: result.crop} : ff;
+        }));
+      }
+      
+      applied += validResults.length;
+      setSmartBatch(s => ({...s, done: s.done + validResults.length}));
+    }
+    
     setSmartBatch({running:false,done:0,total:0});
     const modeLabel = detectionMode==="face"?(lang==="es"?"rostros":"faces"):detectionMode==="body"?(lang==="es"?"cuerpos":"bodies"):"";
     const countMsg = total===1 
