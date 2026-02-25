@@ -231,36 +231,6 @@ ZIRME is a **zero-installation**, **privacy-first** image processing tool design
 
 ---
 
-## 📝 Changelog
-
-### v4.0 (Current)
-- ✨ Live text editor (Photoshop-style)
-- ✨ Custom HEX color picker (no native popup)
-- ✨ Smart Fill V3 (edge clone, no blur)
-- ✨ Body detection from clavicle (not lips)
-- ✨ Minimum size mode for Face/Body (flexible, not forced)
-- 🎨 White default color for better visibility
-- 🐛 Color picker now works correctly
-
-### v3.0
-- ✨ Annotate tool with Draw/Text modes
-- ✨ Eraser tool with 3 modes
-- ✨ Hardness control for all brush tools
-- ✨ ML detection optimization
-
-### v2.0
-- ⚡ Performance optimizations (batch processing, React.memo)
-- ⚡ Lazy loading for ML libraries (-80% initial load)
-- 🎨 Improved smart crop algorithm
-
-### v1.0
-- 🎉 Initial release
-- ✂️ Basic crop functionality
-- 🌫️ Blur and pixelate tools
-- 📦 Batch export
-
----
-
 ## 🤝 Contributing
 
 Contributions are welcome! This is a single-file project, so:
