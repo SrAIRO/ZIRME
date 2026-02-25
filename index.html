@@ -43,6 +43,39 @@
     input[type=color]::-webkit-color-swatch { border: none; border-radius: 3px; }
     input[type=color]::-moz-color-swatch { border: none; border-radius: 3px; }
     select { background: #222; border: 1px solid #303030; border-radius: 5px; color: #d0d0d0; font-family: Inter,sans-serif; font-size: 12px; padding: 6px 8px; outline: none; width: 100%; margin-bottom: 8px; cursor: pointer; }
+    
+    /* Checkbox - estilo morado personalizado */
+    input[type=checkbox] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #555;
+      border-radius: 3px;
+      background: #222;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s;
+    }
+    input[type=checkbox]:hover {
+      border-color: #7c5cff;
+    }
+    input[type=checkbox]:checked {
+      background: #7c5cff;
+      border-color: #7c5cff;
+    }
+    input[type=checkbox]:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 4px;
+      height: 8px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+    
     /* Scrollbar - Chrome/Safari/Edge */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -1489,9 +1522,13 @@ function ZIRME() {
   const filesRef    = useRef([]);
   const settingsRef = useRef(settings);
   const editIdRef   = useRef(editId);
+  const selIdRef    = useRef(selId);
+  const multiSelRef = useRef(multiSel);
   useEffect(()=>{filesRef.current=files;},[files]);
   useEffect(()=>{settingsRef.current=settings;},[settings]);
   useEffect(()=>{editIdRef.current=editId;},[editId]);
+  useEffect(()=>{selIdRef.current=selId;},[selId]);
+  useEffect(()=>{multiSelRef.current=multiSel;},[multiSel]);
 
   const sel      = files.find(f=>f.id===selId)??null;
   const editFile = files.find(f=>f.id===editId)??null;
@@ -1623,38 +1660,39 @@ function ZIRME() {
       return;
     }
     // Gallery mode: batch recalc for auto-flagged images
-    if(focalAuto){
-      const autoFiles=filesRef.current.filter(f=>f.crop?.auto!==false);
-      if(!autoFiles.length) return;
-      (async()=>{
-        for(const f of autoFiles){
-          const nc=await runSmartCrop(f.ec,oW,oH);
-          const crop=nc&&nc.w>2?{...nc,auto:true}:{...focalCrop(f.ec.width,f.ec.height,oW,oH,0.5,0.5),auto:true};
-          setFiles(prev=>prev.map(ff=>ff.id===f.id&&ff.crop?.auto!==false?{...ff,crop}:ff));
-        }
-      })();
-    } else {
-      const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
-      setFiles(prev=>prev.map(f=>{
-        if(f.crop?.auto===false) return f;
-        return{...f,crop:{...focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay),auto:true}};
-      }));
-    }
-  },[settings.w,settings.h,settings.focalAuto,settings.focalPoint]);
+    // SOLO procesar si focalAuto está ON (Auto/Rostro/Cuerpo)
+    // Manual NO auto-procesa - el usuario controla con applyFocalAll()
+    if(!focalAuto) return;
+    
+    const autoFiles=filesRef.current.filter(f=>f.crop?.auto!==false);
+    if(!autoFiles.length) return;
+    (async()=>{
+      for(const f of autoFiles){
+        const nc=await runSmartCrop(f.ec,oW,oH);
+        const crop=nc&&nc.w>2?{...nc,auto:true}:{...focalCrop(f.ec.width,f.ec.height,oW,oH,0.5,0.5),auto:true};
+        setFiles(prev=>prev.map(ff=>ff.id===f.id&&ff.crop?.auto!==false?{...ff,crop}:ff));
+      }
+    })();
+  },[settings.w,settings.h,settings.focalPoint]);
 
+  // Unified focal-point crop — uses smartcrop when focalAuto is ON, anchor-based otherwise.
   // Unified focal-point crop — uses smartcrop when focalAuto is ON, anchor-based otherwise.
   // Processes sequentially to avoid memory pressure on large galleries.
   const applyFocalAll = useCallback(async()=>{
     const{w:oW,h:oH,focalAuto,focalPoint,detectionMode,adjustToTargetSize}=settingsRef.current;
     
+    // Leer de refs para obtener valores actuales en el momento de la ejecución
+    const currentSelId = selIdRef.current;
+    const currentMultiSel = multiSelRef.current;
+    
     // Determinar qué imágenes procesar según la selección
     let targets;
-    if(selId && multiSel.size===0) {
+    if(currentSelId && currentMultiSel.size===0) {
       // Una sola imagen seleccionada → solo esa
-      targets = [selId];
-    } else if(multiSel.size > 0) {
+      targets = [currentSelId];
+    } else if(currentMultiSel.size > 0) {
       // Multi-selección → solo las seleccionadas
-      targets = [...multiSel];
+      targets = [...currentMultiSel];
     } else {
       // Sin selección → todas
       targets = filesRef.current.map(f=>f.id);
@@ -1695,7 +1733,7 @@ function ZIRME() {
       : `${applied} ${lang==="es"?"imágenes recortadas":"images cropped"}`;
     const msg=modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`;
     showToast(msg);
-  },[selId,multiSel,t,lang]);
+  },[t,lang]);
 
   // Single-image focal crop — used when panel scope is "single" (editing mode)
   const applySingleFocal = useCallback(async(fileId)=>{
@@ -1731,17 +1769,54 @@ function ZIRME() {
   const clearAllCrops = useCallback(()=>{
     const{w:oW,h:oH,focalPoint}=settingsRef.current;
     const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
-    const targets=multiSel.size>0?[...multiSel]:filesRef.current.map(f=>f.id);
+    
+    // Leer de refs para obtener valores actuales
+    const currentSelId = selIdRef.current;
+    const currentMultiSel = multiSelRef.current;
+    
+    // Determinar qué imágenes limpiar según la selección
+    let targets;
+    if(currentSelId && currentMultiSel.size===0) {
+      // Una sola imagen seleccionada → solo esa
+      targets = [currentSelId];
+    } else if(currentMultiSel.size > 0) {
+      // Multi-selección → solo las seleccionadas
+      targets = [...currentMultiSel];
+    } else {
+      // Sin selección → todas
+      targets = filesRef.current.map(f=>f.id);
+    }
+    
     setFiles(prev=>prev.map(f=>{
       if(!targets.includes(f.id)) return f;
       return{...f,crop:{...focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay),auto:true}};
     }));
-    showToast(multiSel.size>0?t.multiApplied(multiSel.size):t.toastCropsClear);
-  },[multiSel,t]);
+    
+    const msg = targets.length===1
+      ? (lang==="es"?"✓ 1 recorte restablecido":"✓ 1 crop restored")
+      : (lang==="es"?`✓ ${targets.length} recortes restablecidos`:`✓ ${targets.length} crops restored`);
+    showToast(msg);
+  },[t,lang]);
 
   // Rotación y volteo de imágenes
   const rotateImages = useCallback((angle)=>{
-    const targets=multiSel.size>0?[...multiSel]:filesRef.current.map(f=>f.id);
+    // Leer de refs para obtener valores actuales
+    const currentSelId = selIdRef.current;
+    const currentMultiSel = multiSelRef.current;
+    
+    // Determinar qué imágenes rotar según la selección
+    let targets;
+    if(currentSelId && currentMultiSel.size===0) {
+      // Una sola imagen seleccionada → solo esa
+      targets = [currentSelId];
+    } else if(currentMultiSel.size > 0) {
+      // Multi-selección → solo las seleccionadas
+      targets = [...currentMultiSel];
+    } else {
+      // Sin selección → todas
+      targets = filesRef.current.map(f=>f.id);
+    }
+    
     if(!targets.length) return;
     
     let rotated = 0;
@@ -1788,10 +1863,26 @@ function ZIRME() {
       ? `↻ ${rotated} imagen${rotated>1?'es':''} rotada${rotated>1?'s':''} ${angle}°`
       : `↻ ${rotated} image${rotated>1?'s':''} rotated ${angle}°`;
     showToast(msg);
-  },[multiSel,lang]);
+  },[lang]);
 
   const flipImages = useCallback((direction)=>{
-    const targets=multiSel.size>0?[...multiSel]:filesRef.current.map(f=>f.id);
+    // Leer de refs para obtener valores actuales
+    const currentSelId = selIdRef.current;
+    const currentMultiSel = multiSelRef.current;
+    
+    // Determinar qué imágenes voltear según la selección
+    let targets;
+    if(currentSelId && currentMultiSel.size===0) {
+      // Una sola imagen seleccionada → solo esa
+      targets = [currentSelId];
+    } else if(currentMultiSel.size > 0) {
+      // Multi-selección → solo las seleccionadas
+      targets = [...currentMultiSel];
+    } else {
+      // Sin selección → todas
+      targets = filesRef.current.map(f=>f.id);
+    }
+    
     if(!targets.length) return;
     
     let flipped = 0;
@@ -1827,7 +1918,7 @@ function ZIRME() {
       ? `⇄ ${flipped} imagen${flipped>1?'es':''} volteada${flipped>1?'s':''} ${label}`
       : `⇄ ${flipped} image${flipped>1?'s':''} flipped ${label}`;
     showToast(msg);
-  },[multiSel,lang]);
+  },[lang]);
 
   const renderFile = useCallback((f, idx)=>{
     const s=settingsRef.current;
@@ -2247,16 +2338,70 @@ function ZIRME() {
                   };
                   
                   return (
-                    <button key={mode} onClick={()=>{
+                    <button key={mode} onClick={async()=>{
                       // Si es modo ML y no han dicho "no volver a preguntar", mostrar diálogo
                       if((mode==="face"||mode==="body") && !mlDontShowAgain){
                         setMlWarningDialog({show:true, mode});
                       } else {
-                        // Aplicar directamente
+                        // Capturar valores AHORA (antes de setState)
+                        const currentMode = mode;
+                        const currentFocalAuto = mode !== "manual";
+                        const currentSettings = settingsRef.current;
+                        const currentSelId = selIdRef.current;
+                        const currentMultiSel = new Set(multiSelRef.current);
+                        
+                        // Aplicar settings
                         setSettings(s=>({...s,detectionMode:mode,focalAuto:mode!=="manual"}));
-                        if(mode!=="manual"){
-                          setTimeout(()=>applyFocalAll(),100);
+                        
+                        // Ejecutar INMEDIATAMENTE con valores capturados
+                        const{w:oW,h:oH,focalPoint,adjustToTargetSize}=currentSettings;
+                        
+                        // Determinar targets
+                        let targets;
+                        if(currentSelId && currentMultiSel.size===0) {
+                          targets = [currentSelId];
+                        } else if(currentMultiSel.size > 0) {
+                          targets = [...currentMultiSel];
+                        } else {
+                          targets = filesRef.current.map(f=>f.id);
                         }
+                        
+                        if(!targets.length) return;
+                        
+                        setSmartBatch({running:true,done:0,total:targets.length});
+                        let applied=0;
+                        
+                        for(let i=0;i<targets.length;i++){
+                          const id=targets[i];
+                          const f=filesRef.current.find(ff=>ff.id===id);
+                          if(!f){ setSmartBatch(s=>({...s,done:s.done+1})); continue; }
+                          let nc=null;
+                          
+                          if(currentMode === "face"){
+                            nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
+                          } else if(currentMode === "body"){
+                            nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize);
+                          } else if(currentFocalAuto && currentMode === "auto"){
+                            nc = await runSmartCrop(f.ec, oW, oH);
+                          }
+                          
+                          if(!nc||nc.w<2||nc.h<2){
+                            const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+                            nc=focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay);
+                          }
+                          const crop={...nc,auto:true};
+                          setFiles(prev=>prev.map(ff=>ff.id===id?{...ff,crop}:ff));
+                          applied++;
+                          setSmartBatch(s=>({...s,done:s.done+1}));
+                        }
+                        
+                        setSmartBatch({running:false,done:0,total:0});
+                        const modeLabel = currentMode==="face"?(lang==="es"?"rostros":"faces"):currentMode==="body"?(lang==="es"?"cuerpos":"bodies"):"";
+                        const countMsg = targets.length===1 
+                          ? (lang==="es"?"1 imagen procesada":"1 image processed")
+                          : `${applied} ${lang==="es"?"imágenes recortadas":"images cropped"}`;
+                        const msg=modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`;
+                        showToast(msg);
                       }
                     }}
                       style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:isActive?600:400,border:"none",borderRadius:4,padding:"7px 4px",cursor:"pointer",transition:"all .12s",
@@ -2307,7 +2452,43 @@ function ZIRME() {
                     {pts.map(({ax,ay},i)=>{
                       const active=fp.ax===ax&&fp.ay===ay;
                       return (
-                        <button key={i} onClick={()=>setSettings(s=>({...s,focalPoint:{ax,ay}}))}
+                        <button key={i} onClick={async()=>{
+                          // Actualizar punto focal
+                          setSettings(s=>({...s,focalPoint:{ax,ay}}));
+                          
+                          // Aplicar crop INMEDIATAMENTE con nuevo punto focal
+                          const currentSelId = selIdRef.current;
+                          const currentMultiSel = new Set(multiSelRef.current);
+                          const{w:oW,h:oH}=settingsRef.current;
+                          
+                          // Determinar targets
+                          let targets;
+                          if(currentSelId && currentMultiSel.size===0) {
+                            targets = [currentSelId];
+                          } else if(currentMultiSel.size > 0) {
+                            targets = [...currentMultiSel];
+                          } else {
+                            targets = filesRef.current.map(f=>f.id);
+                          }
+                          
+                          if(!targets.length) return;
+                          
+                          // Aplicar crop con el nuevo punto focal
+                          for(let j=0;j<targets.length;j++){
+                            const id=targets[j];
+                            const f=filesRef.current.find(ff=>ff.id===id);
+                            if(!f) continue;
+                            
+                            const nc=focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay);
+                            const crop={...nc,auto:true};
+                            setFiles(prev=>prev.map(ff=>ff.id===id?{...ff,crop}:ff));
+                          }
+                          
+                          const countMsg = targets.length===1 
+                            ? (lang==="es"?"1 imagen procesada":"1 image processed")
+                            : `${targets.length} ${lang==="es"?"imágenes recortadas":"images cropped"}`;
+                          showToast(`✦ ${countMsg}`);
+                        }}
                           style={{aspectRatio:"1",border:"1.5px solid "+(active?"#7c5cff":"#252525"),borderRadius:5,background:active?"rgba(124,92,255,0.18)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .12s",padding:0}}>
                           <div style={{width:7,height:7,borderRadius:"50%",background:active?"#7c5cff":"#333",boxShadow:active?"0 0 0 2px rgba(124,92,255,0.35)":"none",transition:"all .12s"}}/>
                         </button>
@@ -2615,7 +2796,7 @@ function ZIRME() {
               <input type="checkbox" id="ml-dont-warn" checked={mlDontShowAgain} onChange={(e)=>{
                 setMlDontShowAgain(e.target.checked);
                 try{ localStorage.setItem("zirme-ml-dont-warn",e.target.checked?"true":"false"); }catch(err){}
-              }} style={{width:16,height:16,cursor:"pointer"}}/>
+              }}/>
               <label htmlFor="ml-dont-warn" style={{fontSize:12,color:"#888",cursor:"pointer",userSelect:"none"}}>
                 {lang==="es"?"No volver a mostrar este aviso":"Don't show this warning again"}
               </label>
@@ -2626,10 +2807,62 @@ function ZIRME() {
                 style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"10px",cursor:"pointer",background:"transparent",color:"#aaa"}}>
                 {lang==="es"?"Cancelar":"Cancel"}
               </button>
-              <button onClick={()=>{
+              <button onClick={async()=>{
+                const currentMode = mlWarningDialog.mode;
+                const currentSettings = settingsRef.current;
+                const currentSelId = selIdRef.current;
+                const currentMultiSel = new Set(multiSelRef.current);
+                
                 setMlWarningDialog({show:false,mode:null});
-                setSettings(s=>({...s,detectionMode:mlWarningDialog.mode,focalAuto:true}));
-                setTimeout(()=>applyFocalAll(),100);
+                setSettings(s=>({...s,detectionMode:currentMode,focalAuto:true}));
+                
+                // Ejecutar INMEDIATAMENTE con valores capturados
+                const{w:oW,h:oH,focalPoint,adjustToTargetSize}=currentSettings;
+                
+                // Determinar targets
+                let targets;
+                if(currentSelId && currentMultiSel.size===0) {
+                  targets = [currentSelId];
+                } else if(currentMultiSel.size > 0) {
+                  targets = [...currentMultiSel];
+                } else {
+                  targets = filesRef.current.map(f=>f.id);
+                }
+                
+                if(!targets.length) return;
+                
+                setSmartBatch({running:true,done:0,total:targets.length});
+                let applied=0;
+                
+                for(let i=0;i<targets.length;i++){
+                  const id=targets[i];
+                  const f=filesRef.current.find(ff=>ff.id===id);
+                  if(!f){ setSmartBatch(s=>({...s,done:s.done+1})); continue; }
+                  let nc=null;
+                  
+                  if(currentMode === "face"){
+                    nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
+                  } else if(currentMode === "body"){
+                    nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize);
+                  }
+                  
+                  if(!nc||nc.w<2||nc.h<2){
+                    const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+                    nc=focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay);
+                  }
+                  const crop={...nc,auto:true};
+                  setFiles(prev=>prev.map(ff=>ff.id===id?{...ff,crop}:ff));
+                  applied++;
+                  setSmartBatch(s=>({...s,done:s.done+1}));
+                }
+                
+                setSmartBatch({running:false,done:0,total:0});
+                const modeLabel = currentMode==="face"?(lang==="es"?"rostros":"faces"):currentMode==="body"?(lang==="es"?"cuerpos":"bodies"):"";
+                const countMsg = targets.length===1 
+                  ? (lang==="es"?"1 imagen procesada":"1 image processed")
+                  : `${applied} ${lang==="es"?"imágenes recortadas":"images cropped"}`;
+                const msg=modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`;
+                showToast(msg);
               }}
                 style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"none",borderRadius:5,padding:"10px",cursor:"pointer",background:"#7c5cff",color:"#fff"}}>
                 {lang==="es"?"Continuar":"Continue"}
