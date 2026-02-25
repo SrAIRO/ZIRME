@@ -6,7 +6,7 @@
 [![No Dependencies](https://img.shields.io/badge/dependencies-zero-green.svg)]()
 [![Pure HTML](https://img.shields.io/badge/tech-HTML5-orange.svg)]()
 
-### What is ZIRME?
+### What is [ZIRME](https://zirme.net)?
 
 ZIRME is a **zero-installation**, **privacy-first** image processing tool designed for ML datasets, e-commerce catalogs, social media content, and professional photography workflows. Everything runs locally in your browser - **no uploads, no servers, no tracking**.
 
