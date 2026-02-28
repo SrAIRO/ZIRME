@@ -102,7 +102,6 @@ ZIRME is a **zero-installation**, **privacy-first** image processing tool design
 
 ### ✏️ Annotate
 - **Draw Mode**: Freehand drawing with hardness control
-- **Text Mode**: Live editable text, drag-to-position
 - 8 professional fonts (Inter, Arial, Georgia, Courier, etc.)
 - Custom colors with HEX input
 - Size: 12-120px, Opacity: 10-100%
