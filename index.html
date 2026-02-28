@@ -334,6 +334,7 @@ async function runSmartCrop(canvas, outW, outH) {
 /* ── ML-based Detection Functions ─────────────────────────────────────── */
 let faceApiLoaded = false;
 let cocoSsdModel = null;
+let poseNetModel = null; // V11: Modelo PoseNet global
 let mlLibsLoading = false;
 let mlLibsLoaded = false;
 
@@ -374,8 +375,11 @@ async function ensureMLLibs() {
       loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0'),
       loadScript('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js')
     ]);
-    // COCO-SSD depende de TensorFlow, cargar después
-    await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3');
+    // COCO-SSD y PoseNet dependen de TensorFlow, cargar después
+    await Promise.all([
+      loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3'),
+      loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js') // V11: PoseNet integrado
+    ]);
     mlLibsLoaded = true;
     return true;
   } catch(e) {
@@ -415,6 +419,28 @@ async function loadCocoSsd() {
     return true;
   } catch(e) {
     console.warn("COCO-SSD load failed:", e);
+    return false;
+  }
+}
+
+// V11: Pre-cargar modelo PoseNet
+async function loadPoseNet() {
+  if(poseNetModel) return true;
+  
+  const libsOk = await ensureMLLibs();
+  if(!libsOk || typeof posenet === "undefined") return false;
+  
+  try {
+    poseNetModel = await posenet.load({
+      architecture: 'MobileNetV1',
+      outputStride: 16,
+      inputResolution: {width: 257, height: 257},
+      multiplier: 0.75
+    });
+    console.log("✓ PoseNet modelo cargado");
+    return true;
+  } catch(e) {
+    console.warn("PoseNet load failed:", e);
     return false;
   }
 }
@@ -522,143 +548,212 @@ async function detectFacesCrop(canvas, outW, outH, adjustToTargetSize = true) {
   }
 }
 
-async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true) {
-  // Primero intentar detectar rostro para saber dónde está la cabeza
-  const faceLoaded = await loadFaceApi();
-  const cocoLoaded = await loadCocoSsd();
-  
-  if(!cocoLoaded) return null;
+// V11.1: JERARQUÍA CORRECTA: PoseNet → Face-API → COCO-SSD
+async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, poseNetEnabled = false) {
+  const targetRatio = outW / outH;
+  let detectionMethod = 'none';
   
   try {
-    const predictions = await cocoSsdModel.detect(canvas);
-    const people = predictions.filter(p => p.class === 'person');
-    
-    if(people.length === 0) return null;
-    
-    // Encontrar la persona más grande
-    let bestPerson = people[0];
-    if(people.length > 1) {
-      bestPerson = people.reduce((best, current) => {
-        const bestSize = best.bbox[2] * best.bbox[3];
-        const currentSize = current.bbox[2] * current.bbox[3];
-        return currentSize > bestSize ? current : best;
-      });
+    // ═══════════════════════════════════════════════════════════════════
+    // NIVEL 1: POSENET (Detecta hombros aunque rostro esté tapado)
+    // ═══════════════════════════════════════════════════════════════════
+    if(poseNetEnabled) {
+      const poseLoaded = await loadPoseNet();
+      if(poseLoaded && poseNetModel) {
+        try {
+          const pose = await poseNetModel.estimateSinglePose(canvas, {flipHorizontal: false});
+          
+          if(pose && pose.score > 0.25) {
+            // Buscar hombros - SON LA CLAVE cuando rostro está tapado
+            const leftShoulder = pose.keypoints.find(kp => kp.part === 'leftShoulder');
+            const rightShoulder = pose.keypoints.find(kp => kp.part === 'rightShoulder');
+            
+            if(leftShoulder?.score > 0.35 && rightShoulder?.score > 0.35) {
+              detectionMethod = 'posenet-shoulders';
+              console.log(`✓ PoseNet: hombros detectados (L:${leftShoulder.score.toFixed(2)} R:${rightShoulder.score.toFixed(2)})`);
+              
+              const shoulderY = (leftShoulder.position.y + rightShoulder.position.y) / 2;
+              const shoulderX = (leftShoulder.position.x + rightShoulder.position.x) / 2;
+              const shoulderWidth = Math.abs(rightShoulder.position.x - leftShoulder.position.x);
+              
+              // Calcular bbox desde hombros
+              const bodyWidth = shoulderWidth * 2.5; // Ancho típico del cuerpo
+              const bodyHeight = shoulderWidth * 3.2; // Alto típico desde hombros a pies
+              
+              let cropW = bodyWidth * 1.15;
+              let cropH = bodyHeight * 1.15;
+              
+              // Ajustar al ratio
+              if(cropW / cropH > targetRatio) {
+                cropH = cropW / targetRatio;
+              } else {
+                cropW = cropH * targetRatio;
+              }
+              
+              // V11.3: VALIDACIÓN ESTRICTA - SIEMPRE respetar outW/outH como mínimo absoluto
+              // Independientemente de adjustToTargetSize, NUNCA bajar del mínimo
+              if(cropW < outW || cropH < outH) {
+                const scale = Math.max(outW / cropW, outH / cropH);
+                cropW *= scale;
+                cropH *= scale;
+              }
+              
+              let cropX = shoulderX - cropW / 2;
+              let cropY = shoulderY;
+              
+              // Clamp
+              cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
+              cropY = Math.max(0, Math.min(cropY, canvas.height - cropH));
+              cropW = Math.min(cropW, canvas.width - cropX);
+              cropH = Math.min(cropH, canvas.height - cropY);
+              
+              return {
+                x: Math.round(cropX),
+                y: Math.round(cropY),
+                w: Math.round(cropW),
+                h: Math.round(cropH),
+                _method: detectionMethod,
+                _poseScore: pose.score.toFixed(2)
+              };
+            }
+          }
+        } catch(pe) {
+          console.warn("PoseNet detection failed:", pe);
+        }
+      }
     }
     
-    let [x, y, width, height] = bestPerson.bbox;
-    
-    // SIEMPRE omitir la cabeza (asumiendo que el 20% superior del cuerpo es la cabeza)
-    // Esto funciona incluso cuando la cara está tapada por un teléfono
-    const headHeight = height * 0.25; // 25% superior = cabeza + cuello
-    y = y + headHeight;
-    height = height - headHeight;
-    
-    // Si además se detectó la cara, ajustar más precisamente desde clavícula
+    // ═══════════════════════════════════════════════════════════════════
+    // NIVEL 2: FACE-API (Crop preciso desde clavícula)
+    // ═══════════════════════════════════════════════════════════════════
+    const faceLoaded = await loadFaceApi();
     if(faceLoaded) {
       try {
-        const faceDetections = await faceapi.detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions());
-        if(faceDetections && faceDetections.length > 0) {
-          // Encontrar el rostro más grande (probablemente el de esta persona)
-          const face = faceDetections.reduce((best, current) => {
+        const faces = await faceapi.detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions());
+        if(faces && faces.length > 0) {
+          detectionMethod = 'face-clavicle';
+          console.log(`✓ Face-API: rostro detectado`);
+          
+          const face = faces.reduce((best, current) => {
             const bestSize = best.box.width * best.box.height;
             const currentSize = current.box.width * current.box.height;
             return currentSize > bestSize ? current : best;
           });
           
-          // Ajustar el inicio del crop para empezar desde la clavícula (debajo de la cara)
-          const neckY = face.box.y + face.box.height + face.box.height * 0.5; // 50% debajo de la cara = clavícula
-          if(neckY > bestPerson.bbox[1] && neckY < bestPerson.bbox[1] + bestPerson.bbox[3]) {
-            // Usar la detección de cara si está disponible (más precisa)
-            const originalY = bestPerson.bbox[1];
-            y = neckY;
-            height = bestPerson.bbox[3] - (neckY - originalY);
+          // Crop desde clavícula (50% debajo del rostro)
+          const clavicleY = face.box.y + face.box.height * 1.5;
+          const faceCenter = face.box.x + face.box.width / 2;
+          
+          // Estimar dimensiones del cuerpo desde rostro
+          const estimatedWidth = face.box.width * 3.5;
+          const estimatedHeight = face.box.height * 6;
+          
+          let cropW = estimatedWidth * 1.1;
+          let cropH = estimatedHeight * 1.1;
+          
+          // Ajustar al ratio
+          if(cropW / cropH > targetRatio) {
+            cropH = cropW / targetRatio;
+          } else {
+            cropW = cropH * targetRatio;
           }
+          
+          // V11.3: VALIDACIÓN ESTRICTA - SIEMPRE respetar mínimo
+          if(cropW < outW || cropH < outH) {
+            const scale = Math.max(outW / cropW, outH / cropH);
+            cropW *= scale;
+            cropH *= scale;
+          }
+          
+          let cropX = faceCenter - cropW / 2;
+          let cropY = clavicleY;
+          
+          // Clamp
+          cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
+          cropY = Math.max(0, Math.min(cropY, canvas.height - cropH));
+          cropW = Math.min(cropW, canvas.width - cropX);
+          cropH = Math.min(cropH, canvas.height - cropY);
+          
+          return {
+            x: Math.round(cropX),
+            y: Math.round(cropY),
+            w: Math.round(cropW),
+            h: Math.round(cropH),
+            _method: detectionMethod
+          };
         }
-      } catch(e) {
-        // Si falla la detección de rostro, usar el 25% que ya calculamos arriba
+      } catch(fe) {
+        console.warn("Face detection failed:", fe);
       }
     }
     
-    const targetRatio = outW / outH;
+    // ═══════════════════════════════════════════════════════════════════
+    // NIVEL 3: COCO-SSD (Fallback conservador SIN rostro)
+    // ═══════════════════════════════════════════════════════════════════
+    const cocoLoaded = await loadCocoSsd();
+    if(!cocoLoaded) return null;
     
-    if(adjustToTargetSize) {
-      // MODO: Mantener tamaño mínimo (no bajar del objetivo, pero puede ser mayor)
-      // Calcular el crop óptimo para el cuerpo detectado
-      let cropW = width * 1.1; // 10% de margen alrededor del cuerpo
-      let cropH = height * 1.1;
-      
-      // Ajustar al ratio objetivo
-      const currentRatio = cropW / cropH;
-      if(currentRatio > targetRatio) {
-        // Crop es más ancho, ajustar altura
-        cropH = cropW / targetRatio;
-      } else {
-        // Crop es más alto, ajustar ancho
-        cropW = cropH * targetRatio;
-      }
-      
-      // CRÍTICO: No permitir que sea menor que el tamaño objetivo
-      if(cropW < outW || cropH < outH) {
-        const scale = Math.max(outW / cropW, outH / cropH);
-        cropW = cropW * scale;
-        cropH = cropH * scale;
-      }
-      
-      // Si es más grande que el canvas, escalar
-      if(cropW > canvas.width || cropH > canvas.height) {
-        const scale = Math.min(canvas.width / cropW, canvas.height / cropH);
-        cropW = cropW * scale;
-        cropH = cropH * scale;
-      }
-      
-      // Centrar horizontalmente en el cuerpo
-      let cropX = x + width / 2 - cropW / 2;
-      // Alinear verticalmente desde el cuello
-      let cropY = y;
-      
-      // Clamp dentro del canvas
-      cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
-      cropY = Math.max(0, Math.min(cropY, canvas.height - cropH));
-      cropW = Math.min(cropW, canvas.width - cropX);
-      cropH = Math.min(cropH, canvas.height - cropY);
-      
-      return { 
-        x: Math.round(cropX), 
-        y: Math.round(cropY), 
-        w: Math.round(cropW), 
-        h: Math.round(cropH) 
-      };
+    const predictions = await cocoSsdModel.detect(canvas);
+    const people = predictions.filter(p => p.class === 'person');
+    
+    if(people.length === 0) return null;
+    
+    // Encontrar persona más grande
+    const bestPerson = people.reduce((best, current) => {
+      const bestSize = best.bbox[2] * best.bbox[3];
+      const currentSize = current.bbox[2] * current.bbox[3];
+      return currentSize > bestSize ? current : best;
+    });
+    
+    detectionMethod = 'coco-conservative';
+    console.log(`⚠ COCO-SSD: sin rostro/hombros → modo conservador`);
+    
+    let [x, y, width, height] = bestPerson.bbox;
+    
+    // V11.1 CRÍTICO: Modo conservador sin forzar tamaño
+    // Quitar solo 12% superior (MUY conservador)
+    const headOffset = height * 0.12;
+    y = y + headOffset;
+    height = height - headOffset;
+    
+    // Margen moderado
+    let cropW = width * 1.25;
+    let cropH = height * 1.25;
+    
+    // Ajustar SOLO al ratio, NO al tamaño
+    if(cropW / cropH > targetRatio) {
+      cropH = cropW / targetRatio;
     } else {
-      // MODO: Crop automático (ajustado al cuerpo)
-      const margin = 0.1;
-      let cropW = width * (1 + margin * 2);
-      let cropH = height * (1 + margin * 2);
-      
-      if(cropW / cropH > targetRatio) {
-        cropH = cropW / targetRatio;
-      } else {
-        cropW = cropH * targetRatio;
-      }
-      
-      // Centrar en el cuerpo (sin cabeza)
-      let cropX = x + width / 2 - cropW / 2;
-      let cropY = y + height / 2 - cropH / 2;
-      
-      // Clamp dentro del canvas
-      cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
-      cropY = Math.max(0, Math.min(cropY, canvas.height - cropH));
-      cropW = Math.min(cropW, canvas.width - cropX);
-      cropH = Math.min(cropH, canvas.height - cropY);
-      
-      return { 
-        x: Math.round(cropX), 
-        y: Math.round(cropY), 
-        w: Math.round(cropW), 
-        h: Math.round(cropH) 
-      };
+      cropW = cropH * targetRatio;
     }
+    
+    // V11.3: VALIDACIÓN ESTRICTA - SIEMPRE respetar mínimo (incluso en modo conservador)
+    if(cropW < outW || cropH < outH) {
+      const scale = Math.max(outW / cropW, outH / cropH);
+      cropW *= scale;
+      cropH *= scale;
+    }
+    
+    let cropX = x + width / 2 - cropW / 2;
+    let cropY = y;
+    
+    // Clamp
+    cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
+    cropY = Math.max(0, Math.min(cropY, canvas.height - cropH));
+    cropW = Math.min(cropW, canvas.width - cropX);
+    cropH = Math.min(cropH, canvas.height - cropY);
+    
+    return {
+      x: Math.round(cropX),
+      y: Math.round(cropY),
+      w: Math.round(cropW),
+      h: Math.round(cropH),
+      _method: detectionMethod,
+      _conservative: true
+    };
+    
   } catch(e) {
-    console.warn("Body detection failed:", e);
+    console.error("Body detection failed:", e);
     return null;
   }
 }
@@ -852,9 +947,13 @@ function ImageCell({ file, isSelected, isMultiSel, settings, cellH, t,
     if(cr&&cr.w>2&&p.x>=cr.x&&p.x<=cr.x+cr.w&&p.y>=cr.y&&p.y<=cr.y+cr.h){
       onUndoPush(file.id); drag.current={mode:"move",startImg:p,cropOrig:{...cr},handleIdx:-1}; e.preventDefault(); return;
     }
-    if(p.x>=0&&p.x<=file.ec.width&&p.y>=0&&p.y<=file.ec.height){
-      onUndoPush(file.id); drag.current={mode:"new",startImg:p,cropOrig:null,handleIdx:-1};
-      onCropChange(file.id,{x:p.x,y:p.y,w:0,h:0}); e.preventDefault();
+    // V11.2: Solo crear nuevo crop si NO hay crop existente
+    // Si ya hay crop, solo se puede editar (mover o resize handles), no reemplazar con click
+    if(!cr || cr.w<=2){
+      if(p.x>=0&&p.x<=file.ec.width&&p.y>=0&&p.y<=file.ec.height){
+        onUndoPush(file.id); drag.current={mode:"new",startImg:p,cropOrig:null,handleIdx:-1};
+        onCropChange(file.id,{x:p.x,y:p.y,w:0,h:0}); e.preventDefault();
+      }
     }
   },[file,evToCanvas,evToImg,getT,onSelect,onCropChange,onUndoPush]);
 
@@ -1106,14 +1205,28 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     fontSize: 24
   });
   
-  // Estado para editor de texto interactivo (tipo Photoshop)
-  const [activeText, setActiveText] = useState(null); // {x, y, width, height, text, editing, dragging}
+  // V11.1: Sistema de bloques de texto ELIMINADO (no funcional, descartado)
   
   // Estado para color picker personalizado (evitar popup nativo)
   const [showColorPicker, setShowColorPicker] = useState({show: false, target: null}); // target: "eraser" | "annotate"
   
   // Estado para handles de color dial
   const [colorDialHandles, setColorDialHandles] = useState({eraser: 0, annotate: 0}); // 0-1 position
+  
+  // Estado para cursor visual de brocha
+  const [cursorPos, setCursorPos] = useState(null); // {x, y} en coordenadas canvas
+  
+  // Estado para paneles colapsables
+  const [panelCollapsed, setPanelCollapsed] = useState({
+    crop: false,
+    blur: false,
+    pixelate: false,
+    eraser: false,
+    annotate: false
+  });
+  
+  // V11: Estado para control de visibilidad de paneles de herramientas
+  const [toolPanelOpen, setToolPanelOpen] = useState(null); // "blur" | "pixelate" | "eraser" | "annotate" | null
 
   // All hot-path values live in refs — NEVER setState during drag/pan/draw
   const zoomRef    = useRef(1);
@@ -1154,7 +1267,7 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
   },[file.crop, drawNow]); // drawNow is stable ([] deps) → effectively just [file.crop]
 
   const st = useRef({mode:"none",isPan:false,panStart:null,panOrig:null,
-                     cropOrig:null,cropStart:null,moveStartImg:null,handleIdx:-1,blurPushed:false});
+                     cropOrig:null,cropStart:null,moveStartImg:null,handleIdx:-1});
 
   // ── Imperative draw — called directly, no React state ──────────────────
   const drawNow = useCallback(()=>{
@@ -1184,6 +1297,48 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     
     if(cr&&cr.w>2) drawCropShadow(ctx,cr,1,0,0,iW,iH);
     ctx.restore();
+    
+    // Cursor visual de brocha (con hardness y opacity)
+    if(cursorPos && (toolRef.current==='blur'||toolRef.current==='pixelate'||toolRef.current==='eraser'||toolRef.current==='annotate')){
+      const cfg = toolRef.current==='blur' ? blurCfgRef.current :
+                  toolRef.current==='eraser' ? eraserCfgRef.current :
+                  annotateCfgRef.current;
+      
+      const r = (cfg.size || 50) / 2;
+      const hardness = (cfg.hardness || 50) / 100;
+      const opacity = (cfg.opacity || 100) / 100;
+      
+      ctx.save();
+      
+      // Círculo exterior (tamaño total de la brocha)
+      ctx.strokeStyle = '#7c5cff';
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = opacity * 0.8;
+      ctx.beginPath();
+      ctx.arc(cursorPos.x, cursorPos.y, r * z, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Círculo interior (hardness)
+      if(hardness < 0.99){
+        ctx.globalAlpha = opacity * 0.5;
+        ctx.beginPath();
+        ctx.arc(cursorPos.x, cursorPos.y, r * hardness * z, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      
+      // Cruz central para precisión
+      ctx.globalAlpha = opacity * 0.6;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cursorPos.x - 5, cursorPos.y);
+      ctx.lineTo(cursorPos.x + 5, cursorPos.y);
+      ctx.moveTo(cursorPos.x, cursorPos.y - 5);
+      ctx.lineTo(cursorPos.x, cursorPos.y + 5);
+      ctx.stroke();
+      
+      ctx.restore();
+    }
+    
     ctx.font="500 11px Inter,sans-serif"; ctx.fillStyle="rgba(150,150,150,0.5)";
     const sc = cr&&cr.w>2 ? `   ✂ ${Math.round(cr.w)}×${Math.round(cr.h)}` : "";
     ctx.fillText(`${iW}×${iH}px   ${Math.round(z*100)}%${sc}`,12,H-12);
@@ -1510,28 +1665,16 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
       }
     }
     if(toolRef.current==="blur"||toolRef.current==="pixelate"||toolRef.current==="eraser"||toolRef.current==="annotate"){
-      if(!s.blurPushed){onUndoPush(file.id);s.blurPushed=true;}
+      // V11: SIEMPRE registrar operación en historial (cada trazo individual)
+      onUndoPush(file.id);
       s.mode=toolRef.current; const pd=getPointerData(e.clientX,e.clientY);
       if(pd){ 
         if(toolRef.current==="blur") doBlur(pd.img.x,pd.img.y); 
         else if(toolRef.current==="pixelate") doPixelate(pd.img.x,pd.img.y);
         else if(toolRef.current==="eraser") doEraser(pd.img.x,pd.img.y);
         else if(toolRef.current==="annotate") {
-          const cfg = annotateCfgRef.current;
-          if(cfg.mode === "text"){
-            // Modo texto: crear editor interactivo
-            setActiveText({
-              x: pd.px,  // Posición en canvas pixels
-              y: pd.py,
-              imgX: pd.img.x,  // Posición en imagen
-              imgY: pd.img.y,
-              text: "",
-              editing: true
-            });
-          } else {
-            // Modo draw: iniciar trazo
-            s.lastX=pd.img.x; s.lastY=pd.img.y;
-          }
+          // V11.1: Solo modo draw (texto eliminado)
+          s.lastX=pd.img.x; s.lastY=pd.img.y;
         }
       }
     }
@@ -1542,13 +1685,18 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     const ratio=getRatio();
     const iW=file.ec.width, iH=file.ec.height;
 
+    // Actualizar posición del cursor para todas las herramientas de brocha
+    if(toolRef.current==="blur"||toolRef.current==="pixelate"||toolRef.current==="eraser"||toolRef.current==="annotate"){
+      const cont=contRef.current;
+      if(cont){
+        const r=cont.getBoundingClientRect();
+        setCursorPos({x: e.clientX-r.left, y: e.clientY-r.top});
+      }
+    }
+
     if(s.isPan){
       const np=clampPan(s.panOrig.x+e.clientX-s.panStart.x, s.panOrig.y+e.clientY-s.panStart.y, zoomRef.current);
       panRef.current=np; draw();
-      if(toolRef.current==="blur"||toolRef.current==="pixelate"){
-        const cont=contRef.current, circle=blurCircleRef.current;
-        if(cont&&circle){const r=cont.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;const sz=blurCfgRef.current.size*zoomRef.current;circle.style.cssText=`display:block;left:${x-sz/2}px;top:${y-sz/2}px;width:${sz}px;height:${sz}px`;}
-      }
       return;
     }
 
@@ -1618,10 +1766,6 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
           // Crear gradiente radial que muestra el hardness
           const hardnessRadius = (cfg.hardness || 70) / 100;
           bgGradient = `radial-gradient(circle, ${cfg.color}${Math.round(cfg.opacity*2.55).toString(16).padStart(2,'0')} ${hardnessRadius*50}%, transparent ${hardnessRadius*100}%)`;
-        } else if(toolRef.current==="annotate" && cfg.mode==="text"){
-          sz = cfg.fontSize * 0.7; // Aproximación del tamaño de texto
-          borderColor = cfg.color;
-          bgGradient = `radial-gradient(circle, ${cfg.color}20 0%, transparent 70%)`;
         } else if(toolRef.current==="eraser"){
           sz = cfg.size;
           borderColor = "rgba(255,255,255,0.75)";
@@ -1649,12 +1793,15 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
   const commitCrop=()=>{
     const s=st.current;
     if(s.mode==="new"||s.mode==="move"||s.mode==="handle") onCropChange(file.id,cropRef.current);
-    s.mode="none"; s.isPan=false; s.blurPushed=false; s.handleIdx=-1;
+    s.mode="none"; s.isPan=false; s.handleIdx=-1;
     s.lastX=undefined; s.lastY=undefined; // Reset para annotate
     isDraggingRef.current = false;
   };
   const onMouseUp   =useCallback(()=>{ commitCrop(); },[file,onCropChange]);
-  const onMouseLeave=useCallback(()=>{ commitCrop(); if(blurCircleRef.current) blurCircleRef.current.style.display="none"; },[file,onCropChange]);
+  const onMouseLeave=useCallback(()=>{ 
+    commitCrop(); 
+    setCursorPos(null); 
+  },[file,onCropChange]);
 
   const onWheel=useCallback((e)=>{
     e.preventDefault();
@@ -1743,7 +1890,18 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
             {id:"eraser",tip:t?.blurTool ? "Borrador" : "Eraser"},
             {id:"annotate",tip:t?.blurTool ? "Anotar" : "Annotate"}
           ].map(tb=>(
-            <button key={tb.id} onClick={()=>setTool(tb.id)}
+            <button key={tb.id} 
+              onClick={()=>{
+                // V11.3: Clic izquierdo solo selecciona herramienta
+                setTool(tb.id);
+              }}
+              onContextMenu={(e)=>{
+                e.preventDefault();
+                // V11.3: Clic derecho toggle panel
+                if(tb.id==="blur"||tb.id==="pixelate"||tb.id==="eraser"||tb.id==="annotate"){
+                  setToolPanelOpen(toolPanelOpen===tb.id ? null : tb.id);
+                }
+              }}
               title={tb.tip}
               style={{width:34,height:34,border:"none",borderRadius:6,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .12s",
                 background:tool===tb.id?"rgba(124,92,255,0.18)":"transparent",
@@ -1753,8 +1911,10 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
           ))}
 
           {/* Flyout brush settings panel */}
-          {(tool==="blur"||tool==="pixelate")&&(
+          {(tool==="blur"||tool==="pixelate")&&toolPanelOpen===(tool)&&(
             <div style={{position:"absolute",left:44,top:0,width:200,background:"#1a1a1a",borderRight:"1px solid #242424",borderBottom:"1px solid #242424",padding:"12px 12px 8px",display:"flex",flexDirection:"column",gap:2,zIndex:30,boxShadow:"4px 0 16px rgba(0,0,0,0.3)"}}>
+              {/* V11: Botón de cierre */}
+              
               <div style={{fontSize:10,fontWeight:700,color:"#555",textTransform:"uppercase",letterSpacing:"1px",marginBottom:4}}>
                 {tool==="blur"?(t.secBlur):(t.pixelateTool)}
               </div>
@@ -1781,8 +1941,10 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
           )}
           
           {/* NUEVO: Panel de configuración ERASER */}
-          {tool==="eraser"&&(
+          {tool==="eraser"&&toolPanelOpen==="eraser"&&(
             <div style={{position:"absolute",left:44,top:0,width:240,background:"#1a1a1a",borderRight:"1px solid #242424",borderBottom:"1px solid #242424",padding:"12px 12px 8px",display:"flex",flexDirection:"column",gap:6,zIndex:30,boxShadow:"4px 0 16px rgba(0,0,0,0.3)"}}>
+              {/* V11: Botón de cierre */}
+              
               <div style={{fontSize:10,fontWeight:700,color:"#555",textTransform:"uppercase",letterSpacing:"1px",marginBottom:4}}>
                 {t?.blurTool ? "BORRADOR" : "ERASER"}
               </div>
@@ -1944,27 +2106,15 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
           )}
           
           {/* NUEVO: Panel de configuración ANNOTATE */}
-          {tool==="annotate"&&(
+          {tool==="annotate"&&toolPanelOpen==="annotate"&&(
             <div style={{position:"absolute",left:44,top:0,width:240,background:"#1a1a1a",borderRight:"1px solid #242424",borderBottom:"1px solid #242424",padding:"12px 12px 8px",display:"flex",flexDirection:"column",gap:6,zIndex:30,boxShadow:"4px 0 16px rgba(0,0,0,0.3)"}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#555",textTransform:"uppercase",letterSpacing:"1px",marginBottom:4}}>
-                {t?.blurTool ? "ANOTAR" : "ANNOTATE"}
+              {/* V11: Botón de cierre */}
+              
+              <div style={{fontSize:10,fontWeight:700,color:"#555",textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>
+                {t?.blurTool ? "ANOTAR (DIBUJO)" : "ANNOTATE (DRAW)"}
               </div>
               
-              {/* Modo: Dibujar / Texto */}
-              <div style={{display:"flex",gap:4,marginBottom:6}}>
-                {[
-                  {id:"draw",label:t?.blurTool?"Dibujar":"Draw"},
-                  {id:"text",label:t?.blurTool?"Texto":"Text"}
-                ].map(m=>(
-                  <button key={m.id} onClick={()=>setAnnotateCfg(c=>({...c,mode:m.id}))}
-                    style={{flex:1,fontSize:9,fontWeight:annotateCfg.mode===m.id?600:400,padding:"5px 8px",borderRadius:4,border:"1px solid",cursor:"pointer",
-                      background:annotateCfg.mode===m.id?"rgba(124,92,255,0.2)":"transparent",
-                      borderColor:annotateCfg.mode===m.id?"#7c5cff":"#2a2a2a",
-                      color:annotateCfg.mode===m.id?"#a78bfa":"#666"}}>
-                    {m.label}
-                  </button>
-                ))}
-              </div>
+              {/* V11.1: Solo modo draw, texto eliminado */}
               
               <label style={{fontSize:10,color:"#666",marginBottom:2}}>
                 {t?.blurTool ? "Color" : "Color"}
@@ -2148,133 +2298,6 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
               : "transparent"
           }}/>
           
-          {/* Editor de texto interactivo (modo Annotate > Text) */}
-          {/* Editor de texto tipo Photoshop - Editable en vivo */}
-          {activeText && activeText.editing && (
-            <div
-              style={{
-                position: "absolute",
-                left: activeText.x,
-                top: activeText.y,
-                minWidth: 100,
-                maxWidth: 600,
-                cursor: "move",
-                zIndex: 1000,
-                userSelect: "none"
-              }}
-              onMouseDown={e => {
-                if(e.target.tagName !== "DIV" || !e.target.contentEditable) {
-                  // Drag del container
-                  e.stopPropagation();
-                  const startX = e.clientX;
-                  const startY = e.clientY;
-                  const startLeft = activeText.x;
-                  const startTop = activeText.y;
-                  
-                  const onMove = (me) => {
-                    const dx = me.clientX - startX;
-                    const dy = me.clientY - startY;
-                    setActiveText({...activeText, x: startLeft + dx, y: startTop + dy});
-                  };
-                  
-                  const onUp = () => {
-                    document.removeEventListener("mousemove", onMove);
-                    document.removeEventListener("mouseup", onUp);
-                  };
-                  
-                  document.addEventListener("mousemove", onMove);
-                  document.addEventListener("mouseup", onUp);
-                }
-              }}
-            >
-              {/* Barra superior con botones */}
-              <div style={{
-                display: "flex",
-                gap: 4,
-                marginBottom: 4,
-                background: "rgba(26,26,26,0.95)",
-                padding: "4px 6px",
-                borderRadius: "4px 4px 0 0",
-                border: `1px solid ${annotateCfg.color}`
-              }}>
-                <button
-                  onClick={() => {
-                    const textEl = document.getElementById("liveTextEditor");
-                    const text = textEl ? textEl.value : activeText.text;
-                    if(text && text.trim()){
-                      renderTextToCanvas(text, activeText.imgX, activeText.imgY);
-                    }
-                    setActiveText(null);
-                  }}
-                  style={{flex:1,padding:"3px 8px",background:"#7c5cff",color:"#fff",border:"none",borderRadius:3,cursor:"pointer",fontSize:10,fontWeight:600}}
-                >
-                  ✓ {t?.blurTool ? "Aplicar" : "Apply"}
-                </button>
-                <button
-                  onClick={() => setActiveText(null)}
-                  style={{padding:"3px 8px",background:"#444",color:"#ccc",border:"none",borderRadius:3,cursor:"pointer",fontSize:10}}
-                >
-                  ✕
-                </button>
-              </div>
-              
-              {/* Editor de texto en vivo */}
-              <textarea
-                id="liveTextEditor"
-                autoFocus
-                value={activeText.text === (t?.blurTool ? "Escribe aquí..." : "Type here...") ? "" : activeText.text}
-                onChange={e => setActiveText({...activeText, text: e.target.value})}
-                onFocus={e => {
-                  if(e.target.value === "" || e.target.value === (t?.blurTool ? "Escribe aquí..." : "Type here...")){
-                    setActiveText({...activeText, text: ""});
-                  }
-                }}
-                onKeyDown={e => {
-                  if(e.key === "Escape"){
-                    setActiveText(null);
-                  } else if(e.ctrlKey && e.key === "Enter"){
-                    e.preventDefault();
-                    const text = e.target.value;
-                    if(text && text.trim()){
-                      renderTextToCanvas(text, activeText.imgX, activeText.imgY);
-                    }
-                    setActiveText(null);
-                  }
-                }}
-                placeholder={t?.blurTool ? "Escribe aquí..." : "Type here..."}
-                style={{
-                  outline: "none",
-                  padding: "8px 12px",
-                  minWidth: 200,
-                  minHeight: 60,
-                  background: "rgba(0,0,0,0.2)",
-                  border: `2px solid ${annotateCfg.color}`,
-                  borderRadius: "0 0 4px 4px",
-                  color: annotateCfg.color,
-                  fontFamily: annotateCfg.font,
-                  fontSize: annotateCfg.fontSize,
-                  opacity: annotateCfg.opacity / 100,
-                  whiteSpace: "pre-wrap",
-                  cursor: "text",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                  resize: "both"
-                }}
-              />
-              
-              {/* Hint */}
-              <div style={{
-                marginTop: 4,
-                fontSize: 9,
-                color: "#666",
-                textAlign: "center",
-                background: "rgba(26,26,26,0.8)",
-                padding: "2px 6px",
-                borderRadius: 3
-              }}>
-                {t?.blurTool ? "Arrastra para mover • Click ✓ para aplicar" : "Drag to move • Click ✓ to apply"}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -2389,6 +2412,7 @@ function ZIRME() {
     return {w:1024, h:1024, lockAspect:true, sizeMode:"fixed", focalAuto:true, focalPoint:{ax:0.5,ay:0.5}, 
             detectionMode:"auto", // "auto" | "manual" | "face" | "body"
             adjustToTargetSize:true, // Si true, respeta el tamaño objetivo en detección ML
+            poseNetEnabled:false, // V11.1: PoseNet refinamiento (solo para modo body)
             fmt, quality:92, prefix:"", suffix:"",
             renameMode:"keep", renameBase:"image", renameNum:true, renameStart:1,
             borderW:0, borderColor:"#000000",
@@ -2445,8 +2469,10 @@ function ZIRME() {
   const sel      = files.find(f=>f.id===selId)??null;
   const editFile = files.find(f=>f.id===editId)??null;
   const previewFile = files.find(f=>f.id===previewId)??null;
-  const canUndo  = (sel?.history||[]).length>0;
-  const canRedo  = (sel?.future||[]).length>0;
+  // V11.3: Usar editFile si está en modo edición, sino sel
+  const activeFile = editFile || sel;
+  const canUndo  = (activeFile?.history||[]).length>0;
+  const canRedo  = (activeFile?.future||[]).length>0;
 
   // Global keyboard shortcuts
   useEffect(()=>{
@@ -2477,8 +2503,12 @@ function ZIRME() {
   },[]);
 
   const undoSel = useCallback(()=>{
+    // V11.3: Usar editId si está activo, sino selId
+    const targetId = editId || selId;
+    if(!targetId) return;
+    
     setFiles(prev=>prev.map(f=>{
-      if(f.id!==selId) return f;
+      if(f.id!==targetId) return f;
       const hist=f.history||[]; if(!hist.length){showToast(t.toastNoUndo);return f;}
       const last=hist[hist.length-1];
       const futureEntry={snap:snapCanvas(f.ec),crop:f.crop};
@@ -2487,11 +2517,15 @@ function ZIRME() {
       setTick(n=>n+1);
       return{...f,history:hist.slice(0,-1),future:[futureEntry,...(f.future||[])].slice(0,30),crop:last.crop};
     }));
-  },[selId,t]);
+  },[editId,selId,t]);
 
   const redoSel = useCallback(()=>{
+    // V11.3: Usar editId si está activo, sino selId
+    const targetId = editId || selId;
+    if(!targetId) return;
+    
     setFiles(prev=>prev.map(f=>{
-      if(f.id!==selId) return f;
+      if(f.id!==targetId) return f;
       const fut=f.future||[]; if(!fut.length){showToast(t.toastNoRedo);return f;}
       const next=fut[0];
       const histEntry={snap:snapCanvas(f.ec),crop:f.crop};
@@ -2609,9 +2643,38 @@ function ZIRME() {
   // Unified focal-point crop — uses smartcrop when focalAuto is ON, anchor-based otherwise.
   // Processes sequentially to avoid memory pressure on large galleries.
   const applyFocalAll = useCallback(async()=>{
-    const{w:oW,h:oH,focalAuto,focalPoint,detectionMode,adjustToTargetSize}=settingsRef.current;
+    const{w:oW,h:oH,focalAuto,focalPoint,detectionMode,adjustToTargetSize,poseNetEnabled}=settingsRef.current;
     
-    // Leer de refs para obtener valores actuales en el momento de la ejecución
+    // V11.3 CRÍTICO: Si modo edición activo, aplicar SOLO a imagen en edición
+    const currentEditId = editIdRef.current;
+    if(currentEditId) {
+      // MODO EDICIÓN: Solo procesar imagen activa
+      const f = filesRef.current.find(ff => ff.id === currentEditId);
+      if(!f) return;
+      
+      setSmartBatch({running:true,done:0,total:1});
+      
+      let nc = null;
+      if(detectionMode === "face"){
+        nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
+      } else if(detectionMode === "body"){
+        nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
+      } else if(focalAuto && detectionMode === "auto"){
+        nc = await runSmartCrop(f.ec, oW, oH);
+      }
+      
+      if(!nc||nc.w<2||nc.h<2){
+        const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+        nc=focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay);
+      }
+      
+      setFiles(prev => prev.map(ff => ff.id === currentEditId ? {...ff, crop: {...nc, auto:true}} : ff));
+      setSmartBatch({running:false,done:0,total:0});
+      showToast(lang==="es"?"✦ Aplicado a imagen en edición":"✦ Applied to editing image");
+      return;
+    }
+    
+    // MODO NORMAL: Leer de refs para obtener valores actuales
     const currentSelId = selIdRef.current;
     const currentMultiSel = multiSelRef.current;
     
@@ -2652,7 +2715,7 @@ function ZIRME() {
           if(detectionMode === "face"){
             nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
           } else if(detectionMode === "body"){
-            nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize);
+            nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
           } else if(focalAuto && detectionMode === "auto"){
             nc = await runSmartCrop(f.ec, oW, oH);
           }
@@ -2693,14 +2756,14 @@ function ZIRME() {
   const applySingleFocal = useCallback(async(fileId)=>{
     const f=filesRef.current.find(ff=>ff.id===fileId);
     if(!f) return;
-    const{w:oW,h:oH,focalAuto,focalPoint,detectionMode,adjustToTargetSize}=settingsRef.current;
+    const{w:oW,h:oH,focalAuto,focalPoint,detectionMode,adjustToTargetSize,poseNetEnabled}=settingsRef.current;
     let nc=null;
     
     // Usar detección ML según el modo
     if(detectionMode === "face"){
       nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
     } else if(detectionMode === "body"){
-      nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize);
+      nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
     } else if(focalAuto && detectionMode === "auto"){
       nc = await runSmartCrop(f.ec, oW, oH);
     }
@@ -3308,7 +3371,7 @@ function ZIRME() {
                         setSettings(s=>({...s,detectionMode:mode,focalAuto:mode!=="manual"}));
                         
                         // Ejecutar INMEDIATAMENTE con valores capturados
-                        const{w:oW,h:oH,focalPoint,adjustToTargetSize}=currentSettings;
+                        const{w:oW,h:oH,focalPoint,adjustToTargetSize,poseNetEnabled}=currentSettings;
                         
                         // Determinar targets
                         let targets;
@@ -3334,7 +3397,7 @@ function ZIRME() {
                           if(currentMode === "face"){
                             nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
                           } else if(currentMode === "body"){
-                            nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize);
+                            nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
                           } else if(currentFocalAuto && currentMode === "auto"){
                             nc = await runSmartCrop(f.ec, oW, oH);
                           }
@@ -3379,6 +3442,22 @@ function ZIRME() {
                       borderColor:settings.adjustToTargetSize?"#7c5cff":"#2e2e2e",
                       color:settings.adjustToTargetSize?"#fff":"#555"}}>
                     {settings.adjustToTargetSize?"ON":"OFF"}
+                  </button>
+                </div>
+              )}
+
+              {/* V11.1: Toggle PoseNet (solo para modo cuerpo) */}
+              {settings.detectionMode==="body"&&(
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,padding:"8px",background:"#1a1a1a",borderRadius:4}}>
+                  <label className="lbl" style={{marginBottom:0,fontSize:10}}>
+                    {lang==="es"?"PoseNet (refinamiento)":"PoseNet (refinement)"}
+                  </label>
+                  <button onClick={()=>setSettings(s=>({...s,poseNetEnabled:!s.poseNetEnabled}))}
+                    style={{fontFamily:"Inter,sans-serif",fontSize:9,fontWeight:600,border:"1px solid",borderRadius:3,padding:"2px 8px",cursor:"pointer",transition:"all .12s",
+                      background:settings.poseNetEnabled?"#7c5cff":"transparent",
+                      borderColor:settings.poseNetEnabled?"#7c5cff":"#2e2e2e",
+                      color:settings.poseNetEnabled?"#fff":"#555"}}>
+                    {settings.poseNetEnabled?"ON":"OFF"}
                   </button>
                 </div>
               )}
@@ -3771,7 +3850,7 @@ function ZIRME() {
                 setSettings(s=>({...s,detectionMode:currentMode,focalAuto:true}));
                 
                 // Ejecutar INMEDIATAMENTE con valores capturados
-                const{w:oW,h:oH,focalPoint,adjustToTargetSize}=currentSettings;
+                const{w:oW,h:oH,focalPoint,adjustToTargetSize,poseNetEnabled}=currentSettings;
                 
                 // Determinar targets
                 let targets;
@@ -3797,7 +3876,7 @@ function ZIRME() {
                   if(currentMode === "face"){
                     nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
                   } else if(currentMode === "body"){
-                    nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize);
+                    nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
                   }
                   
                   if(!nc||nc.w<2||nc.h<2){
