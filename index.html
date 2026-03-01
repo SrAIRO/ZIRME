@@ -1804,10 +1804,11 @@ function ImageCell({ file, isSelected, isMultiSel, settings, cellH, t,
     <div className={cls}
       draggable onDragStart={()=>onDragStart(file.id)}
       onDragEnter={()=>onDragEnter(file.id)} onDragEnd={onDragEnd}
-      onDragOver={e=>e.preventDefault()}>
+      onDragOver={e=>e.preventDefault()}
+      onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
       <canvas ref={canvasRef} style={{display:"block",width:"100%"}}
-        onMouseDown={onMouseDown} onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp} onMouseLeave={onMouseUp} />
+        draggable={false} onDragStart={e=>e.preventDefault()}
+        onMouseDown={onMouseDown} />
       
       {/* Checkbox de deselección - visible si está seleccionada o en multi-sel */}
       {(isSelected||isMultiSel)&&(
@@ -2012,8 +2013,8 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
   // Estado para handles de color dial
   const [colorDialHandles, setColorDialHandles] = useState({eraser: 0, annotate: 0}); // 0-1 position
   
-  // Estado para cursor visual de brocha
-  const [cursorPos, setCursorPos] = useState(null); // {x, y} en coordenadas canvas
+  // Estado para cursor visual de brocha (ref para evitar re-renders en cada mousemove)
+  const cursorPosRef = useRef(null); // {x, y} en coordenadas canvas
   
   // Estado para paneles colapsables
   const [panelCollapsed, setPanelCollapsed] = useState({
@@ -2117,43 +2118,44 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     ctx.restore();
     
     // Cursor visual de brocha (con hardness y opacity)
-    if(cursorPos && (toolRef.current==='blur'||toolRef.current==='pixelate'||toolRef.current==='eraser'||toolRef.current==='annotate')){
+    const _cp = cursorPosRef.current;
+    if(_cp && (toolRef.current==='blur'||toolRef.current==='pixelate'||toolRef.current==='eraser'||toolRef.current==='annotate')){
       const cfg = toolRef.current==='blur' ? blurCfgRef.current :
                   toolRef.current==='eraser' ? eraserCfgRef.current :
                   annotateCfgRef.current;
-      
+
       const r = (cfg.size || 50) / 2;
       const hardness = (cfg.hardness || 50) / 100;
       const opacity = (cfg.opacity || 100) / 100;
-      
+
       ctx.save();
-      
+
       // Círculo exterior (tamaño total de la brocha)
       ctx.strokeStyle = '#7c5cff';
       ctx.lineWidth = 2;
       ctx.globalAlpha = opacity * 0.8;
       ctx.beginPath();
-      ctx.arc(cursorPos.x, cursorPos.y, r * z, 0, Math.PI * 2);
+      ctx.arc(_cp.x, _cp.y, r * z, 0, Math.PI * 2);
       ctx.stroke();
-      
+
       // Círculo interior (hardness)
       if(hardness < 0.99){
         ctx.globalAlpha = opacity * 0.5;
         ctx.beginPath();
-        ctx.arc(cursorPos.x, cursorPos.y, r * hardness * z, 0, Math.PI * 2);
+        ctx.arc(_cp.x, _cp.y, r * hardness * z, 0, Math.PI * 2);
         ctx.stroke();
       }
-      
+
       // Cruz central para precisión
       ctx.globalAlpha = opacity * 0.6;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(cursorPos.x - 5, cursorPos.y);
-      ctx.lineTo(cursorPos.x + 5, cursorPos.y);
-      ctx.moveTo(cursorPos.x, cursorPos.y - 5);
-      ctx.lineTo(cursorPos.x, cursorPos.y + 5);
+      ctx.moveTo(_cp.x - 5, _cp.y);
+      ctx.lineTo(_cp.x + 5, _cp.y);
+      ctx.moveTo(_cp.x, _cp.y - 5);
+      ctx.lineTo(_cp.x, _cp.y + 5);
       ctx.stroke();
-      
+
       ctx.restore();
     }
     
@@ -2512,7 +2514,7 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
       const cont=contRef.current;
       if(cont){
         const r=cont.getBoundingClientRect();
-        setCursorPos({x: e.clientX-r.left, y: e.clientY-r.top});
+        cursorPosRef.current = {x: e.clientX-r.left, y: e.clientY-r.top};
       }
     }
 
@@ -2620,9 +2622,9 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     isDraggingRef.current = false;
   };
   const onMouseUp   =useCallback(()=>{ commitCrop(); },[file,onCropChange]);
-  const onMouseLeave=useCallback(()=>{ 
-    commitCrop(); 
-    setCursorPos(null); 
+  const onMouseLeave=useCallback(()=>{
+    commitCrop();
+    cursorPosRef.current = null;
   },[file,onCropChange]);
 
   const onWheel=useCallback((e)=>{
@@ -3887,9 +3889,12 @@ function ZIRME() {
     if(!files.length) return; setZipping(true); setZipPct(0); setZipProgress(0);
     try{
       const zip=new JSZip(),{fmt}=settingsRef.current,ext=fmt==="jpeg"?"jpg":fmt,cnt={};
-      const total=filesRef.current.length;
+      // Si hay imágenes multi-seleccionadas, exportar solo esas; si no, exportar todas
+      const sel=multiSelRef.current;
+      const filesToExport=sel.size>0?filesRef.current.filter(f=>sel.has(f.id)):filesRef.current;
+      const total=filesToExport.length;
       for(let i=0;i<total;i++){
-        const f=filesRef.current[i];
+        const f=filesToExport[i];
         const{out,mime,quality,filename}=renderFile(f,i);
         const blob=await new Promise(r=>out.toBlob(r,mime,quality/100));
         cnt[filename]=(cnt[filename]||0)+1;
@@ -3904,7 +3909,7 @@ function ZIRME() {
       const a=document.createElement("a"); a.href=URL.createObjectURL(zb); a.download="zirme_export.zip"; a.click();
       setTimeout(()=>URL.revokeObjectURL(a.href),8000);
       setZipProgress(1); setTimeout(()=>setZipProgress(0),600);
-      showToast(t.toastZipReady(filesRef.current.length));
+      showToast(t.toastZipReady(total));
     }catch(err){showToast(t.toastZipErr);setZipProgress(0);}
     setZipping(false); setZipPct(0);
   },[files.length,renderFile,t]);
@@ -4227,7 +4232,8 @@ function ZIRME() {
               {settings.sizeMode!=="autoW"&&<>
                 <label className="lbl">{t.widthLbl}</label>
                 <input type="number" min={1} value={settings.w} onChange={e=>{
-                  const newW = +e.target.value;
+                  const newW = parseInt(e.target.value, 10);
+                  if(!newW || newW < 1) return;
                   if(settings.lockAspect && settings.sizeMode==="fixed"){
                     const ratio = settings.w / settings.h;
                     setSettings(s=>({...s, w:newW, h:Math.round(newW/ratio)}));
@@ -4241,7 +4247,8 @@ function ZIRME() {
               {settings.sizeMode!=="autoH"&&<>
                 <label className="lbl">{t.heightLbl}</label>
                 <input type="number" min={1} value={settings.h} onChange={e=>{
-                  const newH = +e.target.value;
+                  const newH = parseInt(e.target.value, 10);
+                  if(!newH || newH < 1) return;
                   if(settings.lockAspect && settings.sizeMode==="fixed"){
                     const ratio = settings.w / settings.h;
                     setSettings(s=>({...s, h:newH, w:Math.round(newH*ratio)}));
