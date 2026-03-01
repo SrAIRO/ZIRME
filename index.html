@@ -1066,7 +1066,7 @@ const ANNOUNCEMENT = {
   },
   body: {
     en:"The interface is now fully localized in English, Spanish, French, German, Portuguese, Italian, Chinese, Japanese and Russian. Use the language selector in the top bar to switch.",
-    es:"La interfaz ahora está completamente disponible en inglés, español, francés, alemán, portugués, italiano, chino, japonés y ruso. Usa el selector de idioma en la barra superior para cambiar.",
+    es:"La interfaz ahora está completamente localizada en inglés, español, francés, alemán, portugués, italiano, chino, japonés y ruso. Usa el selector de idioma en la barra superior para cambiar.",
     fr:"L'interface est maintenant entièrement localisée en anglais, espagnol, français, allemand, portugais, italien, chinois, japonais et russe. Utilisez le sélecteur de langue dans la barre supérieure.",
     de:"Die Benutzeroberfläche ist jetzt vollständig auf Englisch, Spanisch, Französisch, Deutsch, Portugiesisch, Italienisch, Chinesisch, Japanisch und Russisch lokalisiert.",
     pt:"A interface agora está completamente localizada em inglês, espanhol, francês, alemão, português, italiano, chinês, japonês e russo. Use o seletor de idioma na barra superior.",
@@ -3274,14 +3274,6 @@ function ZIRME() {
     try{ localStorage.setItem("zirme-ann-"+ANNOUNCEMENT.id,"1"); }catch(e){}
     setShowAnnouncement(false);
   },[]);
-  // Display values for dimension inputs (decoupled from settings to allow free editing)
-  const [wInput, setWInput] = useState(String(settings.w));
-  const [hInput, setHInput] = useState(String(settings.h));
-  const dimEditingRef = useRef(null); // "w" | "h" | null — which field is focused
-  // Sync display when settings.w/h change from other sources (e.g. aspect ratio lock)
-  useEffect(()=>{ if(dimEditingRef.current!=="w") setWInput(String(settings.w)); },[settings.w]);
-  useEffect(()=>{ if(dimEditingRef.current!=="h") setHInput(String(settings.h)); },[settings.h]);
-
   const [blurCfg,  setBlurCfg] = useState({size:60,strength:12,hardness:30,opacity:85,pixelSize:8});
   const [zipping,  setZipping] = useState(false);
   const [zipPct,   setZipPct]  = useState(0);
@@ -4239,51 +4231,31 @@ function ZIRME() {
               {/* Ancho */}
               {settings.sizeMode!=="autoW"&&<>
                 <label className="lbl">{t.widthLbl}</label>
-                <input type="number" min={1}
-                  value={wInput}
-                  style={{marginBottom:8, color: parseInt(wInput,10)>=1 ? "" : "#666"}}
-                  onFocus={()=>{ dimEditingRef.current="w"; }}
-                  onBlur={()=>{
-                    dimEditingRef.current=null;
-                    const v=parseInt(wInput,10);
-                    if(!v||v<1) setWInput(String(settings.w)); // revert if invalid
-                  }}
-                  onChange={e=>{
-                    setWInput(e.target.value);
-                    const newW=parseInt(e.target.value,10);
-                    if(!newW||newW<1) return;
-                    if(settings.lockAspect&&settings.sizeMode==="fixed"){
-                      const ratio=settings.w/settings.h;
-                      setSettings(s=>({...s,w:newW,h:Math.round(newW/ratio)}));
-                    } else {
-                      setSettings(s=>({...s,w:newW}));
-                    }
-                  }}/>
+                <input type="number" min={1} value={settings.w} onChange={e=>{
+                  const newW = parseInt(e.target.value, 10);
+                  if(!newW || newW < 1) return;
+                  if(settings.lockAspect && settings.sizeMode==="fixed"){
+                    const ratio = settings.w / settings.h;
+                    setSettings(s=>({...s, w:newW, h:Math.round(newW/ratio)}));
+                  } else {
+                    setSettings(s=>({...s, w:newW}));
+                  }
+                }} style={{marginBottom:8}}/>
               </>}
 
               {/* Alto */}
               {settings.sizeMode!=="autoH"&&<>
                 <label className="lbl">{t.heightLbl}</label>
-                <input type="number" min={1}
-                  value={hInput}
-                  style={{marginBottom:8, color: parseInt(hInput,10)>=1 ? "" : "#666"}}
-                  onFocus={()=>{ dimEditingRef.current="h"; }}
-                  onBlur={()=>{
-                    dimEditingRef.current=null;
-                    const v=parseInt(hInput,10);
-                    if(!v||v<1) setHInput(String(settings.h)); // revert if invalid
-                  }}
-                  onChange={e=>{
-                    setHInput(e.target.value);
-                    const newH=parseInt(e.target.value,10);
-                    if(!newH||newH<1) return;
-                    if(settings.lockAspect&&settings.sizeMode==="fixed"){
-                      const ratio=settings.w/settings.h;
-                      setSettings(s=>({...s,h:newH,w:Math.round(newH*ratio)}));
-                    } else {
-                      setSettings(s=>({...s,h:newH}));
-                    }
-                  }}/>
+                <input type="number" min={1} value={settings.h} onChange={e=>{
+                  const newH = parseInt(e.target.value, 10);
+                  if(!newH || newH < 1) return;
+                  if(settings.lockAspect && settings.sizeMode==="fixed"){
+                    const ratio = settings.w / settings.h;
+                    setSettings(s=>({...s, h:newH, w:Math.round(newH*ratio)}));
+                  } else {
+                    setSettings(s=>({...s, h:newH}));
+                  }
+                }} style={{marginBottom:8}}/>
               </>}
 
               {settings.sizeMode==="fixed"&&<div style={{fontSize:10,color:"#555",marginBottom:4}}>{t.ratioLbl}: {oW/dv}:{oH/dv}</div>}
@@ -4725,7 +4697,7 @@ function ZIRME() {
               <span className="sec-title">{t.downloadLabel}</span>
               <div style={{display:"flex",gap:8}}>
                 <div style={{flex:1}}>{mBtn(t.saveCurrent,exportCurrent,!sel,PURPLE)}</div>
-                <div style={{flex:1}}>{mBtn(zipping?`${t.zipGenerating} ${zipPct}%`:t.zipBtn(multiSel.size>0?multiSel.size:files.length),exportZip,!files.length||zipping,"#4f46e5")}</div>
+                <div style={{flex:1}}>{mBtn(zipping?`${t.zipGenerating} ${zipPct}%`:t.zipBtn(files.length),exportZip,!files.length||zipping,"#4f46e5")}</div>
               </div>
               {zipping&&<div style={{marginTop:8,height:4,background:"#2a2a2a",borderRadius:2,overflow:"hidden"}}>
                 <div style={{height:"100%",background:"#7c5cff",width:zipPct+"%",transition:"width .2s",borderRadius:2}}/>
