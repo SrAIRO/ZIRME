@@ -15,24 +15,49 @@
   
   <!-- ML Libraries se cargan dinámicamente cuando el usuario las necesita -->
   <style>
+    /* V11.5: CSS Variables */
+    :root {
+      --bg-primary: #181818;
+      --bg-secondary: #1a1a1a;
+      --bg-tertiary: #1e1e1e;
+      --bg-input: #222;
+      --border-light: #2a2a2a;
+      --border-medium: #282828;
+      --border-dark: #303030;
+      --track: #2e2e2e;
+      --purple: #7c5cff;
+      --purple-light: #a78bfa;
+      --purple-hover: #9b80ff;
+      --purple-dim: rgba(124,92,255,0.18);
+      --text-primary: #d0d0d0;
+      --text-secondary: #aaa;
+      --text-tertiary: #888;
+      --text-dim: #666;
+      --text-disabled: #333;
+      --z-overlay: 100;
+      --z-modal: 9900;
+      --z-toast: 9999;
+      --header-height: 50px;
+      --sidebar-width: 360px;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body, #root { height: 100%; width: 100%; overflow: hidden; background: #181818; }
-    body { font-family: 'Inter', sans-serif; color: #d0d0d0; }
+    html, body, #root { height: 100%; width: 100%; overflow: hidden; background: var(--bg-primary); }
+    body { font-family: 'Inter', sans-serif; color: var(--text-primary); }
 
     input[type=range] { -webkit-appearance: none; appearance: none; height: 3px; border-radius: 2px; background: #2e2e2e; outline: none; cursor: pointer; width: 100%; }
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: #7c5cff; cursor: pointer; box-shadow: 0 0 0 2px rgba(124,92,255,0.25); margin-top: -5px; }
     input[type=number] { background: #222; border: 1px solid #303030; border-radius: 5px; color: #d0d0d0; font-family: Inter,sans-serif; font-size: 12px; padding: 6px 8px; outline: none; width: 100%; margin-bottom: 8px; }
     input[type=number]::-webkit-inner-spin-button,
-    input[type=number]::-webkit-outer-spin-button { 
+    input[type=number]::-webkit-outer-spin-button {
       opacity: 1;
       cursor: pointer;
-      background: #2a2a2a;
-      border-left: 1px solid #383838;
+      background: rgba(124,92,255,0.08);
+      border-left: 1px solid rgba(124,92,255,0.25);
       margin-left: 4px;
     }
     input[type=number]::-webkit-inner-spin-button:hover,
     input[type=number]::-webkit-outer-spin-button:hover {
-      background: #333;
+      background: rgba(124,92,255,0.22);
     }
     input[type=text] { background: #222; border: 1px solid #303030; border-radius: 5px; color: #d0d0d0; font-family: Inter,sans-serif; font-size: 12px; padding: 6px 8px; outline: none; width: 100%; margin-bottom: 8px; }
     input[type=color] { -webkit-appearance: none; appearance: none; border: none; }
@@ -88,8 +113,7 @@
     /* Cell */
     .cell-wrap { position: relative; background: #202020; border-radius: 8px; overflow: hidden; border: 2px solid #282828; transition: border-color .15s; cursor: crosshair; break-inside: avoid; }
     .cell-wrap:hover { border-color: #383838; }
-    .cell-wrap.selected { border-color: #7c5cff; box-shadow: 0 0 0 1px #7c5cff; }
-    .cell-wrap.multi-sel { border-color: #a78bfa; }
+    .cell-wrap.selected, .cell-wrap.multi-sel { border-color: #7c5cff; box-shadow: 0 0 0 1px #7c5cff; }
     .cell-wrap.drag-over { border-color: #7c5cff; opacity: 0.6; }
     .cell-wrap .hover-btns { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; pointer-events: none; z-index: 2; }
     .cell-wrap:hover .hover-btns { opacity: 1; pointer-events: all; }
@@ -211,24 +235,66 @@ const STRINGS = {
     helpBtn:"Help", secHowTo:"How to use", secShortcuts:"Shortcuts", secAbout:"About ZIRME",
     aboutText:"ZIRME is a browser-based image editing tool designed to crop, resize, and prepare batches of images quickly and accurately. It started as a personal project to solve a real need: processing multiple images with an efficient workflow, without relying on heavy software or online services that compromise privacy.\n\nAll processing happens locally in your browser. No image is ever uploaded to any server. You can also clone the repository and run it locally on your own machine. ZIRME features smart crop with focal point detection (powered by smartcrop.js), blur and pixelate brushes, batch renaming, multi-format export, and a full undo/redo system. It's open source and under active development.",
     howTo:[
-      {icon:"🖱", text:"Drag on image → new crop"},
-      {icon:"⬜", text:"White handles → resize crop"},
-      {icon:"✋", text:"Inside crop → move it"},
+      {icon:"↗", text:"Drag on image → new crop"},
+      {icon:"□", text:"White handles → resize crop"},
+      {icon:"↔", text:"Inside crop → move it"},
       {icon:"✎",  text:"Edit button → zoom & blur brush"},
-      {icon:"🖱", text:"Right-click in editor → pan"},
+      {icon:"⊕", text:"Right-click in editor → pan"},
       {icon:"⠿",  text:"Drag thumbnails → reorder"},
     ],
-    shortcuts:[
-      {icon:"⌨",  key:"Ctrl+Z / Ctrl+Y", text:"Undo / Redo"},
-      {icon:"←",  key:"← →", text:"Navigate images"},
-      {icon:"⇧",  key:"Shift+click", text:"Multi-select"},
-    ],
+    shortcuts:{
+      general:[
+        {icon:"⌨", key:"Ctrl+Z / Ctrl+Y", text:"Undo / Redo"},
+        {icon:"←", key:"← →",             text:"Navigate images"},
+        {icon:"⇧", key:"Shift+click",      text:"Multi-select"},
+      ],
+      editor:[
+        {icon:"✂", key:"C", text:"Crop"},
+        {icon:"◎", key:"B", text:"Blur"},
+        {icon:"▦", key:"P", text:"Pixelate"},
+        {icon:"⌫", key:"E", text:"Eraser"},
+        {icon:"✒", key:"A", text:"Annotate"},
+      ],
+    },
     toastZipReady:n=>`✓ ZIP ready · ${n} images`, toastZipErr:"Error generating ZIP",
     toastNoUndo:"Nothing to undo", toastNoRedo:"Nothing to redo",
     toastAutoCrop:n=>`✂ Auto crop applied to ${n} images`, toastSmartCrop:n=>`✦ Smart crop applied to ${n} images`, toastSmartCropErr:"✦ Smart crop failed, using auto crop", toastCropsClear:"All crops cleared",
     previewTitle:"Export Preview",
     previewClose:"Close",
     multiApplied:n=>`Applied to ${n} selected images`,
+    selectedHint:n=>`✓ ${n} images selected`,
+    buyMeACoffee:"Buy me a coffee",
+    loadingPreview:"Loading…",
+    toastSmartAppliedEditing:"✦ Applied to editing image",
+    detFaces:"faces", detBodies:"bodies",
+    toastProcessed1:"1 image processed",
+    toastCroppedN:n=>`${n} images cropped`,
+    toastCropRestored:n=>n===1?"✓ 1 crop restored":`✓ ${n} crops restored`,
+    toastRotated:(n,angle)=>`↻ ${n} image${n>1?'s':''} rotated ${angle}°`,
+    flipHorizontally:"horizontally", flipVertically:"vertically",
+    toastFlipped:(n,dir)=>`⇄ ${n} image${n>1?'s':''} flipped ${dir}`,
+    shortcutsGeneral:"General", coreLibraries:"Core Libraries", mlDetection:"ML Detection (AI)",
+    lockAspectRatio:"Lock aspect ratio",
+    cropModeLbl:"Crop mode", cropModeAuto:"Auto", cropModeManual:"Manual", cropModeFace:"Face", cropModeBody:"Body",
+    adjustToTargetSize:"Adjust to target size",
+    poseNetRefinement:"PoseNet (refinement)",
+    faceHintFixed:"Maintains target size centering on faces",
+    faceHintAuto:"Automatically adjusts crop to each face",
+    bodyHintFixed:"Maintains target size (neck down)",
+    bodyHintAuto:"Adjusts crop to body (neck down)",
+    transformLabel:"TRANSFORM", rotationLabel:"Rotation",
+    rotateLeftTitle:"Rotate 90° left", rotateRightTitle:"Rotate 90° right",
+    flipLabel:"Flip", flipHTitle:"Flip horizontal", flipVTitle:"Flip vertical",
+    deselectAll:"✕ Deselect all", selectedLabel:"Selected",
+    wmTypeLbl:"Type", wmTypeText:"Text", wmTypeImage:"Image",
+    originalNameHint:"Use ORIGINAL-NAME to insert original filename",
+    downloadLabel:"Download",
+    aiDetectionTitle:"AI Detection",
+    aiDetectionBody:"This feature uses AI models that may slow down processing, especially on modest hardware or older browsers. Performance may vary depending on your device.",
+    dontShowWarning:"Don't show this warning again",
+    cancelBtn:"Cancel", continueBtn:"Continue",
+    announcementClose:"Got it",
+    clearAll:"Clear All", clearAllConfirm:"Delete all images?", feedback:"Feedback",
   },
   es: {
     subtitle:"Zoom-In Resizing & Mastering Editor",
@@ -263,24 +329,751 @@ const STRINGS = {
     helpBtn:"Ayuda", secHowTo:"Cómo usar", secShortcuts:"Atajos", secAbout:"Acerca de ZIRME",
     aboutText:"ZIRME es una herramienta de edición de imagen en navegador, diseñada para recortar, redimensionar y preparar lotes de imágenes de forma rápida y precisa. Nació como un proyecto personal para cubrir una necesidad real: poder procesar múltiples imágenes con un flujo de trabajo eficiente, sin depender de software pesado ni de servicios online que comprometan la privacidad.\n\nTodo el procesamiento ocurre localmente en tu navegador. Ninguna imagen se sube a ningún servidor. También puedes clonar el repositorio y ejecutarlo en local en tu propia máquina. ZIRME incluye recorte inteligente con detección de punto focal (basado en smartcrop.js), pinceles de desenfoque y pixelado, renombrado por lotes, exportación en múltiples formatos y un sistema completo de deshacer/rehacer. Es un proyecto de código abierto y en desarrollo activo.",
     howTo:[
-      {icon:"🖱", text:"Arrastra sobre la imagen → nuevo recorte"},
-      {icon:"⬜", text:"Tiradores blancos → redimensionar"},
-      {icon:"✋", text:"Dentro del recorte → moverlo"},
+      {icon:"↗", text:"Arrastra sobre la imagen → nuevo recorte"},
+      {icon:"□", text:"Tiradores blancos → redimensionar"},
+      {icon:"↔", text:"Dentro del recorte → moverlo"},
       {icon:"✎",  text:"Botón editar → zoom y pincel de desenfoque"},
-      {icon:"🖱", text:"Clic derecho en editor → mover vista"},
+      {icon:"⊕", text:"Clic derecho en editor → mover vista"},
       {icon:"⠿",  text:"Arrastra miniaturas → reordenar"},
     ],
-    shortcuts:[
-      {icon:"⌨",  key:"Ctrl+Z / Ctrl+Y", text:"Deshacer / Rehacer"},
-      {icon:"←",  key:"← →", text:"Navegar imágenes"},
-      {icon:"⇧",  key:"Shift+clic", text:"Selección múltiple"},
-    ],
+    shortcuts:{
+      general:[
+        {icon:"⌨", key:"Ctrl+Z / Ctrl+Y", text:"Deshacer / Rehacer"},
+        {icon:"←", key:"← →",             text:"Navegar imágenes"},
+        {icon:"⇧", key:"Shift+clic",       text:"Selección múltiple"},
+      ],
+      editor:[
+        {icon:"✂", key:"C", text:"Recortar"},
+        {icon:"◎", key:"B", text:"Desenfoque"},
+        {icon:"▦", key:"P", text:"Pixelar"},
+        {icon:"⌫", key:"E", text:"Borrador"},
+        {icon:"✒", key:"A", text:"Anotar"},
+      ],
+    },
     toastZipReady:n=>`✓ ZIP listo · ${n} imágenes`, toastZipErr:"Error al generar ZIP",
     toastNoUndo:"No hay pasos para deshacer", toastNoRedo:"No hay pasos para rehacer",
     toastAutoCrop:n=>`✂ Recorte automático aplicado a ${n} imágenes`, toastSmartCrop:n=>`✦ Recorte inteligente aplicado a ${n} imágenes`, toastSmartCropErr:"✦ Recorte inteligente falló, usando recorte automático", toastCropsClear:"Recortes eliminados",
     previewTitle:"Vista previa de exportación",
     previewClose:"Cerrar",
     multiApplied:n=>`Aplicado a ${n} imágenes seleccionadas`,
+    selectedHint:n=>`✓ ${n} imágenes seleccionadas`,
+    buyMeACoffee:"Cómprame un café",
+    loadingPreview:"Cargando…",
+    toastSmartAppliedEditing:"✦ Aplicado a imagen en edición",
+    detFaces:"rostros", detBodies:"cuerpos",
+    toastProcessed1:"1 imagen procesada",
+    toastCroppedN:n=>`${n} imágenes recortadas`,
+    toastCropRestored:n=>n===1?"✓ 1 recorte restablecido":`✓ ${n} recortes restablecidos`,
+    toastRotated:(n,angle)=>`↻ ${n} imagen${n>1?'es':''} rotada${n>1?'s':''} ${angle}°`,
+    flipHorizontally:"horizontalmente", flipVertically:"verticalmente",
+    toastFlipped:(n,dir)=>`⇄ ${n} imagen${n>1?'es':''} volteada${n>1?'s':''} ${dir}`,
+    shortcutsGeneral:"Generales", coreLibraries:"Librerías principales", mlDetection:"Detección ML (IA)",
+    lockAspectRatio:"Bloquear proporción",
+    cropModeLbl:"Modo de recorte", cropModeAuto:"Auto", cropModeManual:"Manual", cropModeFace:"Rostro", cropModeBody:"Cuerpo",
+    adjustToTargetSize:"Ajustar al tamaño objetivo",
+    poseNetRefinement:"PoseNet (refinamiento)",
+    faceHintFixed:"Mantiene el tamaño objetivo centrando en rostros",
+    faceHintAuto:"Ajusta el crop automáticamente a cada rostro",
+    bodyHintFixed:"Mantiene el tamaño objetivo (del cuello para abajo)",
+    bodyHintAuto:"Ajusta el crop al cuerpo (del cuello para abajo)",
+    transformLabel:"TRANSFORMAR", rotationLabel:"Rotación",
+    rotateLeftTitle:"Rotar 90° izquierda", rotateRightTitle:"Rotar 90° derecha",
+    flipLabel:"Voltear", flipHTitle:"Volteo horizontal", flipVTitle:"Volteo vertical",
+    deselectAll:"✕ Deseleccionar todas", selectedLabel:"Seleccionadas",
+    wmTypeLbl:"Tipo", wmTypeText:"Texto", wmTypeImage:"Imagen",
+    originalNameHint:"Usa ORIGINAL-NAME para insertar el nombre original",
+    downloadLabel:"Descargar",
+    aiDetectionTitle:"Detección con Inteligencia Artificial",
+    aiDetectionBody:"Esta función utiliza modelos de IA que pueden ralentizar el procesamiento, especialmente en equipos modestos o navegadores antiguos. El rendimiento puede variar según tu dispositivo.",
+    dontShowWarning:"No volver a mostrar este aviso",
+    cancelBtn:"Cancelar", continueBtn:"Continuar",
+    announcementClose:"Entendido",
+    clearAll:"Limpiar todo", clearAllConfirm:"¿Eliminar todas las imágenes?", feedback:"Sugerencias",
+  },
+  fr:{
+    subtitle:"Zoom-In Resizing & Mastering Editor",
+    undo:"Annuler", undoCount:n=>`Annuler (${n})`, redo:"Rétablir", redoCount:n=>`Rétablir (${n})`,
+    saveCurrent:"↓ Image actuelle", zipBtn:n=>`↓ ZIP (${n})`, zipGenerating:"Génération ZIP…",
+    add:"+ Ajouter", dropLabel:"Déposez vos images ici", dropFormats:"JPEG · PNG · WebP · nombre illimité",
+    emptyHint:"Glissez des images n'importe où", emptySub:"ou utilisez le bouton + Ajouter",
+    addMore:"Ajouter plus", noCrop:"sans recadrage", editBtn:"✎ Éditer", previewBtn:"👁 Aperçu",
+    back:"← Retour", cropTool:"Recadrer", blurTool:"Pinceau de flou",
+    autoCropBtn:"Recadrage auto", smartCropBtn:"✦ Recadrage intelligent", clearCropBtn:"Réinitialiser", rightClickHint:"Clic droit = déplacer la vue",
+    freeCrop:"🔓 Libre", lockedCrop:r=>`🔒 ${r}`,
+    secThumbs:"Affichage", thumbSize:n=>`Taille des miniatures ${n}px`,
+    secComposition:"Composition", secOutput:"Taille de sortie", widthLbl:"Largeur", heightLbl:"Hauteur",
+    ratioLbl:"Ratio", sizeFixed:"Fixe", sizeAutoW:"Largeur auto", sizeAutoH:"Hauteur auto",
+    secBorder:"Bordure", borderWidthLbl:n=>`Épaisseur ${n}px`, borderColorLbl:"Couleur de bordure",
+    secWatermark:"Filigrane", wmTextLbl:"Texte", wmFontLbl:"Police", wmSizeLbl:n=>`Taille: ${n}px`, wmColorLbl:"Couleur", wmOpacityLbl:n=>`Opacité: ${n}%`,
+    wmPosLbl:"Position", wmPosTL:"Haut-gauche", wmPosTR:"Haut-droite", wmPosBL:"Bas-gauche", wmPosBR:"Bas-droite", wmPosCenter:"Centre",
+    secFocal:"Point focal", focalAutoLbl:"Automatique (détection auto)",
+    focalApplyAll:"⊡ Appliquer à tout", focalApplyRunning:(d,t)=>`⊡ ${d}/${t}…`,
+    secActions:"Actions", clearAllCrops:"Réinitialiser les recadrages", applyToAll:"Appliquer à tout", deleteAll:"🗑 Tout supprimer",
+    totalLbl:"Total", withCropLbl:"Manuel", noCropLbl:"Auto", multiLbl:"Multi",
+    secBlur:"Pinceau de flou", pixelateTool:"Pinceau de pixellisation", sizeLbl:n=>`Taille: ${n}px`, strengthLbl:n=>`Intensité: ${n}`,
+    hardnessLbl:n=>`Dureté: ${n}%`, opacityLbl:n=>`Opacité: ${n}%`, pixelSizeLbl:n=>`Bloc: ${n}px`,
+    autoCropAll:"⊠ Recadrage auto tout", smartCropAll:"✦ Appliquer recadrage intelligent",
+    secExport:"Exporter", formatLbl:"Format", qualityLbl:n=>`Qualité: ${n}%`,
+    prefixLbl:"Préfixe du nom", suffixLbl:"Suffixe du nom",
+    secRename:"Nom de fichier", renameModeLbl:"Mode", renameModeKeep:"Garder l'original", renameModeCustom:"Nom personnalisé",
+    renameBaseLbl:"Nom de base", renameNumberingLbl:"Numérotation", renameStartLbl:"Commencer à",
+    renamePreviewLbl:"Aperçu",
+    tabImage:"Réglages", tabExport:"Exporter",
+    panelHide:"‹ Masquer le panneau", panelShow:"› Afficher le panneau",
+    helpBtn:"Aide", secHowTo:"Comment utiliser", secShortcuts:"Raccourcis", secAbout:"À propos de ZIRME",
+    aboutText:"ZIRME est un outil d'édition d'images basé sur navigateur, conçu pour recadrer, redimensionner et préparer des lots d'images rapidement et avec précision. Il est né comme un projet personnel pour répondre à un besoin réel : traiter plusieurs images avec un flux de travail efficace, sans dépendre de logiciels lourds ni de services en ligne compromettant la confidentialité.\n\nTout le traitement s'effectue localement dans votre navigateur. Aucune image n'est jamais envoyée sur un serveur. ZIRME inclut un recadrage intelligent avec détection de point focal (basé sur smartcrop.js), des pinceaux de flou et de pixellisation, le renommage par lot, l'export multi-format et un système complet d'annulation/rétablissement. Il est open source et en développement actif.",
+    howTo:[
+      {icon:"↗", text:"Glisser sur l'image → nouveau recadrage"},
+      {icon:"□", text:"Poignées blanches → redimensionner"},
+      {icon:"↔", text:"Dans le recadrage → le déplacer"},
+      {icon:"✎",  text:"Bouton éditer → zoom & pinceau de flou"},
+      {icon:"⊕", text:"Clic droit dans l'éditeur → panoramique"},
+      {icon:"⠿",  text:"Glisser les miniatures → réorganiser"},
+    ],
+    shortcuts:{
+      general:[
+        {icon:"⌨", key:"Ctrl+Z / Ctrl+Y", text:"Annuler / Rétablir"},
+        {icon:"←", key:"← →",             text:"Naviguer entre images"},
+        {icon:"⇧", key:"Shift+clic",       text:"Sélection multiple"},
+      ],
+      editor:[
+        {icon:"✂", key:"C", text:"Recadrer"},
+        {icon:"◎", key:"B", text:"Flou"},
+        {icon:"▦", key:"P", text:"Pixelliser"},
+        {icon:"⌫", key:"E", text:"Gomme"},
+        {icon:"✒", key:"A", text:"Annoter"},
+      ],
+    },
+    toastZipReady:n=>`✓ ZIP prêt · ${n} images`, toastZipErr:"Erreur lors de la génération du ZIP",
+    toastNoUndo:"Rien à annuler", toastNoRedo:"Rien à rétablir",
+    toastAutoCrop:n=>`✂ Recadrage auto appliqué à ${n} images`, toastSmartCrop:n=>`✦ Recadrage intelligent appliqué à ${n} images`, toastSmartCropErr:"✦ Recadrage intelligent échoué, recadrage auto utilisé", toastCropsClear:"Tous les recadrages effacés",
+    previewTitle:"Aperçu de l'export", previewClose:"Fermer",
+    multiApplied:n=>`Appliqué à ${n} images sélectionnées`,
+    selectedHint:n=>`✓ ${n} images sélectionnées`,
+    buyMeACoffee:"Offrez-moi un café",
+    loadingPreview:"Chargement…",
+    toastSmartAppliedEditing:"✦ Appliqué à l'image en édition",
+    detFaces:"visages", detBodies:"corps",
+    toastProcessed1:"1 image traitée",
+    toastCroppedN:n=>`${n} images recadrées`,
+    toastCropRestored:n=>n===1?"✓ 1 recadrage restauré":`✓ ${n} recadrages restaurés`,
+    toastRotated:(n,angle)=>`↻ ${n} image${n>1?'s':''} pivotée${n>1?'s':''} de ${angle}°`,
+    flipHorizontally:"horizontalement", flipVertically:"verticalement",
+    toastFlipped:(n,dir)=>`⇄ ${n} image${n>1?'s':''} retournée${n>1?'s':''} ${dir}`,
+    shortcutsGeneral:"Général", coreLibraries:"Bibliothèques principales", mlDetection:"Détection ML (IA)",
+    lockAspectRatio:"Verrouiller le ratio",
+    cropModeLbl:"Mode de recadrage", cropModeAuto:"Auto", cropModeManual:"Manuel", cropModeFace:"Visage", cropModeBody:"Corps",
+    adjustToTargetSize:"Ajuster à la taille cible",
+    poseNetRefinement:"PoseNet (affinage)",
+    faceHintFixed:"Maintient la taille cible en centrant sur les visages",
+    faceHintAuto:"Ajuste automatiquement le recadrage sur chaque visage",
+    bodyHintFixed:"Maintient la taille cible (du cou vers le bas)",
+    bodyHintAuto:"Ajuste le recadrage au corps (du cou vers le bas)",
+    transformLabel:"TRANSFORMER", rotationLabel:"Rotation",
+    rotateLeftTitle:"Pivoter de 90° à gauche", rotateRightTitle:"Pivoter de 90° à droite",
+    flipLabel:"Retourner", flipHTitle:"Retournement horizontal", flipVTitle:"Retournement vertical",
+    deselectAll:"✕ Tout désélectionner", selectedLabel:"Sélectionnées",
+    wmTypeLbl:"Type", wmTypeText:"Texte", wmTypeImage:"Image",
+    originalNameHint:"Utilisez ORIGINAL-NAME pour insérer le nom d'origine",
+    downloadLabel:"Télécharger",
+    aiDetectionTitle:"Détection par IA",
+    aiDetectionBody:"Cette fonctionnalité utilise des modèles d'IA pouvant ralentir le traitement, notamment sur du matériel limité ou des navigateurs anciens. Les performances peuvent varier selon votre appareil.",
+    dontShowWarning:"Ne plus afficher cet avertissement",
+    cancelBtn:"Annuler", continueBtn:"Continuer",
+    announcementClose:"Compris",
+    clearAll:"Tout effacer", clearAllConfirm:"Supprimer toutes les images ?", feedback:"Suggestions",
+  },
+  de:{
+    subtitle:"Zoom-In Resizing & Mastering Editor",
+    undo:"Rückgängig", undoCount:n=>`Rückgängig (${n})`, redo:"Wiederholen", redoCount:n=>`Wiederholen (${n})`,
+    saveCurrent:"↓ Aktuelles Bild", zipBtn:n=>`↓ ZIP (${n})`, zipGenerating:"ZIP wird erstellt…",
+    add:"+ Hinzufügen", dropLabel:"Bilder hier ablegen", dropFormats:"JPEG · PNG · WebP · beliebige Anzahl",
+    emptyHint:"Bilder irgendwo ablegen", emptySub:"oder den + Hinzufügen-Button nutzen",
+    addMore:"Mehr hinzufügen", noCrop:"kein Zuschnitt", editBtn:"✎ Bearbeiten", previewBtn:"👁 Vorschau",
+    back:"← Zurück", cropTool:"Zuschneiden", blurTool:"Weichzeichner",
+    autoCropBtn:"Auto-Zuschnitt", smartCropBtn:"✦ Intelligenter Zuschnitt", clearCropBtn:"Zurücksetzen", rightClickHint:"Rechtsklick = Ansicht verschieben",
+    freeCrop:"🔓 Frei", lockedCrop:r=>`🔒 ${r}`,
+    secThumbs:"Ansicht", thumbSize:n=>`Vorschaugröße ${n}px`,
+    secComposition:"Komposition", secOutput:"Ausgabegröße", widthLbl:"Breite", heightLbl:"Höhe",
+    ratioLbl:"Verhältnis", sizeFixed:"Fest", sizeAutoW:"Auto Breite", sizeAutoH:"Auto Höhe",
+    secBorder:"Rahmen", borderWidthLbl:n=>`Stärke ${n}px`, borderColorLbl:"Rahmenfarbe",
+    secWatermark:"Wasserzeichen", wmTextLbl:"Text", wmFontLbl:"Schrift", wmSizeLbl:n=>`Größe: ${n}px`, wmColorLbl:"Farbe", wmOpacityLbl:n=>`Deckkraft: ${n}%`,
+    wmPosLbl:"Position", wmPosTL:"Oben-links", wmPosTR:"Oben-rechts", wmPosBL:"Unten-links", wmPosBR:"Unten-rechts", wmPosCenter:"Mitte",
+    secFocal:"Fokuspunkt", focalAutoLbl:"Automatisch (Auto-Erkennung)",
+    focalApplyAll:"⊡ Auf alle anwenden", focalApplyRunning:(d,t)=>`⊡ ${d}/${t}…`,
+    secActions:"Aktionen", clearAllCrops:"Zuschnitte zurücksetzen", applyToAll:"Auf alle anwenden", deleteAll:"🗑 Alles löschen",
+    totalLbl:"Gesamt", withCropLbl:"Manuell", noCropLbl:"Auto", multiLbl:"Multi",
+    secBlur:"Weichzeichner", pixelateTool:"Pixelierungs-Pinsel", sizeLbl:n=>`Größe: ${n}px`, strengthLbl:n=>`Stärke: ${n}`,
+    hardnessLbl:n=>`Härte: ${n}%`, opacityLbl:n=>`Deckkraft: ${n}%`, pixelSizeLbl:n=>`Block: ${n}px`,
+    autoCropAll:"⊠ Alle auto zuschneiden", smartCropAll:"✦ Intelligenten Zuschnitt anwenden",
+    secExport:"Exportieren", formatLbl:"Format", qualityLbl:n=>`Qualität: ${n}%`,
+    prefixLbl:"Dateiname-Präfix", suffixLbl:"Dateiname-Suffix",
+    secRename:"Dateiname", renameModeLbl:"Modus", renameModeKeep:"Original behalten", renameModeCustom:"Benutzerdefiniert",
+    renameBaseLbl:"Basisname", renameNumberingLbl:"Nummerierung", renameStartLbl:"Beginnen bei",
+    renamePreviewLbl:"Vorschau",
+    tabImage:"Einstellungen", tabExport:"Exportieren",
+    panelHide:"‹ Panel ausblenden", panelShow:"› Panel anzeigen",
+    helpBtn:"Hilfe", secHowTo:"Anleitung", secShortcuts:"Tastenkürzel", secAbout:"Über ZIRME",
+    aboutText:"ZIRME ist ein browserbasiertes Bildbearbeitungswerkzeug, das für schnelles und präzises Zuschneiden, Skalieren und Stapelverarbeiten von Bildern entwickelt wurde. Es entstand als persönliches Projekt zur Lösung eines echten Problems: mehrere Bilder effizient zu verarbeiten, ohne auf schwere Software oder Onlinedienste angewiesen zu sein.\n\nDie gesamte Verarbeitung erfolgt lokal im Browser. Es wird kein Bild auf einen Server hochgeladen. ZIRME bietet intelligentes Zuschneiden mit Fokuspunkt-Erkennung (basierend auf smartcrop.js), Weichzeichner- und Pixelierungs-Pinsel, Stapelumbenennnung, Multi-Format-Export und ein vollständiges Rückgängig/Wiederholen-System. Es ist Open Source und wird aktiv weiterentwickelt.",
+    howTo:[
+      {icon:"↗", text:"Auf Bild ziehen → neuer Zuschnitt"},
+      {icon:"□", text:"Weiße Anfasser → Zuschnitt ändern"},
+      {icon:"↔", text:"Im Zuschnitt → verschieben"},
+      {icon:"✎",  text:"Bearbeiten-Button → Zoom & Weichzeichner"},
+      {icon:"⊕", text:"Rechtsklick im Editor → Ansicht verschieben"},
+      {icon:"⠿",  text:"Vorschaubilder ziehen → neu anordnen"},
+    ],
+    shortcuts:{
+      general:[
+        {icon:"⌨", key:"Ctrl+Z / Ctrl+Y", text:"Rückgängig / Wiederholen"},
+        {icon:"←", key:"← →",             text:"Bilder navigieren"},
+        {icon:"⇧", key:"Shift+Klick",      text:"Mehrfachauswahl"},
+      ],
+      editor:[
+        {icon:"✂", key:"C", text:"Zuschneiden"},
+        {icon:"◎", key:"B", text:"Weichzeichner"},
+        {icon:"▦", key:"P", text:"Pixelieren"},
+        {icon:"⌫", key:"E", text:"Radierer"},
+        {icon:"✒", key:"A", text:"Anmerkung"},
+      ],
+    },
+    toastZipReady:n=>`✓ ZIP fertig · ${n} Bilder`, toastZipErr:"Fehler beim ZIP-Erstellen",
+    toastNoUndo:"Nichts rückgängig zu machen", toastNoRedo:"Nichts zu wiederholen",
+    toastAutoCrop:n=>`✂ Auto-Zuschnitt auf ${n} Bilder angewendet`, toastSmartCrop:n=>`✦ Intelligenter Zuschnitt auf ${n} Bilder angewendet`, toastSmartCropErr:"✦ Intelligenter Zuschnitt fehlgeschlagen", toastCropsClear:"Alle Zuschnitte gelöscht",
+    previewTitle:"Export-Vorschau", previewClose:"Schließen",
+    multiApplied:n=>`Auf ${n} ausgewählte Bilder angewendet`,
+    selectedHint:n=>`✓ ${n} Bilder ausgewählt`,
+    buyMeACoffee:"Kauf mir einen Kaffee",
+    loadingPreview:"Laden…",
+    toastSmartAppliedEditing:"✦ Auf bearbeitetes Bild angewendet",
+    detFaces:"Gesichter", detBodies:"Körper",
+    toastProcessed1:"1 Bild verarbeitet",
+    toastCroppedN:n=>`${n} Bilder zugeschnitten`,
+    toastCropRestored:n=>n===1?"✓ 1 Zuschnitt wiederhergestellt":`✓ ${n} Zuschnitte wiederhergestellt`,
+    toastRotated:(n,angle)=>`↻ ${n} Bild${n>1?'er':''} um ${angle}° gedreht`,
+    flipHorizontally:"horizontal", flipVertically:"vertikal",
+    toastFlipped:(n,dir)=>`⇄ ${n} Bild${n>1?'er':''} ${dir} gespiegelt`,
+    shortcutsGeneral:"Allgemein", coreLibraries:"Kernbibliotheken", mlDetection:"ML-Erkennung (KI)",
+    lockAspectRatio:"Seitenverhältnis sperren",
+    cropModeLbl:"Zuschnittmodus", cropModeAuto:"Auto", cropModeManual:"Manuell", cropModeFace:"Gesicht", cropModeBody:"Körper",
+    adjustToTargetSize:"An Zielgröße anpassen",
+    poseNetRefinement:"PoseNet (Verfeinerung)",
+    faceHintFixed:"Behält Zielgröße bei und zentriert auf Gesichter",
+    faceHintAuto:"Passt den Zuschnitt automatisch an jedes Gesicht an",
+    bodyHintFixed:"Behält Zielgröße bei (ab Hals abwärts)",
+    bodyHintAuto:"Passt den Zuschnitt an den Körper an (ab Hals)",
+    transformLabel:"TRANSFORMIEREN", rotationLabel:"Rotation",
+    rotateLeftTitle:"90° nach links drehen", rotateRightTitle:"90° nach rechts drehen",
+    flipLabel:"Spiegeln", flipHTitle:"Horizontal spiegeln", flipVTitle:"Vertikal spiegeln",
+    deselectAll:"✕ Alle abwählen", selectedLabel:"Ausgewählt",
+    wmTypeLbl:"Typ", wmTypeText:"Text", wmTypeImage:"Bild",
+    originalNameHint:"ORIGINAL-NAME einfügen für den Originaldateinamen",
+    downloadLabel:"Herunterladen",
+    aiDetectionTitle:"KI-Erkennung",
+    aiDetectionBody:"Diese Funktion verwendet KI-Modelle, die die Verarbeitung verlangsamen können, besonders auf schwächerer Hardware oder älteren Browsern. Die Leistung kann je nach Gerät variieren.",
+    dontShowWarning:"Diesen Hinweis nicht mehr anzeigen",
+    cancelBtn:"Abbrechen", continueBtn:"Weiter",
+    announcementClose:"Verstanden",
+    clearAll:"Alles löschen", clearAllConfirm:"Alle Bilder löschen?", feedback:"Feedback",
+  },
+  pt:{
+    subtitle:"Zoom-In Resizing & Mastering Editor",
+    undo:"Desfazer", undoCount:n=>`Desfazer (${n})`, redo:"Refazer", redoCount:n=>`Refazer (${n})`,
+    saveCurrent:"↓ Imagem atual", zipBtn:n=>`↓ ZIP (${n})`, zipGenerating:"Gerando ZIP…",
+    add:"+ Adicionar", dropLabel:"Solte suas imagens aqui", dropFormats:"JPEG · PNG · WebP · qualquer quantidade",
+    emptyHint:"Arraste imagens para qualquer lugar", emptySub:"ou use o botão + Adicionar",
+    addMore:"Adicionar mais", noCrop:"sem corte", editBtn:"✎ Editar", previewBtn:"👁 Prévia",
+    back:"← Voltar", cropTool:"Cortar", blurTool:"Pincel de desfoque",
+    autoCropBtn:"Corte automático", smartCropBtn:"✦ Corte inteligente", clearCropBtn:"Redefinir", rightClickHint:"Clique direito = mover visão",
+    freeCrop:"🔓 Livre", lockedCrop:r=>`🔒 ${r}`,
+    secThumbs:"Visualização", thumbSize:n=>`Tamanho de miniatura ${n}px`,
+    secComposition:"Composição", secOutput:"Tamanho de saída", widthLbl:"Largura", heightLbl:"Altura",
+    ratioLbl:"Proporção", sizeFixed:"Fixo", sizeAutoW:"Largura auto", sizeAutoH:"Altura auto",
+    secBorder:"Borda", borderWidthLbl:n=>`Espessura ${n}px`, borderColorLbl:"Cor da borda",
+    secWatermark:"Marca d'água", wmTextLbl:"Texto", wmFontLbl:"Fonte", wmSizeLbl:n=>`Tamanho: ${n}px`, wmColorLbl:"Cor", wmOpacityLbl:n=>`Opacidade: ${n}%`,
+    wmPosLbl:"Posição", wmPosTL:"Sup-esq", wmPosTR:"Sup-dir", wmPosBL:"Inf-esq", wmPosBR:"Inf-dir", wmPosCenter:"Centro",
+    secFocal:"Foco do corte", focalAutoLbl:"Automático (detecção automática)",
+    focalApplyAll:"⊡ Aplicar a todas", focalApplyRunning:(d,t)=>`⊡ ${d}/${t}…`,
+    secActions:"Ações", clearAllCrops:"Restaurar cortes", applyToAll:"Aplicar a todas", deleteAll:"🗑 Apagar tudo",
+    totalLbl:"Total", withCropLbl:"Manual", noCropLbl:"Auto", multiLbl:"Multi",
+    secBlur:"Pincel de desfoque", pixelateTool:"Pincel de pixelação", sizeLbl:n=>`Tamanho: ${n}px`, strengthLbl:n=>`Intensidade: ${n}`,
+    hardnessLbl:n=>`Dureza: ${n}%`, opacityLbl:n=>`Opacidade: ${n}%`, pixelSizeLbl:n=>`Bloco: ${n}px`,
+    autoCropAll:"⊠ Corte auto em todas", smartCropAll:"✦ Aplicar corte inteligente",
+    secExport:"Exportar", formatLbl:"Formato", qualityLbl:n=>`Qualidade: ${n}%`,
+    prefixLbl:"Prefixo do nome", suffixLbl:"Sufixo do nome",
+    secRename:"Nome do arquivo", renameModeLbl:"Modo", renameModeKeep:"Manter original", renameModeCustom:"Nome personalizado",
+    renameBaseLbl:"Nome base", renameNumberingLbl:"Numeração", renameStartLbl:"Começar em",
+    renamePreviewLbl:"Pré-visualização",
+    tabImage:"Configurações", tabExport:"Exportar",
+    panelHide:"‹ Ocultar painel", panelShow:"› Mostrar painel",
+    helpBtn:"Ajuda", secHowTo:"Como usar", secShortcuts:"Atalhos", secAbout:"Sobre o ZIRME",
+    aboutText:"ZIRME é uma ferramenta de edição de imagens baseada em navegador, projetada para recortar, redimensionar e preparar lotes de imagens de forma rápida e precisa. Nasceu como um projeto pessoal para resolver uma necessidade real: processar várias imagens com um fluxo de trabalho eficiente, sem depender de softwares pesados ou serviços online que comprometam a privacidade.\n\nTodo o processamento acontece localmente no seu navegador. Nenhuma imagem é enviada para nenhum servidor. O ZIRME inclui recorte inteligente com detecção de ponto focal (baseado em smartcrop.js), pincéis de desfoque e pixelação, renomeação em lote, exportação em múltiplos formatos e um sistema completo de desfazer/refazer. É open source e em desenvolvimento ativo.",
+    howTo:[
+      {icon:"↗", text:"Arrastar na imagem → novo corte"},
+      {icon:"□", text:"Alças brancas → redimensionar corte"},
+      {icon:"↔", text:"Dentro do corte → mover"},
+      {icon:"✎",  text:"Botão editar → zoom & pincel de desfoque"},
+      {icon:"⊕", text:"Clique direito no editor → mover visão"},
+      {icon:"⠿",  text:"Arrastar miniaturas → reordenar"},
+    ],
+    shortcuts:{
+      general:[
+        {icon:"⌨", key:"Ctrl+Z / Ctrl+Y", text:"Desfazer / Refazer"},
+        {icon:"←", key:"← →",             text:"Navegar imagens"},
+        {icon:"⇧", key:"Shift+clique",     text:"Seleção múltipla"},
+      ],
+      editor:[
+        {icon:"✂", key:"C", text:"Cortar"},
+        {icon:"◎", key:"B", text:"Desfoque"},
+        {icon:"▦", key:"P", text:"Pixelar"},
+        {icon:"⌫", key:"E", text:"Borracha"},
+        {icon:"✒", key:"A", text:"Anotar"},
+      ],
+    },
+    toastZipReady:n=>`✓ ZIP pronto · ${n} imagens`, toastZipErr:"Erro ao gerar ZIP",
+    toastNoUndo:"Nada para desfazer", toastNoRedo:"Nada para refazer",
+    toastAutoCrop:n=>`✂ Corte automático aplicado a ${n} imagens`, toastSmartCrop:n=>`✦ Corte inteligente aplicado a ${n} imagens`, toastSmartCropErr:"✦ Corte inteligente falhou, usando corte automático", toastCropsClear:"Todos os cortes removidos",
+    previewTitle:"Pré-visualização de exportação", previewClose:"Fechar",
+    multiApplied:n=>`Aplicado a ${n} imagens selecionadas`,
+    selectedHint:n=>`✓ ${n} imagens selecionadas`,
+    buyMeACoffee:"Me pague um café",
+    loadingPreview:"Carregando…",
+    toastSmartAppliedEditing:"✦ Aplicado à imagem em edição",
+    detFaces:"rostos", detBodies:"corpos",
+    toastProcessed1:"1 imagem processada",
+    toastCroppedN:n=>`${n} imagens recortadas`,
+    toastCropRestored:n=>n===1?"✓ 1 corte restaurado":`✓ ${n} cortes restaurados`,
+    toastRotated:(n,angle)=>`↻ ${n} imagem${n>1?'ns':''} rotacionada${n>1?'s':''} ${angle}°`,
+    flipHorizontally:"horizontalmente", flipVertically:"verticalmente",
+    toastFlipped:(n,dir)=>`⇄ ${n} imagem${n>1?'ns':''} virada${n>1?'s':''} ${dir}`,
+    shortcutsGeneral:"Geral", coreLibraries:"Bibliotecas principais", mlDetection:"Detecção ML (IA)",
+    lockAspectRatio:"Bloquear proporção",
+    cropModeLbl:"Modo de corte", cropModeAuto:"Auto", cropModeManual:"Manual", cropModeFace:"Rosto", cropModeBody:"Corpo",
+    adjustToTargetSize:"Ajustar ao tamanho alvo",
+    poseNetRefinement:"PoseNet (refinamento)",
+    faceHintFixed:"Mantém o tamanho alvo centrando nos rostos",
+    faceHintAuto:"Ajusta automaticamente o corte para cada rosto",
+    bodyHintFixed:"Mantém o tamanho alvo (do pescoço para baixo)",
+    bodyHintAuto:"Ajusta o corte ao corpo (do pescoço para baixo)",
+    transformLabel:"TRANSFORMAR", rotationLabel:"Rotação",
+    rotateLeftTitle:"Girar 90° à esquerda", rotateRightTitle:"Girar 90° à direita",
+    flipLabel:"Inverter", flipHTitle:"Inverter horizontalmente", flipVTitle:"Inverter verticalmente",
+    deselectAll:"✕ Desselecionar todas", selectedLabel:"Selecionadas",
+    wmTypeLbl:"Tipo", wmTypeText:"Texto", wmTypeImage:"Imagem",
+    originalNameHint:"Use ORIGINAL-NAME para inserir o nome original",
+    downloadLabel:"Baixar",
+    aiDetectionTitle:"Detecção por IA",
+    aiDetectionBody:"Esta função usa modelos de IA que podem deixar o processamento mais lento, especialmente em hardware modesto ou navegadores antigos. O desempenho pode variar conforme o dispositivo.",
+    dontShowWarning:"Não mostrar este aviso novamente",
+    cancelBtn:"Cancelar", continueBtn:"Continuar",
+    announcementClose:"Entendido",
+    clearAll:"Limpar tudo", clearAllConfirm:"Apagar todas as imagens?", feedback:"Sugestões",
+  },
+  it:{
+    subtitle:"Zoom-In Resizing & Mastering Editor",
+    undo:"Annulla", undoCount:n=>`Annulla (${n})`, redo:"Ripristina", redoCount:n=>`Ripristina (${n})`,
+    saveCurrent:"↓ Immagine corrente", zipBtn:n=>`↓ ZIP (${n})`, zipGenerating:"Generazione ZIP…",
+    add:"+ Aggiungi", dropLabel:"Trascina le tue immagini qui", dropFormats:"JPEG · PNG · WebP · qualsiasi quantità",
+    emptyHint:"Trascina le immagini ovunque", emptySub:"o usa il pulsante + Aggiungi",
+    addMore:"Aggiungi altri", noCrop:"senza ritaglio", editBtn:"✎ Modifica", previewBtn:"👁 Anteprima",
+    back:"← Indietro", cropTool:"Ritaglia", blurTool:"Pennello sfocatura",
+    autoCropBtn:"Ritaglio auto", smartCropBtn:"✦ Ritaglio intelligente", clearCropBtn:"Ripristina", rightClickHint:"Clic destro = sposta vista",
+    freeCrop:"🔓 Libero", lockedCrop:r=>`🔒 ${r}`,
+    secThumbs:"Visualizzazione", thumbSize:n=>`Dimensione anteprima ${n}px`,
+    secComposition:"Composizione", secOutput:"Dimensione output", widthLbl:"Larghezza", heightLbl:"Altezza",
+    ratioLbl:"Proporzione", sizeFixed:"Fisso", sizeAutoW:"Larghezza auto", sizeAutoH:"Altezza auto",
+    secBorder:"Bordo", borderWidthLbl:n=>`Spessore ${n}px`, borderColorLbl:"Colore bordo",
+    secWatermark:"Filigrana", wmTextLbl:"Testo", wmFontLbl:"Font", wmSizeLbl:n=>`Dimensione: ${n}px`, wmColorLbl:"Colore", wmOpacityLbl:n=>`Opacità: ${n}%`,
+    wmPosLbl:"Posizione", wmPosTL:"Alto-sinistra", wmPosTR:"Alto-destra", wmPosBL:"Basso-sinistra", wmPosBR:"Basso-destra", wmPosCenter:"Centro",
+    secFocal:"Messa a fuoco", focalAutoLbl:"Automatico (rilevamento automatico)",
+    focalApplyAll:"⊡ Applica a tutte", focalApplyRunning:(d,t)=>`⊡ ${d}/${t}…`,
+    secActions:"Azioni", clearAllCrops:"Ripristina ritagli", applyToAll:"Applica a tutte", deleteAll:"🗑 Elimina tutto",
+    totalLbl:"Totale", withCropLbl:"Manuale", noCropLbl:"Auto", multiLbl:"Multi",
+    secBlur:"Pennello sfocatura", pixelateTool:"Pennello pixelatura", sizeLbl:n=>`Dimensione: ${n}px`, strengthLbl:n=>`Intensità: ${n}`,
+    hardnessLbl:n=>`Durezza: ${n}%`, opacityLbl:n=>`Opacità: ${n}%`, pixelSizeLbl:n=>`Blocco: ${n}px`,
+    autoCropAll:"⊠ Ritaglio auto tutto", smartCropAll:"✦ Applica ritaglio intelligente",
+    secExport:"Esporta", formatLbl:"Formato", qualityLbl:n=>`Qualità: ${n}%`,
+    prefixLbl:"Prefisso nome file", suffixLbl:"Suffisso nome file",
+    secRename:"Nome file", renameModeLbl:"Modalità", renameModeKeep:"Mantieni originale", renameModeCustom:"Nome personalizzato",
+    renameBaseLbl:"Nome base", renameNumberingLbl:"Numerazione", renameStartLbl:"Inizia da",
+    renamePreviewLbl:"Anteprima",
+    tabImage:"Impostazioni", tabExport:"Esporta",
+    panelHide:"‹ Nascondi pannello", panelShow:"› Mostra pannello",
+    helpBtn:"Aiuto", secHowTo:"Come usare", secShortcuts:"Scorciatoie", secAbout:"Informazioni su ZIRME",
+    aboutText:"ZIRME è uno strumento di editing di immagini basato su browser, progettato per ritagliare, ridimensionare e preparare batch di immagini in modo rapido e preciso. È nato come progetto personale per soddisfare un'esigenza reale: elaborare più immagini con un flusso di lavoro efficiente, senza dipendere da software pesanti o servizi online che compromettono la privacy.\n\nTutta l'elaborazione avviene localmente nel browser. Nessuna immagine viene mai caricata su alcun server. ZIRME include ritaglio intelligente con rilevamento del punto focale (basato su smartcrop.js), pennelli per sfocatura e pixelatura, ridenominazione batch, esportazione in più formati e un sistema completo di annulla/ripristina. È open source e in sviluppo attivo.",
+    howTo:[
+      {icon:"↗", text:"Trascina sull'immagine → nuovo ritaglio"},
+      {icon:"□", text:"Maniglie bianche → ridimensiona ritaglio"},
+      {icon:"↔", text:"Nel ritaglio → spostalo"},
+      {icon:"✎",  text:"Pulsante modifica → zoom e pennello sfocatura"},
+      {icon:"⊕", text:"Clic destro nell'editor → panoramica"},
+      {icon:"⠿",  text:"Trascina miniature → riordina"},
+    ],
+    shortcuts:{
+      general:[
+        {icon:"⌨", key:"Ctrl+Z / Ctrl+Y", text:"Annulla / Ripristina"},
+        {icon:"←", key:"← →",             text:"Naviga immagini"},
+        {icon:"⇧", key:"Shift+clic",       text:"Selezione multipla"},
+      ],
+      editor:[
+        {icon:"✂", key:"C", text:"Ritaglia"},
+        {icon:"◎", key:"B", text:"Sfocatura"},
+        {icon:"▦", key:"P", text:"Pixelatura"},
+        {icon:"⌫", key:"E", text:"Gomma"},
+        {icon:"✒", key:"A", text:"Annota"},
+      ],
+    },
+    toastZipReady:n=>`✓ ZIP pronto · ${n} immagini`, toastZipErr:"Errore nella generazione ZIP",
+    toastNoUndo:"Niente da annullare", toastNoRedo:"Niente da ripristinare",
+    toastAutoCrop:n=>`✂ Ritaglio auto applicato a ${n} immagini`, toastSmartCrop:n=>`✦ Ritaglio intelligente applicato a ${n} immagini`, toastSmartCropErr:"✦ Ritaglio intelligente fallito, usato ritaglio auto", toastCropsClear:"Tutti i ritagli eliminati",
+    previewTitle:"Anteprima esportazione", previewClose:"Chiudi",
+    multiApplied:n=>`Applicato a ${n} immagini selezionate`,
+    selectedHint:n=>`✓ ${n} immagini selezionate`,
+    buyMeACoffee:"Offrimi un caffè",
+    loadingPreview:"Caricamento…",
+    toastSmartAppliedEditing:"✦ Applicato all'immagine in modifica",
+    detFaces:"volti", detBodies:"corpi",
+    toastProcessed1:"1 immagine elaborata",
+    toastCroppedN:n=>`${n} immagini ritagliate`,
+    toastCropRestored:n=>n===1?"✓ 1 ritaglio ripristinato":`✓ ${n} ritagli ripristinati`,
+    toastRotated:(n,angle)=>`↻ ${n} immagin${n>1?'i':'e'} ruotata${n>1?'e':''} di ${angle}°`,
+    flipHorizontally:"orizzontalmente", flipVertically:"verticalmente",
+    toastFlipped:(n,dir)=>`⇄ ${n} immagin${n>1?'i':'e'} ribaltata${n>1?'e':''} ${dir}`,
+    shortcutsGeneral:"Generali", coreLibraries:"Librerie principali", mlDetection:"Rilevamento ML (IA)",
+    lockAspectRatio:"Blocca proporzioni",
+    cropModeLbl:"Modalità di ritaglio", cropModeAuto:"Auto", cropModeManual:"Manuale", cropModeFace:"Viso", cropModeBody:"Corpo",
+    adjustToTargetSize:"Adatta alle dimensioni target",
+    poseNetRefinement:"PoseNet (raffinamento)",
+    faceHintFixed:"Mantiene la dimensione target centrando sui volti",
+    faceHintAuto:"Adatta automaticamente il ritaglio a ogni volto",
+    bodyHintFixed:"Mantiene la dimensione target (dal collo in giù)",
+    bodyHintAuto:"Adatta il ritaglio al corpo (dal collo in giù)",
+    transformLabel:"TRASFORMARE", rotationLabel:"Rotazione",
+    rotateLeftTitle:"Ruota 90° a sinistra", rotateRightTitle:"Ruota 90° a destra",
+    flipLabel:"Ribalta", flipHTitle:"Ribalta orizzontalmente", flipVTitle:"Ribalta verticalmente",
+    deselectAll:"✕ Deseleziona tutto", selectedLabel:"Selezionate",
+    wmTypeLbl:"Tipo", wmTypeText:"Testo", wmTypeImage:"Immagine",
+    originalNameHint:"Usa ORIGINAL-NAME per inserire il nome originale",
+    downloadLabel:"Scarica",
+    aiDetectionTitle:"Rilevamento IA",
+    aiDetectionBody:"Questa funzione utilizza modelli di IA che potrebbero rallentare l'elaborazione, specialmente su hardware modesto o browser datati. Le prestazioni possono variare a seconda del dispositivo.",
+    dontShowWarning:"Non mostrare più questo avviso",
+    cancelBtn:"Annulla", continueBtn:"Continua",
+    announcementClose:"Capito",
+    clearAll:"Cancella tutto", clearAllConfirm:"Eliminare tutte le immagini?", feedback:"Suggerimenti",
+  },
+  zh:{
+    subtitle:"Zoom-In Resizing & Mastering Editor",
+    undo:"撤销", undoCount:n=>`撤销 (${n})`, redo:"重做", redoCount:n=>`重做 (${n})`,
+    saveCurrent:"↓ 保存当前图片", zipBtn:n=>`↓ ZIP (${n})`, zipGenerating:"正在生成 ZIP…",
+    add:"+ 添加", dropLabel:"在此处拖放图片", dropFormats:"JPEG · PNG · WebP · 不限数量",
+    emptyHint:"将图片拖放到任意位置", emptySub:"或使用上方的 + 添加按钮",
+    addMore:"添加更多", noCrop:"无裁剪", editBtn:"✎ 编辑", previewBtn:"👁 预览",
+    back:"← 返回", cropTool:"裁剪", blurTool:"模糊画笔",
+    autoCropBtn:"自动裁剪", smartCropBtn:"✦ 智能裁剪", clearCropBtn:"重置", rightClickHint:"右键 = 移动视图",
+    freeCrop:"🔓 自由", lockedCrop:r=>`🔒 ${r}`,
+    secThumbs:"视图", thumbSize:n=>`缩略图大小 ${n}px`,
+    secComposition:"构图", secOutput:"输出尺寸", widthLbl:"宽度", heightLbl:"高度",
+    ratioLbl:"比例", sizeFixed:"固定", sizeAutoW:"自动宽度", sizeAutoH:"自动高度",
+    secBorder:"边框", borderWidthLbl:n=>`厚度 ${n}px`, borderColorLbl:"边框颜色",
+    secWatermark:"水印", wmTextLbl:"文字", wmFontLbl:"字体", wmSizeLbl:n=>`大小: ${n}px`, wmColorLbl:"颜色", wmOpacityLbl:n=>`不透明度: ${n}%`,
+    wmPosLbl:"位置", wmPosTL:"左上", wmPosTR:"右上", wmPosBL:"左下", wmPosBR:"右下", wmPosCenter:"居中",
+    secFocal:"裁剪焦点", focalAutoLbl:"自动（智能检测）",
+    focalApplyAll:"⊡ 应用到全部", focalApplyRunning:(d,t)=>`⊡ ${d}/${t}…`,
+    secActions:"操作", clearAllCrops:"还原裁剪", applyToAll:"应用到全部", deleteAll:"🗑 删除全部",
+    totalLbl:"总计", withCropLbl:"手动", noCropLbl:"自动", multiLbl:"多选",
+    secBlur:"模糊画笔", pixelateTool:"马赛克画笔", sizeLbl:n=>`大小: ${n}px`, strengthLbl:n=>`强度: ${n}`,
+    hardnessLbl:n=>`硬度: ${n}%`, opacityLbl:n=>`不透明度: ${n}%`, pixelSizeLbl:n=>`块: ${n}px`,
+    autoCropAll:"⊠ 全部自动裁剪", smartCropAll:"✦ 应用智能裁剪",
+    secExport:"导出", formatLbl:"格式", qualityLbl:n=>`质量: ${n}%`,
+    prefixLbl:"文件名前缀", suffixLbl:"文件名后缀",
+    secRename:"文件名", renameModeLbl:"模式", renameModeKeep:"保留原始", renameModeCustom:"自定义名称",
+    renameBaseLbl:"基础名", renameNumberingLbl:"编号", renameStartLbl:"从...开始",
+    renamePreviewLbl:"预览",
+    tabImage:"设置", tabExport:"导出",
+    panelHide:"‹ 隐藏面板", panelShow:"› 显示面板",
+    helpBtn:"帮助", secHowTo:"使用方法", secShortcuts:"快捷键", secAbout:"关于 ZIRME",
+    aboutText:"ZIRME 是一款基于浏览器的图像编辑工具，专为快速、精准地裁剪、调整大小和批量处理图片而设计。它源于一个个人项目，旨在解决实际需求：通过高效的工作流程处理多张图片，而无需依赖笨重的软件或可能危及隐私的在线服务。\n\n所有处理均在您的浏览器本地进行，图片不会上传至任何服务器。ZIRME 包含基于焦点检测的智能裁剪（由 smartcrop.js 驱动）、模糊和马赛克画笔、批量重命名、多格式导出以及完整的撤销/重做系统。项目开源，持续更新。",
+    howTo:[
+      {icon:"↗", text:"在图片上拖动 → 新建裁剪"},
+      {icon:"□", text:"白色控制点 → 调整裁剪"},
+      {icon:"↔", text:"裁剪框内 → 移动"},
+      {icon:"✎",  text:"编辑按钮 → 缩放和模糊画笔"},
+      {icon:"⊕", text:"在编辑器中右键 → 平移"},
+      {icon:"⠿",  text:"拖动缩略图 → 重新排序"},
+    ],
+    shortcuts:{
+      general:[
+        {icon:"⌨", key:"Ctrl+Z / Ctrl+Y", text:"撤销 / 重做"},
+        {icon:"←", key:"← →",             text:"浏览图片"},
+        {icon:"⇧", key:"Shift+点击",       text:"多选"},
+      ],
+      editor:[
+        {icon:"✂", key:"C", text:"裁剪"},
+        {icon:"◎", key:"B", text:"模糊"},
+        {icon:"▦", key:"P", text:"马赛克"},
+        {icon:"⌫", key:"E", text:"橡皮擦"},
+        {icon:"✒", key:"A", text:"注释"},
+      ],
+    },
+    toastZipReady:n=>`✓ ZIP 就绪 · ${n} 张图片`, toastZipErr:"生成 ZIP 时出错",
+    toastNoUndo:"无可撤销操作", toastNoRedo:"无可重做操作",
+    toastAutoCrop:n=>`✂ 自动裁剪已应用于 ${n} 张图片`, toastSmartCrop:n=>`✦ 智能裁剪已应用于 ${n} 张图片`, toastSmartCropErr:"✦ 智能裁剪失败，使用自动裁剪", toastCropsClear:"所有裁剪已清除",
+    previewTitle:"导出预览", previewClose:"关闭",
+    multiApplied:n=>`已应用于 ${n} 张选中的图片`,
+    selectedHint:n=>`✓ ${n} 张图片已选中`,
+    buyMeACoffee:"请我喝杯咖啡",
+    loadingPreview:"加载中…",
+    toastSmartAppliedEditing:"✦ 已应用于当前编辑图片",
+    detFaces:"人脸", detBodies:"人体",
+    toastProcessed1:"已处理 1 张图片",
+    toastCroppedN:n=>`已裁剪 ${n} 张图片`,
+    toastCropRestored:n=>`✓ ${n} 个裁剪已恢复`,
+    toastRotated:(n,angle)=>`↻ 已旋转 ${n} 张图片 ${angle}°`,
+    flipHorizontally:"水平", flipVertically:"垂直",
+    toastFlipped:(n,dir)=>`⇄ 已${dir}翻转 ${n} 张图片`,
+    shortcutsGeneral:"通用", coreLibraries:"核心库", mlDetection:"ML 检测 (AI)",
+    lockAspectRatio:"锁定比例",
+    cropModeLbl:"裁剪模式", cropModeAuto:"自动", cropModeManual:"手动", cropModeFace:"人脸", cropModeBody:"人体",
+    adjustToTargetSize:"调整到目标尺寸",
+    poseNetRefinement:"PoseNet（精细化）",
+    faceHintFixed:"保持目标尺寸，以人脸为中心",
+    faceHintAuto:"自动将裁剪区域调整到每张人脸",
+    bodyHintFixed:"保持目标尺寸（颈部以下）",
+    bodyHintAuto:"将裁剪区域调整到人体（颈部以下）",
+    transformLabel:"变换", rotationLabel:"旋转",
+    rotateLeftTitle:"向左旋转 90°", rotateRightTitle:"向右旋转 90°",
+    flipLabel:"翻转", flipHTitle:"水平翻转", flipVTitle:"垂直翻转",
+    deselectAll:"✕ 取消全选", selectedLabel:"已选中",
+    wmTypeLbl:"类型", wmTypeText:"文字", wmTypeImage:"图片",
+    originalNameHint:"使用 ORIGINAL-NAME 插入原始文件名",
+    downloadLabel:"下载",
+    aiDetectionTitle:"AI 检测",
+    aiDetectionBody:"此功能使用 AI 模型，可能会减慢处理速度，尤其是在性能较低的设备或旧版浏览器上。实际性能因设备而异。",
+    dontShowWarning:"不再显示此警告",
+    cancelBtn:"取消", continueBtn:"继续",
+    announcementClose:"知道了",
+    clearAll:"清除全部", clearAllConfirm:"删除所有图片?", feedback:"反馈",
+  },
+  ja:{
+    subtitle:"Zoom-In Resizing & Mastering Editor",
+    undo:"元に戻す", undoCount:n=>`元に戻す (${n})`, redo:"やり直す", redoCount:n=>`やり直す (${n})`,
+    saveCurrent:"↓ 現在の画像を保存", zipBtn:n=>`↓ ZIP (${n})`, zipGenerating:"ZIP を生成中…",
+    add:"+ 追加", dropLabel:"ここに画像をドロップ", dropFormats:"JPEG · PNG · WebP · 枚数無制限",
+    emptyHint:"どこにでも画像をドラッグ", emptySub:"または上の + 追加ボタンを使用",
+    addMore:"さらに追加", noCrop:"トリミングなし", editBtn:"✎ 編集", previewBtn:"👁 プレビュー",
+    back:"← 戻る", cropTool:"トリミング", blurTool:"ぼかしブラシ",
+    autoCropBtn:"自動トリミング", smartCropBtn:"✦ スマートトリミング", clearCropBtn:"リセット", rightClickHint:"右クリック = ビュー移動",
+    freeCrop:"🔓 フリー", lockedCrop:r=>`🔒 ${r}`,
+    secThumbs:"表示", thumbSize:n=>`サムネイルサイズ ${n}px`,
+    secComposition:"構図", secOutput:"出力サイズ", widthLbl:"幅", heightLbl:"高さ",
+    ratioLbl:"比率", sizeFixed:"固定", sizeAutoW:"幅を自動", sizeAutoH:"高さを自動",
+    secBorder:"枠線", borderWidthLbl:n=>`太さ ${n}px`, borderColorLbl:"枠線の色",
+    secWatermark:"透かし", wmTextLbl:"テキスト", wmFontLbl:"フォント", wmSizeLbl:n=>`サイズ: ${n}px`, wmColorLbl:"色", wmOpacityLbl:n=>`不透明度: ${n}%`,
+    wmPosLbl:"位置", wmPosTL:"左上", wmPosTR:"右上", wmPosBL:"左下", wmPosBR:"右下", wmPosCenter:"中央",
+    secFocal:"フォーカスポイント", focalAutoLbl:"自動（自動検出）",
+    focalApplyAll:"⊡ すべてに適用", focalApplyRunning:(d,t)=>`⊡ ${d}/${t}…`,
+    secActions:"アクション", clearAllCrops:"トリミングを戻す", applyToAll:"すべてに適用", deleteAll:"🗑 すべて削除",
+    totalLbl:"合計", withCropLbl:"手動", noCropLbl:"自動", multiLbl:"複数",
+    secBlur:"ぼかしブラシ", pixelateTool:"モザイクブラシ", sizeLbl:n=>`サイズ: ${n}px`, strengthLbl:n=>`強度: ${n}`,
+    hardnessLbl:n=>`硬さ: ${n}%`, opacityLbl:n=>`不透明度: ${n}%`, pixelSizeLbl:n=>`ブロック: ${n}px`,
+    autoCropAll:"⊠ 一括自動トリミング", smartCropAll:"✦ スマートトリミングを適用",
+    secExport:"エクスポート", formatLbl:"フォーマット", qualityLbl:n=>`品質: ${n}%`,
+    prefixLbl:"ファイル名プレフィックス", suffixLbl:"ファイル名サフィックス",
+    secRename:"ファイル名", renameModeLbl:"モード", renameModeKeep:"元のまま保持", renameModeCustom:"カスタム名",
+    renameBaseLbl:"ベース名", renameNumberingLbl:"番号付け", renameStartLbl:"開始番号",
+    renamePreviewLbl:"プレビュー",
+    tabImage:"設定", tabExport:"エクスポート",
+    panelHide:"‹ パネルを非表示", panelShow:"› パネルを表示",
+    helpBtn:"ヘルプ", secHowTo:"使い方", secShortcuts:"ショートカット", secAbout:"ZIRME について",
+    aboutText:"ZIRME はブラウザベースの画像編集ツールで、素早く正確に画像をトリミング、リサイズ、バッチ処理するために設計されています。プライバシーを損なうオンラインサービスや重いソフトウェアに頼らず、複数の画像を効率的なワークフローで処理したいという実際のニーズから生まれた個人プロジェクトです。\n\nすべての処理はブラウザ内でローカルに行われます。画像はいかなるサーバーにも送信されません。ZIRME には、焦点検出によるスマートトリミング（smartcrop.js 搭載）、ぼかし・モザイクブラシ、バッチリネーム、マルチフォーマットエクスポート、完全な元に戻す/やり直しシステムが含まれます。オープンソースで活発に開発中です。",
+    howTo:[
+      {icon:"↗", text:"画像上でドラッグ → 新しいトリミング"},
+      {icon:"□", text:"白いハンドル → トリミングのサイズ変更"},
+      {icon:"↔", text:"トリミング内 → 移動"},
+      {icon:"✎",  text:"編集ボタン → ズームとぼかしブラシ"},
+      {icon:"⊕", text:"エディター内で右クリック → パン"},
+      {icon:"⠿",  text:"サムネイルをドラッグ → 並べ替え"},
+    ],
+    shortcuts:{
+      general:[
+        {icon:"⌨", key:"Ctrl+Z / Ctrl+Y", text:"元に戻す / やり直す"},
+        {icon:"←", key:"← →",             text:"画像を移動"},
+        {icon:"⇧", key:"Shift+クリック",   text:"複数選択"},
+      ],
+      editor:[
+        {icon:"✂", key:"C", text:"トリミング"},
+        {icon:"◎", key:"B", text:"ぼかし"},
+        {icon:"▦", key:"P", text:"モザイク"},
+        {icon:"⌫", key:"E", text:"消しゴム"},
+        {icon:"✒", key:"A", text:"注釈"},
+      ],
+    },
+    toastZipReady:n=>`✓ ZIP 完成 · ${n} 枚`, toastZipErr:"ZIP 生成エラー",
+    toastNoUndo:"元に戻す操作がありません", toastNoRedo:"やり直す操作がありません",
+    toastAutoCrop:n=>`✂ ${n} 枚に自動トリミングを適用`, toastSmartCrop:n=>`✦ ${n} 枚にスマートトリミングを適用`, toastSmartCropErr:"✦ スマートトリミング失敗、自動トリミングを使用", toastCropsClear:"すべてのトリミングをクリア",
+    previewTitle:"エクスポートプレビュー", previewClose:"閉じる",
+    multiApplied:n=>`${n} 枚の選択した画像に適用`,
+    selectedHint:n=>`✓ ${n} 枚選択中`,
+    buyMeACoffee:"コーヒーをおごって",
+    loadingPreview:"読み込み中…",
+    toastSmartAppliedEditing:"✦ 編集中の画像に適用",
+    detFaces:"顔", detBodies:"人体",
+    toastProcessed1:"1 枚処理済み",
+    toastCroppedN:n=>`${n} 枚切り抜き済み`,
+    toastCropRestored:n=>`✓ ${n} 件のトリミングを復元`,
+    toastRotated:(n,angle)=>`↻ ${n} 枚を ${angle}° 回転`,
+    flipHorizontally:"水平", flipVertically:"垂直",
+    toastFlipped:(n,dir)=>`⇄ ${n} 枚を${dir}反転`,
+    shortcutsGeneral:"一般", coreLibraries:"コアライブラリ", mlDetection:"ML 検出 (AI)",
+    lockAspectRatio:"縦横比を固定",
+    cropModeLbl:"トリミングモード", cropModeAuto:"自動", cropModeManual:"手動", cropModeFace:"顔", cropModeBody:"人体",
+    adjustToTargetSize:"目標サイズに調整",
+    poseNetRefinement:"PoseNet（精度向上）",
+    faceHintFixed:"目標サイズを維持して顔を中央に配置",
+    faceHintAuto:"各顔に合わせて自動でトリミングを調整",
+    bodyHintFixed:"目標サイズを維持（首から下）",
+    bodyHintAuto:"人体に合わせてトリミング（首から下）",
+    transformLabel:"変換", rotationLabel:"回転",
+    rotateLeftTitle:"左 90° 回転", rotateRightTitle:"右 90° 回転",
+    flipLabel:"反転", flipHTitle:"水平反転", flipVTitle:"垂直反転",
+    deselectAll:"✕ すべて選択解除", selectedLabel:"選択中",
+    wmTypeLbl:"タイプ", wmTypeText:"テキスト", wmTypeImage:"画像",
+    originalNameHint:"ORIGINAL-NAME で元のファイル名を挿入",
+    downloadLabel:"ダウンロード",
+    aiDetectionTitle:"AI 検出",
+    aiDetectionBody:"この機能は AI モデルを使用しており、処理が遅くなる場合があります（特に性能の低いハードウェアや古いブラウザでは顕著です）。パフォーマンスはデバイスにより異なります。",
+    dontShowWarning:"この警告を再表示しない",
+    cancelBtn:"キャンセル", continueBtn:"続ける",
+    announcementClose:"了解",
+    clearAll:"すべて消去", clearAllConfirm:"すべての画像を削除しますか?", feedback:"フィードバック",
+  },
+  ru:{
+    subtitle:"Zoom-In Resizing & Mastering Editor",
+    undo:"Отменить", undoCount:n=>`Отменить (${n})`, redo:"Повторить", redoCount:n=>`Повторить (${n})`,
+    saveCurrent:"↓ Текущее изображение", zipBtn:n=>`↓ ZIP (${n})`, zipGenerating:"Создание ZIP…",
+    add:"+ Добавить", dropLabel:"Перетащите изображения сюда", dropFormats:"JPEG · PNG · WebP · любое количество",
+    emptyHint:"Перетащите изображения в любое место", emptySub:"или используйте кнопку + Добавить",
+    addMore:"Добавить ещё", noCrop:"без обрезки", editBtn:"✎ Редактировать", previewBtn:"👁 Предпросмотр",
+    back:"← Назад", cropTool:"Обрезать", blurTool:"Кисть размытия",
+    autoCropBtn:"Авто-обрезка", smartCropBtn:"✦ Умная обрезка", clearCropBtn:"Сбросить", rightClickHint:"Правая кнопка = перемещение",
+    freeCrop:"🔓 Свободно", lockedCrop:r=>`🔒 ${r}`,
+    secThumbs:"Вид", thumbSize:n=>`Размер миниатюры ${n}px`,
+    secComposition:"Композиция", secOutput:"Размер вывода", widthLbl:"Ширина", heightLbl:"Высота",
+    ratioLbl:"Соотношение", sizeFixed:"Фиксированный", sizeAutoW:"Авто ширина", sizeAutoH:"Авто высота",
+    secBorder:"Рамка", borderWidthLbl:n=>`Толщина ${n}px`, borderColorLbl:"Цвет рамки",
+    secWatermark:"Водяной знак", wmTextLbl:"Текст", wmFontLbl:"Шрифт", wmSizeLbl:n=>`Размер: ${n}px`, wmColorLbl:"Цвет", wmOpacityLbl:n=>`Непрозрачность: ${n}%`,
+    wmPosLbl:"Позиция", wmPosTL:"Верх-лево", wmPosTR:"Верх-право", wmPosBL:"Низ-лево", wmPosBR:"Низ-право", wmPosCenter:"По центру",
+    secFocal:"Фокус обрезки", focalAutoLbl:"Автоматически (авто-определение)",
+    focalApplyAll:"⊡ Применить ко всем", focalApplyRunning:(d,t)=>`⊡ ${d}/${t}…`,
+    secActions:"Действия", clearAllCrops:"Сбросить обрезки", applyToAll:"Применить ко всем", deleteAll:"🗑 Удалить всё",
+    totalLbl:"Всего", withCropLbl:"Вручную", noCropLbl:"Авто", multiLbl:"Мульти",
+    secBlur:"Кисть размытия", pixelateTool:"Кисть пикселизации", sizeLbl:n=>`Размер: ${n}px`, strengthLbl:n=>`Сила: ${n}`,
+    hardnessLbl:n=>`Жёсткость: ${n}%`, opacityLbl:n=>`Непрозрачность: ${n}%`, pixelSizeLbl:n=>`Блок: ${n}px`,
+    autoCropAll:"⊠ Авто-обрезка всех", smartCropAll:"✦ Применить умную обрезку",
+    secExport:"Экспорт", formatLbl:"Формат", qualityLbl:n=>`Качество: ${n}%`,
+    prefixLbl:"Префикс имени файла", suffixLbl:"Суффикс имени файла",
+    secRename:"Имя файла", renameModeLbl:"Режим", renameModeKeep:"Сохранить оригинал", renameModeCustom:"Своё имя",
+    renameBaseLbl:"Базовое имя", renameNumberingLbl:"Нумерация", renameStartLbl:"Начать с",
+    renamePreviewLbl:"Предпросмотр",
+    tabImage:"Настройки", tabExport:"Экспорт",
+    panelHide:"‹ Скрыть панель", panelShow:"› Показать панель",
+    helpBtn:"Помощь", secHowTo:"Как пользоваться", secShortcuts:"Горячие клавиши", secAbout:"О ZIRME",
+    aboutText:"ZIRME — браузерный инструмент для редактирования изображений, предназначенный для быстрой и точной обрезки, изменения размера и пакетной обработки. Он появился как личный проект для решения реальной задачи: обработка нескольких изображений в эффективном рабочем процессе без зависимости от тяжёлого программного обеспечения или онлайн-сервисов.\n\nВся обработка происходит локально в браузере. Ни одно изображение никогда не загружается на сервер. ZIRME включает умную обрезку с определением точки фокуса (на основе smartcrop.js), кисти размытия и пикселизации, пакетное переименование, экспорт в нескольких форматах и полную систему отмены/повтора. Проект открытый и активно развивается.",
+    howTo:[
+      {icon:"↗", text:"Перетащить по изображению → новая обрезка"},
+      {icon:"□", text:"Белые маркеры → изменить обрезку"},
+      {icon:"↔", text:"Внутри обрезки → переместить"},
+      {icon:"✎",  text:"Кнопка редактирования → зум и кисть размытия"},
+      {icon:"⊕", text:"Правая кнопка в редакторе → панорама"},
+      {icon:"⠿",  text:"Перетащить миниатюры → изменить порядок"},
+    ],
+    shortcuts:{
+      general:[
+        {icon:"⌨", key:"Ctrl+Z / Ctrl+Y", text:"Отменить / Повторить"},
+        {icon:"←", key:"← →",             text:"Навигация по изображениям"},
+        {icon:"⇧", key:"Shift+клик",       text:"Множественный выбор"},
+      ],
+      editor:[
+        {icon:"✂", key:"C", text:"Обрезать"},
+        {icon:"◎", key:"B", text:"Размытие"},
+        {icon:"▦", key:"P", text:"Пикселизация"},
+        {icon:"⌫", key:"E", text:"Ластик"},
+        {icon:"✒", key:"A", text:"Аннотация"},
+      ],
+    },
+    toastZipReady:n=>`✓ ZIP готов · ${n} изображений`, toastZipErr:"Ошибка создания ZIP",
+    toastNoUndo:"Нечего отменять", toastNoRedo:"Нечего повторять",
+    toastAutoCrop:n=>`✂ Авто-обрезка применена к ${n} изображениям`, toastSmartCrop:n=>`✦ Умная обрезка применена к ${n} изображениям`, toastSmartCropErr:"✦ Умная обрезка не удалась, используется авто-обрезка", toastCropsClear:"Все обрезки удалены",
+    previewTitle:"Предпросмотр экспорта", previewClose:"Закрыть",
+    multiApplied:n=>`Применено к ${n} выбранным изображениям`,
+    selectedHint:n=>`✓ ${n} изображений выбрано`,
+    buyMeACoffee:"Угостите кофе",
+    loadingPreview:"Загрузка…",
+    toastSmartAppliedEditing:"✦ Применено к редактируемому изображению",
+    detFaces:"лица", detBodies:"тела",
+    toastProcessed1:"1 изображение обработано",
+    toastCroppedN:n=>`${n} изображений обрезано`,
+    toastCropRestored:n=>n===1?"✓ 1 кадрирование восстановлено":`✓ ${n} кадрирований восстановлено`,
+    toastRotated:(n,angle)=>`↻ ${n} изображени${n===1?'е':'й'} повёрнуто на ${angle}°`,
+    flipHorizontally:"горизонтально", flipVertically:"вертикально",
+    toastFlipped:(n,dir)=>`⇄ ${n} изображени${n===1?'е':'й'} отражено ${dir}`,
+    shortcutsGeneral:"Общие", coreLibraries:"Основные библиотеки", mlDetection:"ML-обнаружение (ИИ)",
+    lockAspectRatio:"Зафиксировать пропорции",
+    cropModeLbl:"Режим кадрирования", cropModeAuto:"Авто", cropModeManual:"Вручную", cropModeFace:"Лицо", cropModeBody:"Тело",
+    adjustToTargetSize:"Подогнать под целевой размер",
+    poseNetRefinement:"PoseNet (уточнение)",
+    faceHintFixed:"Сохраняет целевой размер, центрируя по лицам",
+    faceHintAuto:"Автоматически подстраивает кадрирование под каждое лицо",
+    bodyHintFixed:"Сохраняет целевой размер (от шеи вниз)",
+    bodyHintAuto:"Подстраивает кадрирование под тело (от шеи вниз)",
+    transformLabel:"ПРЕОБРАЗОВАНИЕ", rotationLabel:"Поворот",
+    rotateLeftTitle:"Повернуть на 90° влево", rotateRightTitle:"Повернуть на 90° вправо",
+    flipLabel:"Отразить", flipHTitle:"Отразить горизонтально", flipVTitle:"Отразить вертикально",
+    deselectAll:"✕ Снять выделение", selectedLabel:"Выбрано",
+    wmTypeLbl:"Тип", wmTypeText:"Текст", wmTypeImage:"Изображение",
+    originalNameHint:"Используйте ORIGINAL-NAME для вставки исходного имени",
+    downloadLabel:"Скачать",
+    aiDetectionTitle:"ИИ-обнаружение",
+    aiDetectionBody:"Эта функция использует модели ИИ, которые могут замедлить обработку, особенно на слабом оборудовании или в старых браузерах. Производительность зависит от вашего устройства.",
+    dontShowWarning:"Больше не показывать это предупреждение",
+    cancelBtn:"Отмена", continueBtn:"Продолжить",
+    announcementClose:"Понятно",
+    clearAll:"Очистить всё", clearAllConfirm:"Удалить все изображения?", feedback:"Отзыв",
+  },
+};
+
+/* ── Announcement System ──────────────────────────────────────────────────
+ *  To show a new announcement:                                             *
+ *  1. Set enabled: true                                                    *
+ *  2. Change id to a unique string (e.g. "v13-feature")                   *
+ *  3. Update title and body with your message per language                 *
+ *  To disable: set enabled: false — users who already saw it are unaffected *
+ * ─────────────────────────────────────────────────────────────────────── */
+const ANNOUNCEMENT = {
+  enabled: true,
+  id: "v12-multilang",
+  title: {
+    en:"🌍 ZIRME is now available in 9 languages!",
+    es:"🌍 ¡ZIRME ahora está disponible en 9 idiomas!",
+    fr:"🌍 ZIRME est maintenant disponible en 9 langues !",
+    de:"🌍 ZIRME ist jetzt in 9 Sprachen verfügbar!",
+    pt:"🌍 ZIRME agora está disponível em 9 idiomas!",
+    it:"🌍 ZIRME è ora disponibile in 9 lingue!",
+    zh:"🌍 ZIRME 现已支持 9 种语言！",
+    ja:"🌍 ZIRME が 9 言語に対応しました！",
+    ru:"🌍 ZIRME теперь доступен на 9 языках!",
+  },
+  body: {
+    en:"The interface is now fully localized in English, Spanish, French, German, Portuguese, Italian, Chinese, Japanese and Russian. Use the language selector in the top bar to switch.",
+    es:"La interfaz ahora está completamente localizada en inglés, español, francés, alemán, portugués, italiano, chino, japonés y ruso. Usa el selector de idioma en la barra superior para cambiar.",
+    fr:"L'interface est maintenant entièrement localisée en anglais, espagnol, français, allemand, portugais, italien, chinois, japonais et russe. Utilisez le sélecteur de langue dans la barre supérieure.",
+    de:"Die Benutzeroberfläche ist jetzt vollständig auf Englisch, Spanisch, Französisch, Deutsch, Portugiesisch, Italienisch, Chinesisch, Japanisch und Russisch lokalisiert.",
+    pt:"A interface agora está completamente localizada em inglês, espanhol, francês, alemão, português, italiano, chinês, japonês e russo. Use o seletor de idioma na barra superior.",
+    it:"L'interfaccia è ora completamente localizzata in inglese, spagnolo, francese, tedesco, portoghese, italiano, cinese, giapponese e russo.",
+    zh:"界面现已完整支持英语、西班牙语、法语、德语、葡萄牙语、意大利语、中文、日语和俄语。请使用顶部栏的语言选择器切换。",
+    ja:"インターフェースは英語、スペイン語、フランス語、ドイツ語、ポルトガル語、イタリア語、中国語、日本語、ロシア語に完全対応しました。",
+    ru:"Интерфейс теперь полностью локализован на английском, испанском, французском, немецком, португальском, итальянском, китайском, японском и русском языках.",
   },
 };
 
@@ -1016,13 +1809,19 @@ function ImageCell({ file, isSelected, isMultiSel, settings, cellH, t,
         onMouseDown={onMouseDown} onMouseMove={onMouseMove}
         onMouseUp={onMouseUp} onMouseLeave={onMouseUp} />
       
-      {/* Checkbox de deselección - solo visible si está seleccionada */}
-      {isSelected&&(
-        <button onClick={(e)=>{e.stopPropagation();onSelect(null);}} 
-                style={{position:"absolute",top:6,right:6,width:24,height:24,borderRadius:4,border:"2px solid #7c5cff",background:"rgba(124,92,255,0.9)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",zIndex:5,boxShadow:"0 2px 8px rgba(0,0,0,0.3)"}}
-                onMouseEnter={e=>e.currentTarget.style.background="#7c5cff"}
-                onMouseLeave={e=>e.currentTarget.style.background="rgba(124,92,255,0.9)"}
-                title="Deseleccionar">
+      {/* Checkbox de deselección - visible si está seleccionada o en multi-sel */}
+      {(isSelected||isMultiSel)&&(
+        <button
+          onClick={(e)=>{
+            e.stopPropagation();
+            // isMultiSel: hacer shift-toggle para sacar de la selección múltiple
+            if(isMultiSel) onSelect(file.id, true);
+            else onSelect(null);
+          }}
+          style={{position:"absolute",top:6,right:6,width:24,height:24,borderRadius:4,border:"2px solid #7c5cff",background:"rgba(124,92,255,0.9)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",zIndex:5,boxShadow:"0 2px 8px rgba(0,0,0,0.3)"}}
+          onMouseEnter={e=>e.currentTarget.style.background="#7c5cff"}
+          onMouseLeave={e=>e.currentTarget.style.background="rgba(124,92,255,0.9)"}
+          title="Deseleccionar">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
@@ -1174,7 +1973,7 @@ const ToolIcon=({type,size=16,color="currentColor"})=>{
 };
 
 /* ── EditOverlay ──────────────────────────────────────────────────────── */
-function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndoPush, panelOpen, onBlurCfgChange }) {
+function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndoPush, panelOpen, onBlurCfgChange, tick, onTick }) {
   const canvasRef     = useRef(null);
   const contRef       = useRef(null);
   const blurCircleRef = useRef(null);
@@ -1245,13 +2044,32 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
 
   // Keep refs in sync with props/state (no cost — just assignments)
   useEffect(()=>{ toolRef.current=tool; },[tool]);
+
+  // V11.5: Keyboard shortcuts para herramientas del editor
+  useEffect(()=>{
+    const TOOL_KEYS={c:"crop",b:"blur",p:"pixelate",e:"eraser",a:"annotate"};
+    const h=(ev)=>{
+      if(ev.ctrlKey||ev.metaKey||ev.altKey) return;
+      const tag=ev.target.tagName;
+      if(tag==="INPUT"||tag==="TEXTAREA"||ev.target.isContentEditable) return;
+      const toolId=TOOL_KEYS[ev.key.toLowerCase()];
+      if(toolId){ev.preventDefault();setTool(toolId);}
+    };
+    window.addEventListener("keydown",h);
+    return()=>window.removeEventListener("keydown",h);
+  },[]);
   useEffect(()=>{ freeCropRef.current=freeCrop; },[freeCrop]);
   useEffect(()=>{ blurCfgRef.current=blurCfg; },[blurCfg]);
   useEffect(()=>{ eraserCfgRef.current=eraserCfg; },[eraserCfg]);
   useEffect(()=>{ annotateCfgRef.current=annotateCfg; },[annotateCfg]);
   useEffect(()=>{ settingsRef2.current=settings; },[settings]);
   useEffect(()=>{ fileRef.current=file; },[file]); // keeps fileRef current without recreating drawNow
-  
+
+  // V11.5: Re-dibujar cuando tick cambia (detecta undo/redo externos)
+  useEffect(()=>{
+    if(file.ec){ fileRef.current=file; drawNow(); }
+  },[tick]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Redraw when border settings change
   useEffect(()=>{
     draw();
@@ -1419,6 +2237,7 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     tc.globalCompositeOperation="destination-in"; tc.fillStyle=g; tc.fillRect(0,0,size,size);
     ctx.drawImage(tmp,bx,by);
     draw(); // direct draw, no setState
+    onTick?.(); // V11.5: actualizar miniatura
   };
 
   // ── Pixelate helper ──────────────────────────────────────────────────
@@ -1444,6 +2263,7 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     tc.globalCompositeOperation="destination-in"; tc.fillStyle=g; tc.fillRect(0,0,size,size);
     ctx.drawImage(tmp,bx,by);
     draw();
+    onTick?.(); // V11.5: actualizar miniatura
   };
 
   // ── NUEVO: Eraser helper ────────────────────────────────────────────────
@@ -1550,6 +2370,7 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
     
     ctx.globalAlpha = 1;
     draw();
+    onTick?.(); // V11.5: actualizar miniatura
   };
 
   // ── NUEVO: Annotate helper ──────────────────────────────────────────────
@@ -1621,8 +2442,9 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
       s.lastY = iy;
     }
     // Modo text se maneja en onMouseDown (click para colocar texto)
-    
+
     draw();
+    onTick?.(); // V11.5: actualizar miniatura
   };
 
   // Helper para renderizar texto correctamente (evitar inversión)
@@ -1884,29 +2706,26 @@ function EditOverlay({ file, settings, blurCfg, t, onClose, onCropChange, onUndo
         {/* Left toolbar — tool selector with flyout for brush settings */}
         <div style={{width:44,background:"#141414",borderRight:"1px solid #1e1e1e",display:"flex",flexDirection:"column",alignItems:"center",paddingTop:10,gap:2,flexShrink:0,position:"relative",zIndex:20}}>
           {[
-            {id:"crop",tip:t?.cropTool||"Crop"},
-            {id:"blur",tip:t?.blurTool||"Blur"},
-            {id:"pixelate",tip:t?.pixelateTool||"Pixelate"},
-            {id:"eraser",tip:t?.blurTool ? "Borrador" : "Eraser"},
-            {id:"annotate",tip:t?.blurTool ? "Anotar" : "Annotate"}
+            {id:"crop",    tip:t?.cropTool||"Crop",        key:"C"},
+            {id:"blur",    tip:t?.blurTool||"Blur",        key:"B"},
+            {id:"pixelate",tip:t?.pixelateTool||"Pixelate",key:"P"},
+            {id:"eraser",  tip:t?.blurTool?"Borrador":"Eraser",  key:"E"},
+            {id:"annotate",tip:t?.blurTool?"Anotar":"Annotate",  key:"A"}
           ].map(tb=>(
-            <button key={tb.id} 
-              onClick={()=>{
-                // V11.3: Clic izquierdo solo selecciona herramienta
-                setTool(tb.id);
-              }}
+            <button key={tb.id}
+              onClick={()=>{ setTool(tb.id); }}
               onContextMenu={(e)=>{
                 e.preventDefault();
-                // V11.3: Clic derecho toggle panel
                 if(tb.id==="blur"||tb.id==="pixelate"||tb.id==="eraser"||tb.id==="annotate"){
                   setToolPanelOpen(toolPanelOpen===tb.id ? null : tb.id);
                 }
               }}
-              title={tb.tip}
-              style={{width:34,height:34,border:"none",borderRadius:6,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .12s",
+              title={`${tb.tip} (${tb.key})`}
+              style={{width:34,height:34,border:"none",borderRadius:6,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"all .12s",position:"relative",gap:1,
                 background:tool===tb.id?"rgba(124,92,255,0.18)":"transparent",
                 color:tool===tb.id?"#a78bfa":"#555"}}>
-              <ToolIcon type={tb.id} size={17} color={tool===tb.id?"#a78bfa":"#555"}/>
+              <ToolIcon type={tb.id} size={15} color={tool===tb.id?"#a78bfa":"#555"}/>
+              <span style={{fontSize:7,fontFamily:"'SF Mono',Menlo,monospace",color:tool===tb.id?"#a78bfa":"#3a3a3a",lineHeight:1,userSelect:"none"}}>{tb.key}</span>
             </button>
           ))}
 
@@ -2352,8 +3171,30 @@ function PreviewModal({ file, settings, t, onClose }) {
           <span style={{fontFamily:"Inter",fontWeight:600,fontSize:13,color:"#d0d0d0"}}>{t.previewTitle} · {dims.tw}×{dims.th}px · {fmt.toUpperCase()}{fmt!=="png"?` · ${quality}%`:""}</span>
           <button onClick={onClose} style={{fontFamily:"Inter",fontSize:12,background:"transparent",border:"1px solid #303030",borderRadius:5,color:"#aaa",padding:"4px 12px",cursor:"pointer"}}>{t.previewClose}</button>
         </div>
-        {dataUrl?<img src={dataUrl} alt="preview"/>:<div style={{color:"#555",padding:40}}>Loading…</div>}
+        {dataUrl?<img src={dataUrl} alt="preview"/>:<div style={{color:"#555",padding:40}}>{t.loadingPreview||"Loading…"}</div>}
         <div style={{fontSize:10,color:"#555",fontFamily:"Inter"}}>{file.name}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Announcement Popup ─────────────────────────────────────────────────── */
+function AnnouncementPopup({ lang, t, onClose }) {
+  const title = ANNOUNCEMENT.title[lang] || ANNOUNCEMENT.title.en;
+  const body  = ANNOUNCEMENT.body[lang]  || ANNOUNCEMENT.body.en;
+  return (
+    <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.72)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:20000,backdropFilter:"blur(2px)"}}
+         onClick={onClose}>
+      <div style={{background:"#1a1a2e",border:"1px solid rgba(124,92,255,0.5)",borderRadius:12,padding:"28px 30px",maxWidth:460,width:"90%",boxShadow:"0 24px 64px rgba(0,0,0,0.6)"}}
+           onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:18,fontWeight:700,color:"#e0e0e0",marginBottom:12,lineHeight:1.3}}>{title}</div>
+        <div style={{fontSize:13,color:"#a0a0a0",lineHeight:1.7,marginBottom:22}}>{body}</div>
+        <button onClick={onClose}
+          style={{width:"100%",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,background:"#7c5cff",border:"none",borderRadius:7,padding:"10px",cursor:"pointer",color:"#fff",transition:"background .15s"}}
+          onMouseEnter={e=>e.currentTarget.style.background="#6a4ce6"}
+          onMouseLeave={e=>e.currentTarget.style.background="#7c5cff"}>
+          {t.announcementClose||"Got it"}
+        </button>
       </div>
     </div>
   );
@@ -2361,7 +3202,7 @@ function PreviewModal({ file, settings, t, onClose }) {
 
 /* ── Buy Me a Coffee Button Component ───────────────────────────────────── */
 function BuyMeACoffeeButton({ lang }) {
-  const text = lang === 'es' ? 'Cómprame un café' : 'Buy me a coffee';
+  const text = STRINGS[lang]?.buyMeACoffee || STRINGS.en.buyMeACoffee;
   
   return (
     <a 
@@ -2423,6 +3264,14 @@ function ZIRME() {
   const [mlDontShowAgain, setMlDontShowAgain] = useState(()=>{
     try{ return localStorage.getItem("zirme-ml-dont-warn")==="true"; }catch(e){ return false; }
   });
+  const [showAnnouncement, setShowAnnouncement] = useState(()=>{
+    if(!ANNOUNCEMENT.enabled) return false;
+    try{ return !localStorage.getItem("zirme-ann-"+ANNOUNCEMENT.id); }catch(e){ return false; }
+  });
+  const dismissAnnouncement = useCallback(()=>{
+    try{ localStorage.setItem("zirme-ann-"+ANNOUNCEMENT.id,"1"); }catch(e){}
+    setShowAnnouncement(false);
+  },[]);
   const [blurCfg,  setBlurCfg] = useState({size:60,strength:12,hardness:30,opacity:85,pixelSize:8});
   const [zipping,  setZipping] = useState(false);
   const [zipPct,   setZipPct]  = useState(0);
@@ -2436,8 +3285,8 @@ function ZIRME() {
   const [helpTab,  setHelpTab]  = useState(null);
   const [langOpen, setLangOpen] = useState(false);
   const helpRef = useRef(null);
-  const [lang,     setLang]    = useState(()=>{try{return localStorage.getItem("zirme-lang")||"es";}catch(e){return "es";}});
-  const langNames = {en:"English",es:"Español"};
+  const [lang,     setLang]    = useState(()=>{try{return localStorage.getItem("zirme-lang")||"en";}catch(e){return "en";}});
+  const langNames = {en:"English",es:"Español",fr:"Français",de:"Deutsch",pt:"Português",it:"Italiano",zh:"中文",ja:"日本語",ru:"Русский"};
   const langRef = useRef(null);
 
   const t = STRINGS[lang]||STRINGS.en;
@@ -2474,23 +3323,25 @@ function ZIRME() {
   const canUndo  = (activeFile?.history||[]).length>0;
   const canRedo  = (activeFile?.future||[]).length>0;
 
-  // Global keyboard shortcuts
+  // Global keyboard shortcuts — patrón ref: listener registrado una sola vez
+  const kbHandlerRef = useRef(null);
+  kbHandlerRef.current = (e)=>{
+    if((e.ctrlKey||e.metaKey)&&e.key==="z"){e.preventDefault();undoSel();}
+    if((e.ctrlKey||e.metaKey)&&e.key==="y"){e.preventDefault();redoSel();}
+    if(e.key==="ArrowLeft"||e.key==="ArrowRight"){
+      e.preventDefault();
+      setSelId(prev=>{
+        const idx=filesRef.current.findIndex(f=>f.id===prev);
+        if(idx<0) return filesRef.current[0]?.id??null;
+        const next=e.key==="ArrowRight"?Math.min(idx+1,filesRef.current.length-1):Math.max(idx-1,0);
+        return filesRef.current[next]?.id??prev;
+      });
+    }
+  };
   useEffect(()=>{
-    const h=(e)=>{
-      if((e.ctrlKey||e.metaKey)&&e.key==="z"){e.preventDefault();undoSel();}
-      if((e.ctrlKey||e.metaKey)&&e.key==="y"){e.preventDefault();redoSel();}
-      if(e.key==="ArrowLeft"||e.key==="ArrowRight"){
-        e.preventDefault();
-        setSelId(prev=>{
-          const idx=filesRef.current.findIndex(f=>f.id===prev);
-          if(idx<0) return filesRef.current[0]?.id??null;
-          const next=e.key==="ArrowRight"?Math.min(idx+1,filesRef.current.length-1):Math.max(idx-1,0);
-          return filesRef.current[next]?.id??prev;
-        });
-      }
-    };
+    const h=(e)=>kbHandlerRef.current(e);
     window.addEventListener("keydown",h); return()=>window.removeEventListener("keydown",h);
-  },[selId]);
+  },[]);  // sin deps: solo se registra/cancela al mount/unmount
 
   useEffect(()=>{ const h=()=>setTick(n=>n+1); window.addEventListener("resize",h); return()=>window.removeEventListener("resize",h); },[]);
 
@@ -2503,10 +3354,10 @@ function ZIRME() {
   },[]);
 
   const undoSel = useCallback(()=>{
-    // V11.3: Usar editId si está activo, sino selId
-    const targetId = editId || selId;
+    // V11.5: usar refs → sin dependencias de selId/editId
+    const targetId = editIdRef.current || selIdRef.current;
     if(!targetId) return;
-    
+
     setFiles(prev=>prev.map(f=>{
       if(f.id!==targetId) return f;
       const hist=f.history||[]; if(!hist.length){showToast(t.toastNoUndo);return f;}
@@ -2517,11 +3368,11 @@ function ZIRME() {
       setTick(n=>n+1);
       return{...f,history:hist.slice(0,-1),future:[futureEntry,...(f.future||[])].slice(0,30),crop:last.crop};
     }));
-  },[editId,selId,t]);
+  },[t]);
 
   const redoSel = useCallback(()=>{
-    // V11.3: Usar editId si está activo, sino selId
-    const targetId = editId || selId;
+    // V11.5: usar refs → sin dependencias de selId/editId
+    const targetId = editIdRef.current || selIdRef.current;
     if(!targetId) return;
     
     setFiles(prev=>prev.map(f=>{
@@ -2534,7 +3385,7 @@ function ZIRME() {
       setTick(n=>n+1);
       return{...f,future:fut.slice(1),history:[...(f.history||[]),histEntry].slice(-30),crop:next.crop};
     }));
-  },[selId,t]);
+  },[t]);
 
   const setCropForId = useCallback((id,crop)=>{
     // When called from user interaction (drag/edit), mark as manual by removing auto flag
@@ -2550,7 +3401,15 @@ function ZIRME() {
 
   const handleSelect = useCallback((id, shift)=>{
     if(shift){
-      setMultiSel(s=>{const ns=new Set(s); ns.has(id)?ns.delete(id):ns.add(id); return ns;});
+      // V11.5: Al entrar en multi-sel, mover selId actual a multiSel
+      setMultiSel(s=>{
+        const ns=new Set(s);
+        const prev=selIdRef.current;
+        if(prev) ns.add(prev);            // incluir selección principal
+        ns.has(id)?ns.delete(id):ns.add(id); // toggle el nuevo
+        return ns;
+      });
+      setSelId(null);                       // multiSel es la fuente de verdad
     } else {
       setSelId(id); setMultiSel(new Set());
     }
@@ -2640,7 +3499,6 @@ function ZIRME() {
   },[settings.w,settings.h,settings.focalPoint]);
 
   // Unified focal-point crop — uses smartcrop when focalAuto is ON, anchor-based otherwise.
-  // Unified focal-point crop — uses smartcrop when focalAuto is ON, anchor-based otherwise.
   // Processes sequentially to avoid memory pressure on large galleries.
   const applyFocalAll = useCallback(async()=>{
     const{w:oW,h:oH,focalAuto,focalPoint,detectionMode,adjustToTargetSize,poseNetEnabled}=settingsRef.current;
@@ -2670,7 +3528,7 @@ function ZIRME() {
       
       setFiles(prev => prev.map(ff => ff.id === currentEditId ? {...ff, crop: {...nc, auto:true}} : ff));
       setSmartBatch({running:false,done:0,total:0});
-      showToast(lang==="es"?"✦ Aplicado a imagen en edición":"✦ Applied to editing image");
+      showToast(t.toastSmartAppliedEditing);
       return;
     }
     
@@ -2744,12 +3602,9 @@ function ZIRME() {
     }
     
     setSmartBatch({running:false,done:0,total:0});
-    const modeLabel = detectionMode==="face"?(lang==="es"?"rostros":"faces"):detectionMode==="body"?(lang==="es"?"cuerpos":"bodies"):"";
-    const countMsg = total===1 
-      ? (lang==="es"?"1 imagen procesada":"1 image processed")
-      : `${applied} ${lang==="es"?"imágenes recortadas":"images cropped"}`;
-    const msg=modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`;
-    showToast(msg);
+    const modeLabel = detectionMode==="face"?t.detFaces:detectionMode==="body"?t.detBodies:"";
+    const countMsg = total===1 ? t.toastProcessed1 : t.toastCroppedN(applied);
+    showToast(modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`);
   },[t,lang]);
 
   // Single-image focal crop — used when panel scope is "single" (editing mode)
@@ -2809,11 +3664,18 @@ function ZIRME() {
       return{...f,crop:{...focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay),auto:true}};
     }));
     
-    const msg = targets.length===1
-      ? (lang==="es"?"✓ 1 recorte restablecido":"✓ 1 crop restored")
-      : (lang==="es"?`✓ ${targets.length} recortes restablecidos`:`✓ ${targets.length} crops restored`);
-    showToast(msg);
+    showToast(t.toastCropRestored(targets.length));
   },[t,lang]);
+
+  // V11.5: Re-trigger automático cuando toggle PoseNet cambia
+  // Usa refs para evitar closures rancias con detectionMode y files
+  const prevPoseNetRef = useRef(settings.poseNetEnabled);
+  useEffect(()=>{
+    if(settingsRef.current.detectionMode==="body" && settings.poseNetEnabled!==prevPoseNetRef.current){
+      if(filesRef.current.length>0){ applyFocalAll(); }
+    }
+    prevPoseNetRef.current=settings.poseNetEnabled;
+  },[settings.poseNetEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Rotación y volteo de imágenes
   const rotateImages = useCallback((angle)=>{
@@ -2876,10 +3738,7 @@ function ZIRME() {
       return {...f, ec: canvas, crop: {...newCrop, auto:true}};
     }));
     
-    const msg = lang==="es" 
-      ? `↻ ${rotated} imagen${rotated>1?'es':''} rotada${rotated>1?'s':''} ${angle}°`
-      : `↻ ${rotated} image${rotated>1?'s':''} rotated ${angle}°`;
-    showToast(msg);
+    showToast(t.toastRotated(rotated,angle));
   },[lang]);
 
   const flipImages = useCallback((direction)=>{
@@ -2928,13 +3787,8 @@ function ZIRME() {
       return {...f, ec: canvas};
     }));
     
-    const label = direction === 'horizontal' 
-      ? (lang==="es" ? "horizontalmente" : "horizontally")
-      : (lang==="es" ? "verticalmente" : "vertically");
-    const msg = lang==="es"
-      ? `⇄ ${flipped} imagen${flipped>1?'es':''} volteada${flipped>1?'s':''} ${label}`
-      : `⇄ ${flipped} image${flipped>1?'s':''} flipped ${label}`;
-    showToast(msg);
+    const dir = direction==='horizontal'?t.flipHorizontally:t.flipVertically;
+    showToast(t.toastFlipped(flipped,dir));
   },[lang]);
 
   const renderFile = useCallback((f, idx)=>{
@@ -3071,16 +3925,62 @@ function ZIRME() {
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#181818",color:"#d0d0d0"}}>
 
-      {/* Header */}
+      {/* Header - V11.5: 3 zonas (LEFT | CENTER | RIGHT) */}
       <header style={{background:"#141414",borderBottom:"1px solid #222",height:50,padding:"0 12px 0 20px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-        <div style={{fontWeight:700,fontSize:19,letterSpacing:-0.5,color:"#fff"}}>ZIRME</div>
-        <div style={{fontSize:11,color:"#888"}}>{t.subtitle}</div>
-        <div style={{flex:1}}/>
-        
-        {/* Buy Me a Coffee Button */}
-        <BuyMeACoffeeButton lang={lang} />
-        
-        <div style={{width:1,height:16,background:"#2a2a2a"}}/>
+
+        {/* ═══ LEFT: Logo + Subtitle ═══ */}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{fontWeight:700,fontSize:19,letterSpacing:-0.5,color:"#fff"}}>ZIRME</div>
+          <div style={{fontSize:11,color:"#888"}}>{t.subtitle}</div>
+        </div>
+
+        <div style={{flex:1}}/> {/* Spacer */}
+
+        {/* ═══ CENTER: Undo | Redo | Clear All ═══ */}
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={undoSel} disabled={!canUndo} title="Ctrl+Z"
+            style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canUndo?"pointer":"not-allowed",background:"transparent",color:canUndo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canUndo?1:0.4}}>
+            ↩ {canUndo?t.undoCount((activeFile?.history||[]).length):t.undo}
+          </button>
+          <button onClick={redoSel} disabled={!canRedo} title="Ctrl+Y"
+            style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canRedo?"pointer":"not-allowed",background:"transparent",color:canRedo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canRedo?1:0.4}}>
+            ↪ {canRedo?t.redoCount((activeFile?.future||[]).length):t.redo}
+          </button>
+          <div style={{width:1,height:16,background:"#2a2a2a"}}/>
+          {/* V11.5: Clear All */}
+          <button
+            onClick={()=>{
+              if(window.confirm(t.clearAllConfirm)){
+                setFiles([]);
+                setSelId(null);
+                setEditId(null);
+                setMultiSel(new Set());
+              }
+            }}
+            disabled={files.length===0}
+            style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:files.length>0?"pointer":"not-allowed",background:"transparent",color:files.length>0?"#f87171":"#333",display:"flex",alignItems:"center",gap:5,opacity:files.length>0?1:0.4}}>
+            🗑 {t.clearAll}
+          </button>
+        </div>
+
+        <div style={{flex:1}}/> {/* Spacer */}
+
+        {/* ═══ RIGHT: Feedback | Coffee | Help | Lang | Add ═══ */}
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {/* V11.5: Feedback Button */}
+          <button
+            onClick={()=>window.open("https://zirme.canny.io/","_blank","noopener,noreferrer")}
+            style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,background:"transparent",border:"1px solid #2a2a2a",borderRadius:5,color:"#aaa",padding:"5px 11px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",transition:"all .12s"}}
+            onMouseEnter={e=>{e.currentTarget.style.background="#2a2a2a";e.currentTarget.style.color="#e0e0e0";}}
+            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#aaa";}}>
+            💡 {t.feedback}
+          </button>
+
+          {/* Buy Me a Coffee Button */}
+          <BuyMeACoffeeButton lang={lang} />
+
+          <div style={{width:1,height:16,background:"#2a2a2a"}}/>
+
         {/* Help ? button */}
         <div ref={helpRef} style={{position:"relative"}}>
           <button onClick={()=>setHelpOpen(o=>!o)}
@@ -3112,8 +4012,25 @@ function ZIRME() {
                 <span>{t.secShortcuts||"Atajos"}</span>
                 <span className="help-accordion-arrow" style={{transform:helpTab==="shortcuts"?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
               </button>
-              <div className="help-accordion-body" style={{maxHeight:helpTab==="shortcuts"?300:0,opacity:helpTab==="shortcuts"?1:0,overflow:"hidden"}}>
-                {(t.shortcuts||[]).map((item,i)=>(
+              <div className="help-accordion-body" style={{maxHeight:helpTab==="shortcuts"?500:0,opacity:helpTab==="shortcuts"?1:0,overflow:"hidden"}}>
+                {/* ── Generales ── */}
+                <div style={{fontSize:9,fontWeight:700,color:"#444",textTransform:"uppercase",letterSpacing:"0.8px",padding:"8px 14px 4px"}}>
+                  {t.shortcutsGeneral}
+                </div>
+                {(t.shortcuts?.general||[]).map((item,i)=>(
+                  <div key={i} className="help-menu-item" style={{cursor:"default",padding:"6px 14px",justifyContent:"space-between"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0,opacity:0.7}}>{item.icon}</span>
+                      <span style={{fontSize:10,color:"#999",fontFamily:"'SF Mono',Menlo,monospace",background:"#242424",padding:"3px 8px",borderRadius:4,border:"1px solid #2e2e2e"}}>{item.key}</span>
+                    </div>
+                    <span style={{fontSize:10,color:"#b0b0b0"}}>{item.text}</span>
+                  </div>
+                ))}
+                {/* ── Editor ── */}
+                <div style={{fontSize:9,fontWeight:700,color:"#444",textTransform:"uppercase",letterSpacing:"0.8px",padding:"8px 14px 4px",marginTop:2,borderTop:"1px solid #1e1e1e"}}>
+                  Editor
+                </div>
+                {(t.shortcuts?.editor||[]).map((item,i)=>(
                   <div key={i} className="help-menu-item" style={{cursor:"default",padding:"6px 14px",justifyContent:"space-between"}}>
                     <div style={{display:"flex",alignItems:"center",gap:10}}>
                       <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0,opacity:0.7}}>{item.icon}</span>
@@ -3141,12 +4058,12 @@ function ZIRME() {
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c5cff"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
                       ZIRME en GitHub
                     </a>
-                    <div style={{fontSize:9,color:"#666",marginTop:8,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px",fontWeight:600}}>{lang==="es"?"Librerías principales":"Core Libraries"}</div>
+                    <div style={{fontSize:9,color:"#666",marginTop:8,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px",fontWeight:600}}>{t.coreLibraries}</div>
                     <a href="https://github.com/jwagner/smartcrop-cli.git" target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:6}}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c5cff"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
                       smartcrop.js
                     </a>
-                    <div style={{fontSize:9,color:"#666",marginTop:8,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px",fontWeight:600}}>{lang==="es"?"Detección ML (IA)":"ML Detection (AI)"}</div>
+                    <div style={{fontSize:9,color:"#666",marginTop:8,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px",fontWeight:600}}>{t.mlDetection}</div>
                     <a href="https://github.com/tensorflow/tfjs" target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:6}}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c5cff"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
                       TensorFlow.js
@@ -3188,18 +4105,12 @@ function ZIRME() {
             </div>
           )}
         </div>
-        <button onClick={undoSel} disabled={!canUndo} title="Ctrl+Z"
-          style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canUndo?"pointer":"not-allowed",background:"transparent",color:canUndo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canUndo?1:0.4}}>
-          ↩ {canUndo?t.undoCount((sel?.history||[]).length):t.undo}
-        </button>
-        <button onClick={redoSel} disabled={!canRedo} title="Ctrl+Y"
-          style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canRedo?"pointer":"not-allowed",background:"transparent",color:canRedo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canRedo?1:0.4}}>
-          ↪ {canRedo?t.redoCount((sel?.future||[]).length):t.redo}
-        </button>
-        <label style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,background:PURPLE,border:"none",borderRadius:5,padding:"7px 14px",cursor:"pointer",color:"#fff",whiteSpace:"nowrap"}}>
-          {t.add}
-          <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{display:"none"}}/>
-        </label>
+          <label style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,background:PURPLE,border:"none",borderRadius:5,padding:"7px 14px",cursor:"pointer",color:"#fff",whiteSpace:"nowrap"}}>
+            {t.add}
+            <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{display:"none"}}/>
+          </label>
+        </div>{/* end RIGHT zone */}
+
       </header>
 
       {/* Body */}
@@ -3216,9 +4127,17 @@ function ZIRME() {
              }}>
           {/* Multi-select hint */}
           {multiSel.size>0&&(
-            <div style={{position:"sticky",top:0,zIndex:10,background:"rgba(124,92,255,0.12)",border:"1px solid rgba(124,92,255,0.3)",borderRadius:6,padding:"6px 12px",marginBottom:10,fontSize:11,color:"#a78bfa",display:"flex",alignItems:"center",gap:10}}>
-              <span>✓ {multiSel.size} {lang==="es"?"imágenes seleccionadas":"images selected"}</span>
-              <button onClick={()=>setMultiSel(new Set())} style={{background:"transparent",border:"none",color:"#666",cursor:"pointer",fontSize:12}}>✕</button>
+            <div style={{position:"sticky",top:0,zIndex:10,background:"rgba(20,14,40,0.92)",border:"1px solid rgba(124,92,255,0.45)",borderRadius:8,padding:"9px 16px",marginBottom:12,display:"flex",alignItems:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.35)"}}>
+              <span style={{visibility:"hidden",fontSize:11,padding:"2px 9px",flexShrink:0}}>✕</span>
+              <span style={{flex:1,textAlign:"center",fontSize:12,fontWeight:500,color:"#a78bfa",letterSpacing:0.2}}>
+                {t.selectedHint(multiSel.size)}
+              </span>
+              <button onClick={()=>setMultiSel(new Set())}
+                style={{background:"transparent",border:"1px solid rgba(124,92,255,0.35)",borderRadius:5,color:"#a78bfa",cursor:"pointer",fontSize:11,padding:"2px 9px",flexShrink:0,fontFamily:"Inter,sans-serif",transition:"background .12s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="rgba(124,92,255,0.18)"}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                ✕
+              </button>
             </div>
           )}
           {files.length===0?(
@@ -3293,7 +4212,7 @@ function ZIRME() {
               {/* Bloquear proporción - solo en modo fixed */}
               {settings.sizeMode==="fixed"&&<>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-                  <label className="lbl" style={{marginBottom:0}}>{lang==="es"?"Bloquear proporción":"Lock aspect ratio"}</label>
+                  <label className="lbl" style={{marginBottom:0}}>{t.lockAspectRatio}</label>
                   <button onClick={()=>setSettings(s=>({...s,lockAspect:!s.lockAspect}))}
                     style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"3px 10px",cursor:"pointer",transition:"all .12s",
                       background:settings.lockAspect?"#7c5cff":"transparent",
@@ -3335,13 +4254,13 @@ function ZIRME() {
               {settings.sizeMode==="fixed"&&<div style={{fontSize:10,color:"#555",marginBottom:4}}>{t.ratioLbl}: {oW/dv}:{oH/dv}</div>}
 
               {/* Foco de recorte - 4 MODOS */}
-              <label className="lbl" style={{marginTop:12}}>{lang==="es"?"Modo de recorte":"Crop mode"}</label>
+              <label className="lbl" style={{marginTop:12}}>{t.cropModeLbl}</label>
               <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:4,marginBottom:8,background:"#181818",borderRadius:6,padding:3,border:"1px solid #242424"}}>
                 {[
-                  {mode:"auto",label:lang==="es"?"Auto":"Auto"},
-                  {mode:"manual",label:lang==="es"?"Manual":"Manual"},
-                  {mode:"face",label:lang==="es"?"Rostro":"Face"},
-                  {mode:"body",label:lang==="es"?"Cuerpo":"Body"}
+                  {mode:"auto",label:t.cropModeAuto},
+                  {mode:"manual",label:t.cropModeManual},
+                  {mode:"face",label:t.cropModeFace},
+                  {mode:"body",label:t.cropModeBody}
                 ].map(({mode,label})=>{
                   const isActive = settings.detectionMode===mode;
                   const iconColor = isActive?"#fff":"#666";
@@ -3413,12 +4332,9 @@ function ZIRME() {
                         }
                         
                         setSmartBatch({running:false,done:0,total:0});
-                        const modeLabel = currentMode==="face"?(lang==="es"?"rostros":"faces"):currentMode==="body"?(lang==="es"?"cuerpos":"bodies"):"";
-                        const countMsg = targets.length===1 
-                          ? (lang==="es"?"1 imagen procesada":"1 image processed")
-                          : `${applied} ${lang==="es"?"imágenes recortadas":"images cropped"}`;
-                        const msg=modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`;
-                        showToast(msg);
+                        const modeLabel = currentMode==="face"?t.detFaces:currentMode==="body"?t.detBodies:"";
+                        const countMsg = targets.length===1 ? t.toastProcessed1 : t.toastCroppedN(applied);
+                        showToast(modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`);
                       }
                     }}
                       style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:isActive?600:400,border:"none",borderRadius:4,padding:"7px 4px",cursor:"pointer",transition:"all .12s",
@@ -3435,7 +4351,7 @@ function ZIRME() {
               {/* Toggle ajustar tamaño objetivo (solo para modos ML) */}
               {(settings.detectionMode==="face"||settings.detectionMode==="body")&&(
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,padding:"8px",background:"#1a1a1a",borderRadius:4}}>
-                  <label className="lbl" style={{marginBottom:0,fontSize:10}}>{lang==="es"?"Ajustar al tamaño objetivo":"Adjust to target size"}</label>
+                  <label className="lbl" style={{marginBottom:0,fontSize:10}}>{t.adjustToTargetSize}</label>
                   <button onClick={()=>setSettings(s=>({...s,adjustToTargetSize:!s.adjustToTargetSize}))}
                     style={{fontFamily:"Inter,sans-serif",fontSize:9,fontWeight:600,border:"1px solid",borderRadius:3,padding:"2px 8px",cursor:"pointer",transition:"all .12s",
                       background:settings.adjustToTargetSize?"#7c5cff":"transparent",
@@ -3450,7 +4366,7 @@ function ZIRME() {
               {settings.detectionMode==="body"&&(
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,padding:"8px",background:"#1a1a1a",borderRadius:4}}>
                   <label className="lbl" style={{marginBottom:0,fontSize:10}}>
-                    {lang==="es"?"PoseNet (refinamiento)":"PoseNet (refinement)"}
+                    {t.poseNetRefinement}
                   </label>
                   <button onClick={()=>setSettings(s=>({...s,poseNetEnabled:!s.poseNetEnabled}))}
                     style={{fontFamily:"Inter,sans-serif",fontSize:9,fontWeight:600,border:"1px solid",borderRadius:3,padding:"2px 8px",cursor:"pointer",transition:"all .12s",
@@ -3465,14 +4381,8 @@ function ZIRME() {
               {/* Info de cada modo */}
               {settings.detectionMode!=="manual"&&settings.detectionMode!=="auto"&&(
                 <div style={{fontSize:9,color:"#888",marginBottom:10,padding:"6px 8px",background:"#1a1a1a",borderRadius:4,lineHeight:1.4}}>
-                  {settings.detectionMode==="face"&&(lang==="es"
-                    ?(settings.adjustToTargetSize?"Mantiene el tamaño objetivo centrando en rostros":"Ajusta el crop automáticamente a cada rostro")
-                    :(settings.adjustToTargetSize?"Maintains target size centering on faces":"Automatically adjusts crop to each face")
-                  )}
-                  {settings.detectionMode==="body"&&(lang==="es"
-                    ?(settings.adjustToTargetSize?"Mantiene el tamaño objetivo (del cuello para abajo)":"Ajusta el crop al cuerpo (del cuello para abajo)")
-                    :(settings.adjustToTargetSize?"Maintains target size (neck down)":"Adjusts crop to body (neck down)")
-                  )}
+                  {settings.detectionMode==="face"&&(settings.adjustToTargetSize?t.faceHintFixed:t.faceHintAuto)}
+                  {settings.detectionMode==="body"&&(settings.adjustToTargetSize?t.bodyHintFixed:t.bodyHintAuto)}
                 </div>
               )}
 
@@ -3517,9 +4427,7 @@ function ZIRME() {
                             setFiles(prev=>prev.map(ff=>ff.id===id?{...ff,crop}:ff));
                           }
                           
-                          const countMsg = targets.length===1 
-                            ? (lang==="es"?"1 imagen procesada":"1 image processed")
-                            : `${targets.length} ${lang==="es"?"imágenes recortadas":"images cropped"}`;
+                          const countMsg = targets.length===1 ? t.toastProcessed1 : t.toastCroppedN(targets.length);
                           showToast(`✦ ${countMsg}`);
                         }}
                           style={{aspectRatio:"1",border:"1.5px solid "+(active?"#7c5cff":"#252525"),borderRadius:5,background:active?"rgba(124,92,255,0.18)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .12s",padding:0}}>
@@ -3534,17 +4442,17 @@ function ZIRME() {
 
             {/* TRANSFORMAR */}
             <div className="sec-block">
-              <span className="sec-title">{lang==="es"?"TRANSFORMAR":"TRANSFORM"}</span>
+              <span className="sec-title">{t.transformLabel}</span>
               
-              <label className="lbl">{lang==="es"?"Rotación":"Rotation"}</label>
+              <label className="lbl">{t.rotationLabel}</label>
               <div style={{display:"flex",gap:6,marginBottom:10}}>
-                <button onClick={()=>rotateImages(270)} disabled={!files.length} title={lang==="es"?"Rotar 90° izquierda":"Rotate 90° left"}
+                <button onClick={()=>rotateImages(270)} disabled={!files.length} title={t.rotateLeftTitle}
                   style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:20,fontWeight:400,border:"1px solid #2e2e2e",borderRadius:5,padding:"8px",cursor:files.length?"pointer":"not-allowed",background:"transparent",color:files.length?"#aaa":"#555",textAlign:"center",transition:"all .15s"}}
                   onMouseEnter={e=>files.length&&(e.currentTarget.style.background="#252525")}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   ↶
                 </button>
-                <button onClick={()=>rotateImages(90)} disabled={!files.length} title={lang==="es"?"Rotar 90° derecha":"Rotate 90° right"}
+                <button onClick={()=>rotateImages(90)} disabled={!files.length} title={t.rotateRightTitle}
                   style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:20,fontWeight:400,border:"1px solid #2e2e2e",borderRadius:5,padding:"8px",cursor:files.length?"pointer":"not-allowed",background:"transparent",color:files.length?"#aaa":"#555",textAlign:"center",transition:"all .15s"}}
                   onMouseEnter={e=>files.length&&(e.currentTarget.style.background="#252525")}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -3552,15 +4460,15 @@ function ZIRME() {
                 </button>
               </div>
 
-              <label className="lbl">{lang==="es"?"Voltear":"Flip"}</label>
+              <label className="lbl">{t.flipLabel}</label>
               <div style={{display:"flex",gap:6,marginBottom:6}}>
-                <button onClick={()=>flipImages('horizontal')} disabled={!files.length} title={lang==="es"?"Volteo horizontal":"Flip horizontal"}
+                <button onClick={()=>flipImages('horizontal')} disabled={!files.length} title={t.flipHTitle}
                   style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:18,fontWeight:400,border:"1px solid #2e2e2e",borderRadius:5,padding:"6px",cursor:files.length?"pointer":"not-allowed",background:"transparent",color:files.length?"#aaa":"#555",textAlign:"center",transition:"all .15s"}}
                   onMouseEnter={e=>files.length&&(e.currentTarget.style.background="#252525")}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   ⇄
                 </button>
-                <button onClick={()=>flipImages('vertical')} disabled={!files.length} title={lang==="es"?"Volteo vertical":"Flip vertical"}
+                <button onClick={()=>flipImages('vertical')} disabled={!files.length} title={t.flipVTitle}
                   style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:18,fontWeight:400,border:"1px solid #2e2e2e",borderRadius:5,padding:"6px",cursor:files.length?"pointer":"not-allowed",background:"transparent",color:files.length?"#aaa":"#555",textAlign:"center",transition:"all .15s"}}
                   onMouseEnter={e=>files.length&&(e.currentTarget.style.background="#252525")}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -3605,7 +4513,7 @@ function ZIRME() {
                   style={{width:"100%",fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:500,border:"1px solid rgba(124,92,255,0.3)",borderRadius:5,padding:"7px 10px",cursor:"pointer",background:"rgba(124,92,255,0.08)",color:"#a78bfa",textAlign:"center",marginBottom:12,transition:"all .15s"}}
                   onMouseEnter={e=>{e.currentTarget.style.background="rgba(124,92,255,0.15)";e.currentTarget.style.borderColor="rgba(124,92,255,0.5)";}}
                   onMouseLeave={e=>{e.currentTarget.style.background="rgba(124,92,255,0.08)";e.currentTarget.style.borderColor="rgba(124,92,255,0.3)";}}>
-                  {lang==="es"?"✕ Deseleccionar todas":"✕ Deselect all"}
+                  {t.deselectAll}
                 </button>
               )}
               
@@ -3615,7 +4523,7 @@ function ZIRME() {
                   <div style={{fontSize:16,fontWeight:600,color:"#888"}}>{files.length}</div>
                 </div>
                 <div style={{background:selId||multiSel.size>0?"rgba(124,92,255,0.12)":"#202020",borderRadius:5,padding:"8px 10px",fontSize:10,color:"#666",transition:"all .2s"}}>
-                  <div style={{marginBottom:2}}>{lang==="es"?"Seleccionadas":"Selected"}</div>
+                  <div style={{marginBottom:2}}>{t.selectedLabel}</div>
                   <div style={{fontSize:16,fontWeight:600,color:selId||multiSel.size>0?"#a78bfa":"#888"}}>
                     {selId && multiSel.size===0 ? 1 : multiSel.size}
                   </div>
@@ -3639,7 +4547,7 @@ function ZIRME() {
             {/* FORMATO */}
             <div className="sec-block">
               <span className="sec-title">{t.secExport}</span>
-              <label className="lbl">{lang==="es"?"Formato":"Format"}</label>
+              <label className="lbl">{t.formatLbl}</label>
               <select value={settings.fmt} onChange={e=>setSettings(s=>({...s,fmt:e.target.value}))}>
                 <option value="jpeg">JPG</option>
                 <option value="png">PNG</option>
@@ -3656,7 +4564,7 @@ function ZIRME() {
             <div className="sec-block">
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                 <span className="sec-title" style={{marginBottom:0,marginTop:0,borderBottom:"none",paddingBottom:0}}>
-                  {lang==="es"?"Marca de agua":"Watermark"}
+                  {t.secWatermark}
                 </span>
                 <button onClick={()=>setSettings(s=>({...s,wmEnabled:!s.wmEnabled}))}
                   style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"3px 10px",cursor:"pointer",transition:"all .12s",
@@ -3670,7 +4578,7 @@ function ZIRME() {
 
               {settings.wmEnabled&&<>
                 {/* Tipo: Texto / Imagen */}
-                <label className="lbl">{lang==="es"?"Tipo":"Type"}</label>
+                <label className="lbl">{t.wmTypeLbl}</label>
                 <div style={{display:"flex",gap:4,marginBottom:10}}>
                   {["texto","imagen"].map(m=>(
                     <button key={m} onClick={()=>setSettings(s=>({...s,wmType:m}))}
@@ -3678,15 +4586,15 @@ function ZIRME() {
                         background:(settings.wmType||"texto")===m?"#7c5cff":"transparent",
                         borderColor:(settings.wmType||"texto")===m?"#7c5cff":"#2e2e2e",
                         color:(settings.wmType||"texto")===m?"#fff":"#555"}}>
-                      {m==="texto"?(lang==="es"?"Texto":"Text"):(lang==="es"?"Imagen":"Image")}
+                      {m==="texto"?t.wmTypeText:t.wmTypeImage}
                     </button>
                   ))}
                 </div>
 
-                <label className="lbl">{lang==="es"?"Texto":"Text"}</label>
+                <label className="lbl">{t.wmTextLbl}</label>
                 <input type="text" placeholder="WATERMARK" value={settings.wmText||""} onChange={e=>setSettings(s=>({...s,wmText:e.target.value}))}/>
 
-                <label className="lbl">{lang==="es"?"Fuente":"Font"}</label>
+                <label className="lbl">{t.wmFontLbl}</label>
                 <select value={settings.wmFont} onChange={e=>setSettings(s=>({...s,wmFont:e.target.value}))}>
                   <option value="Inter">Inter</option>
                   <option value="Arial">Arial</option>
@@ -3695,10 +4603,10 @@ function ZIRME() {
                   <option value="Courier New">Courier New</option>
                 </select>
 
-                <label className="lbl">{lang==="es"?`Tamaño ${settings.wmSize}px`:`Size ${settings.wmSize}px`}</label>
+                <label className="lbl">{t.wmSizeLbl(settings.wmSize)}</label>
                 <input type="range" min={8} max={200} value={settings.wmSize} onChange={e=>setSettings(s=>({...s,wmSize:+e.target.value}))} style={{marginBottom:8}}/>
 
-                <label className="lbl">{lang==="es"?"Color":"Color"}</label>
+                <label className="lbl">{t.wmColorLbl}</label>
                 <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
                   <input type="color" value={settings.wmColor} onChange={e=>setSettings(s=>({...s,wmColor:e.target.value}))}
                     style={{width:28,height:28,border:"1px solid #303030",borderRadius:4,padding:0,cursor:"pointer",background:"transparent"}}/>
@@ -3706,18 +4614,18 @@ function ZIRME() {
                     style={{flex:1,marginBottom:0,fontFamily:"monospace",fontSize:11}}/>
                 </div>
 
-                <label className="lbl">{lang==="es"?`Opacidad ${settings.wmOpacity}%`:`Opacity ${settings.wmOpacity}%`}</label>
+                <label className="lbl">{t.wmOpacityLbl(settings.wmOpacity)}</label>
                 <input type="range" min={5} max={100} value={settings.wmOpacity} onChange={e=>setSettings(s=>({...s,wmOpacity:+e.target.value}))} style={{marginBottom:8}}/>
 
-                <label className="lbl">{lang==="es"?"Posición":"Position"}</label>
+                <label className="lbl">{t.wmPosLbl}</label>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:3,marginBottom:6}}>
                   {[
-                    {k:"tl",l:lang==="es"?"Sup. Izq":"Top Left"},
+                    {k:"tl",l:t.wmPosTL},
                     {k:"center-top",l:""},
-                    {k:"tr",l:lang==="es"?"Sup. Der":"Top Right"},
-                    {k:"bl",l:lang==="es"?"Inf. Izq":"Bot Left"},
-                    {k:"center",l:lang==="es"?"Centro":"Center"},
-                    {k:"br",l:lang==="es"?"Inf. Der":"Bot Right"}
+                    {k:"tr",l:t.wmPosTR},
+                    {k:"bl",l:t.wmPosBL},
+                    {k:"center",l:t.wmPosCenter},
+                    {k:"br",l:t.wmPosBR}
                   ].map(({k,l},i)=>(
                     i===1?<div key="spacer" />:
                     <button key={k} onClick={()=>setSettings(s=>({...s,wmPos:k}))}
@@ -3734,7 +4642,7 @@ function ZIRME() {
 
             {/* NOMBRE DE ARCHIVO */}
             <div className="sec-block">
-              <span className="sec-title">{lang==="es"?"Nombre de archivo":"Filename"}</span>
+              <span className="sec-title">{t.secRename}</span>
               <div style={{display:"flex",gap:4,marginBottom:10}}>
                 {["keep","custom"].map(m=>(
                   <button key={m} onClick={()=>setSettings(s=>({...s,renameMode:m}))}
@@ -3742,26 +4650,26 @@ function ZIRME() {
                       background:settings.renameMode===m?"#7c5cff":"transparent",
                       borderColor:settings.renameMode===m?"#7c5cff":"#2e2e2e",
                       color:settings.renameMode===m?"#fff":"#555"}}>
-                    {m==="keep"?(lang==="es"?"Mantener":"Keep"):(lang==="es"?"Personalizar":"Custom")}
+                    {m==="keep"?t.renameModeKeep:t.renameModeCustom}
                   </button>
                 ))}
               </div>
 
               {settings.renameMode==="keep"&&<>
-                <label className="lbl">{lang==="es"?"Prefijo":"Prefix"}</label>
+                <label className="lbl">{t.prefixLbl}</label>
                 <input type="text" placeholder="instagram_" value={settings.prefix||""} onChange={e=>setSettings(s=>({...s,prefix:e.target.value}))}/>
-                <label className="lbl">{lang==="es"?"Sufijo":"Suffix"}</label>
+                <label className="lbl">{t.suffixLbl}</label>
                 <input type="text" placeholder="_final" value={settings.suffix||""} onChange={e=>setSettings(s=>({...s,suffix:e.target.value}))}/>
               </>}
 
               {settings.renameMode==="custom"&&<>
-                <label className="lbl">{lang==="es"?"Nombre base":"Base name"}</label>
+                <label className="lbl">{t.renameBaseLbl}</label>
                 <input type="text" placeholder="image" value={settings.renameBase||"image"} onChange={e=>setSettings(s=>({...s,renameBase:e.target.value||"image"}))}/>
                 <div style={{fontSize:9,color:"#444",marginTop:-4,marginBottom:8,padding:"0 2px"}}>
-                  {lang==="es"?"Usa ORIGINAL-NAME para insertar el nombre original":"Use ORIGINAL-NAME to insert original filename"}
+                  {t.originalNameHint}
                 </div>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                  <label className="lbl" style={{marginBottom:0}}>{lang==="es"?"Numeración":"Numbering"}</label>
+                  <label className="lbl" style={{marginBottom:0}}>{t.renameNumberingLbl}</label>
                   <button onClick={()=>setSettings(s=>({...s,renameNum:!s.renameNum}))}
                     style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"3px 8px",cursor:"pointer",transition:"all .12s",
                       background:settings.renameNum?"#7c5cff":"transparent",
@@ -3771,7 +4679,7 @@ function ZIRME() {
                   </button>
                 </div>
                 {settings.renameNum&&<>
-                  <label className="lbl">{lang==="es"?"Empezar en":"Start at"}</label>
+                  <label className="lbl">{t.renameStartLbl}</label>
                   <input type="number" min={0} value={settings.renameStart||1} onChange={e=>setSettings(s=>({...s,renameStart:Math.max(0,+e.target.value)}))}/>
                 </>}
               </>}
@@ -3779,7 +4687,7 @@ function ZIRME() {
 
             {/* DESCARGAR */}
             <div className="sec-block">
-              <span className="sec-title">{lang==="es"?"Descargar":"Download"}</span>
+              <span className="sec-title">{t.downloadLabel}</span>
               <div style={{display:"flex",gap:8}}>
                 <div style={{flex:1}}>{mBtn(t.saveCurrent,exportCurrent,!sel,PURPLE)}</div>
                 <div style={{flex:1}}>{mBtn(zipping?`${t.zipGenerating} ${zipPct}%`:t.zipBtn(files.length),exportZip,!files.length||zipping,"#4f46e5")}</div>
@@ -3797,12 +4705,18 @@ function ZIRME() {
       {/* Edit overlay */}
       {editFile&&(
         <EditOverlay file={editFile} settings={settings} blurCfg={blurCfg} t={t}
-          onClose={()=>setEditId(null)} onCropChange={setCropForId} onUndoPush={pushUndo} panelOpen={panelOpen} onBlurCfgChange={setBlurCfg}/>
+          onClose={()=>setEditId(null)} onCropChange={setCropForId} onUndoPush={pushUndo} panelOpen={panelOpen} onBlurCfgChange={setBlurCfg}
+          tick={tick} onTick={()=>setTick(n=>n+1)}/>
       )}
 
       {/* Preview modal */}
       {previewFile&&(
         <PreviewModal file={previewFile} settings={settings} t={t} onClose={()=>setPreviewId(null)}/>
+      )}
+
+      {/* Announcement Popup */}
+      {showAnnouncement&&ANNOUNCEMENT.enabled&&(
+        <AnnouncementPopup lang={lang} t={t} onClose={dismissAnnouncement}/>
       )}
 
       {/* ML Warning Dialog */}
@@ -3815,12 +4729,10 @@ function ZIRME() {
               <span style={{fontSize:32}}>⚠️</span>
               <div style={{flex:1}}>
                 <div style={{fontSize:16,fontWeight:600,color:"#e9c46a",marginBottom:8}}>
-                  {lang==="es"?"Detección con Inteligencia Artificial":"AI Detection"}
+                  {t.aiDetectionTitle}
                 </div>
                 <div style={{fontSize:13,color:"#b0b0b0",lineHeight:1.6}}>
-                  {lang==="es"
-                    ?"Esta función utiliza modelos de IA que pueden ralentizar el procesamiento, especialmente en equipos modestos o navegadores antiguos. El rendimiento puede variar según tu dispositivo."
-                    :"This feature uses AI models that may slow down processing, especially on modest hardware or older browsers. Performance may vary depending on your device."}
+                  {t.aiDetectionBody}
                 </div>
               </div>
             </div>
@@ -3831,14 +4743,14 @@ function ZIRME() {
                 try{ localStorage.setItem("zirme-ml-dont-warn",e.target.checked?"true":"false"); }catch(err){}
               }}/>
               <label htmlFor="ml-dont-warn" style={{fontSize:12,color:"#888",cursor:"pointer",userSelect:"none"}}>
-                {lang==="es"?"No volver a mostrar este aviso":"Don't show this warning again"}
+                {t.dontShowWarning}
               </label>
             </div>
             
             <div style={{display:"flex",gap:10}}>
               <button onClick={()=>setMlWarningDialog({show:false,mode:null})}
                 style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"10px",cursor:"pointer",background:"transparent",color:"#aaa"}}>
-                {lang==="es"?"Cancelar":"Cancel"}
+                {t.cancelBtn}
               </button>
               <button onClick={async()=>{
                 const currentMode = mlWarningDialog.mode;
@@ -3890,15 +4802,12 @@ function ZIRME() {
                 }
                 
                 setSmartBatch({running:false,done:0,total:0});
-                const modeLabel = currentMode==="face"?(lang==="es"?"rostros":"faces"):currentMode==="body"?(lang==="es"?"cuerpos":"bodies"):"";
-                const countMsg = targets.length===1 
-                  ? (lang==="es"?"1 imagen procesada":"1 image processed")
-                  : `${applied} ${lang==="es"?"imágenes recortadas":"images cropped"}`;
-                const msg=modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`;
-                showToast(msg);
+                const modeLabel = currentMode==="face"?t.detFaces:currentMode==="body"?t.detBodies:"";
+                const countMsg = targets.length===1 ? t.toastProcessed1 : t.toastCroppedN(applied);
+                showToast(modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`);
               }}
                 style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"none",borderRadius:5,padding:"10px",cursor:"pointer",background:"#7c5cff",color:"#fff"}}>
-                {lang==="es"?"Continuar":"Continue"}
+                {t.continueBtn}
               </button>
             </div>
           </div>
