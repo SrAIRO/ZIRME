@@ -8718,15 +8718,24 @@ function ZIRME() {
         }));
       } else if (settings.lockAspect && settings.sizeMode === "fixed") {
         const ratio = settings.w / settings.h;
-        setSettings(s => ({
-          ...s,
-          w: newW,
-          h: Math.round(newW / ratio)
+        const newH = Math.round(newW / ratio);
+        setSettings(s => ({...s, w: newW, h: newH}));
+        // Global: immediately recompute crops for all images without per-image overrides
+        const {ax, ay} = settings.focalPoint || {ax: 0.5, ay: 0.5};
+        setFiles(prev => prev.map(f => {
+          if (f.w != null || f.h != null || !f.ec) return f;
+          const nc = focalCrop(f.ec.width, f.ec.height, newW, newH, ax, ay);
+          return {...f, crop: {...nc, auto: true}};
         }));
       } else {
-        setSettings(s => ({
-          ...s,
-          w: newW
+        setSettings(s => ({...s, w: newW}));
+        // Global: immediately recompute crops for all images without per-image overrides
+        const effH = settings.h;
+        const {ax, ay} = settings.focalPoint || {ax: 0.5, ay: 0.5};
+        setFiles(prev => prev.map(f => {
+          if (f.w != null || f.h != null || !f.ec) return f;
+          const nc = focalCrop(f.ec.width, f.ec.height, newW, effH, ax, ay);
+          return {...f, crop: {...nc, auto: true}};
         }));
       }
     }
@@ -8773,15 +8782,24 @@ function ZIRME() {
         }));
       } else if (settings.lockAspect && settings.sizeMode === "fixed") {
         const ratio = settings.w / settings.h;
-        setSettings(s => ({
-          ...s,
-          h: newH,
-          w: Math.round(newH * ratio)
+        const newW = Math.round(newH * ratio);
+        setSettings(s => ({...s, h: newH, w: newW}));
+        // Global: immediately recompute crops for all images without per-image overrides
+        const {ax, ay} = settings.focalPoint || {ax: 0.5, ay: 0.5};
+        setFiles(prev => prev.map(f => {
+          if (f.w != null || f.h != null || !f.ec) return f;
+          const nc = focalCrop(f.ec.width, f.ec.height, newW, newH, ax, ay);
+          return {...f, crop: {...nc, auto: true}};
         }));
       } else {
-        setSettings(s => ({
-          ...s,
-          h: newH
+        setSettings(s => ({...s, h: newH}));
+        // Global: immediately recompute crops for all images without per-image overrides
+        const effW = settings.w;
+        const {ax, ay} = settings.focalPoint || {ax: 0.5, ay: 0.5};
+        setFiles(prev => prev.map(f => {
+          if (f.w != null || f.h != null || !f.ec) return f;
+          const nc = focalCrop(f.ec.width, f.ec.height, effW, newH, ax, ay);
+          return {...f, crop: {...nc, auto: true}};
         }));
       }
     }
