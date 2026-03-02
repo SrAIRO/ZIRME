@@ -5442,148 +5442,71 @@ function EditOverlay({
     gap: 5,
     transition: "all .12s"
   });
-  const oTxtBtn = (label, onClick) => /*#__PURE__*/React.createElement("button", {
-    onClick: onClick,
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      border: "none",
-      background: "transparent",
-      color: "#505050",
-      cursor: "pointer",
-      padding: "5px 8px",
-      borderRadius: 4
-    }
-  }, label);
-  const PANEL_W = panelOpen ? 360 : 0;
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "fixed",
-      top: 50,
-      left: 0,
-      right: PANEL_W,
-      bottom: 0,
-      background: "#181818",
-      display: "flex",
-      flexDirection: "column",
-      zIndex: 200
-    },
-    onContextMenu: e => e.preventDefault()
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "#141414",
-      borderBottom: "1px solid #242424",
-      padding: "5px 12px",
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      flexShrink: 0
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: onClose,
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 600,
-      border: "1px solid #303030",
-      borderRadius: 5,
-      padding: "5px 10px",
-      cursor: "pointer",
-      background: "transparent",
-      color: "#d0d0d0"
-    }
-  }, t?.back || "← Back"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 1,
-      height: 16,
-      background: "#282828"
-    }
-  }), tool === "crop" && /*#__PURE__*/React.createElement("button", {
-    onClick: () => setFreeCrop(f => !f),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 10,
-      fontWeight: 700,
-      borderRadius: 3,
-      padding: "3px 9px",
-      cursor: "pointer",
-      border: "none",
-      background: freeCrop ? "rgba(245,158,11,0.15)" : "rgba(124,92,255,0.15)",
-      color: freeCrop ? "#f59e0b" : "#a78bfa"
-    }
-  }, freeCrop ? t?.freeCrop || "🔓 Libre" : t?.lockedCrop?.(ratioLbl) || `🔒 ${ratioLbl}`), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 10,
-      color: "#383838",
-      fontFamily: "Inter,sans-serif",
-      fontStyle: "italic"
-    }
-  }, t?.rightClickHint || "Clic derecho = mover"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 1,
-      height: 16,
-      background: "#282828"
-    }
-  }), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 11,
-      color: "#383838",
-      fontFamily: "Inter,sans-serif",
-      maxWidth: 180,
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap"
-    }
-  }, file.name)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      display: "flex",
-      overflow: "hidden"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 44,
-      background: "#141414",
-      borderRight: "1px solid #1e1e1e",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      paddingTop: 10,
-      gap: 2,
-      flexShrink: 0,
-      position: "relative",
-      zIndex: 20
-    }
-  }, [{
-    id: "crop",
-    tip: t?.cropTool || "Crop",
-    key: "C"
-  }, {
-    id: "blur",
-    tip: t?.blurTool || "Blur",
-    key: "B"
-  }, {
-    id: "pixelate",
-    tip: t?.pixelateTool || "Pixelate",
-    key: "P"
-  }, {
-    id: "eraser",
-    tip: t?.blurTool ? "Borrador" : "Eraser",
-    key: "E"
-  }, {
-    id: "annotate",
-    tip: t?.blurTool ? "Anotar" : "Annotate",
-    key: "A"
-  }].map(tb => /*#__PURE__*/React.createElement("button", {
-    key: tb.id,
-    onClick: () => {
-      setTool(tb.id);
-    },
-    onContextMenu: e => {
+  const [showAnnouncement, setShowAnnouncement] = useState(()=>{
+    if(!ANNOUNCEMENT.enabled) return false;
+    try{ return !localStorage.getItem("zirme-ann-"+ANNOUNCEMENT.id); }catch(e){ return false; }
+  });
+  const dismissAnnouncement = useCallback(()=>{
+    try{ localStorage.setItem("zirme-ann-"+ANNOUNCEMENT.id,"1"); }catch(e){}
+    setShowAnnouncement(false);
+  },[]);
+  const [blurCfg,  setBlurCfg] = useState({size:60,strength:12,hardness:30,opacity:85,pixelSize:8});
+  const [zipping,  setZipping] = useState(false);
+  const [zipPct,   setZipPct]  = useState(0);
+  const [smartBatch,setSmartBatch]=useState({running:false,done:0,total:0}); // smart crop batch progress
+  const [tick,     setTick]    = useState(0);
+  const [cellH,    setCellH]   = useState(380);
+  const [panelOpen,setPanelOpen]= useState(true);
+  const [panelTab,  setPanelTab]  = useState("image");
+
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpTab,  setHelpTab]  = useState(null);
+  const [langOpen, setLangOpen] = useState(false);
+  const helpRef = useRef(null);
+  const [lang,     setLang]    = useState(()=>{try{return localStorage.getItem("zirme-lang")||"en";}catch(e){return "en";}});
+  const langNames = {en:"English",es:"Español",fr:"Français",de:"Deutsch",pt:"Português",it:"Italiano",zh:"中文",ja:"日本語",ru:"Русский"};
+  const langRef = useRef(null);
+
+  const t = STRINGS[lang]||STRINGS.en;
+
+  useEffect(()=>{
+    const h=(e)=>{
+      if(langRef.current&&!langRef.current.contains(e.target)) setLangOpen(false);
+      if(helpRef.current&&!helpRef.current.contains(e.target)) setHelpOpen(false);
+    };
+    document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h);
+  },[]);
+  useEffect(()=>{try{localStorage.setItem("zirme-lang",lang);}catch(e){}
+    const ov=document.getElementById("drop-overlay");
+    if(ov){ov.querySelector(".label").textContent=t.dropLabel;ov.querySelector(".sub").textContent=t.dropFormats;}
+  },[lang,t]);
+  useEffect(()=>{try{localStorage.setItem("zirme-fmt",settings.fmt);}catch(e){};},[settings.fmt]);
+
+  const filesRef    = useRef([]);
+  const settingsRef = useRef(settings);
+  const editIdRef   = useRef(editId);
+  const selIdRef    = useRef(selId);
+  const multiSelRef = useRef(multiSel);
+  useEffect(()=>{filesRef.current=files;},[files]);
+  useEffect(()=>{settingsRef.current=settings;},[settings]);
+  useEffect(()=>{editIdRef.current=editId;},[editId]);
+  useEffect(()=>{selIdRef.current=selId;},[selId]);
+  useEffect(()=>{multiSelRef.current=multiSel;},[multiSel]);
+
+  const sel      = files.find(f=>f.id===selId)??null;
+  const editFile = files.find(f=>f.id===editId)??null;
+  const previewFile = files.find(f=>f.id===previewId)??null;
+  // V11.3: Usar editFile si está en modo edición, sino sel
+  const activeFile = editFile || sel;
+  const canUndo  = (activeFile?.history||[]).length>0;
+  const canRedo  = (activeFile?.future||[]).length>0;
+
+  // Global keyboard shortcuts — patrón ref: listener registrado una sola vez
+  const kbHandlerRef = useRef(null);
+  kbHandlerRef.current = (e)=>{
+    if((e.ctrlKey||e.metaKey)&&e.key==="z"){e.preventDefault();undoSel();}
+    if((e.ctrlKey||e.metaKey)&&e.key==="y"){e.preventDefault();redoSel();}
+    if(e.key==="ArrowLeft"||e.key==="ArrowRight"){
       e.preventDefault();
       if (tb.id === "blur" || tb.id === "pixelate" || tb.id === "eraser" || tb.id === "annotate") {
         setToolPanelOpen(toolPanelOpen === tb.id ? null : tb.id);
@@ -7706,2306 +7629,913 @@ function ZIRME() {
   }, [files.length, renderFile, t]);
 
   // ── UI ──────────────────────────────────────────────────────────────────
-  const {
-      w: oW,
-      h: oH
-    } = settings,
-    dv = gcd(oW, oH);
-  const manualCrop = files.filter(f => f.crop?.auto === false).length;
-  const autoCrop = files.filter(f => !f.crop || f.crop?.auto === true).length;
-  const PURPLE = "#7c5cff";
-  const mBtn = (label, onClick, disabled, bg) => /*#__PURE__*/React.createElement("button", {
-    onClick: onClick,
-    disabled: !!disabled,
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 600,
-      border: "none",
-      borderRadius: 5,
-      padding: "7px 14px",
-      cursor: disabled ? "not-allowed" : "pointer",
-      background: disabled ? "#2e2e2e" : bg || PURPLE,
-      color: disabled ? "#666" : "#fff",
-      whiteSpace: "nowrap",
-      transition: "opacity .12s",
-      width: "100%"
-    }
-  }, label);
-  const smBtn = (label, onClick, disabled) => /*#__PURE__*/React.createElement("button", {
-    onClick: disabled ? undefined : onClick,
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 500,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "6px 10px",
-      cursor: disabled ? "not-allowed" : "pointer",
-      background: "transparent",
-      color: disabled ? "#555" : "#aaa",
-      width: "100%",
-      marginBottom: 6,
-      textAlign: "left",
-      opacity: disabled ? 0.6 : 1
-    }
-  }, label);
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      flexDirection: "column",
-      height: "100vh",
-      background: "#181818",
-      color: "#d0d0d0"
-    }
-  }, /*#__PURE__*/React.createElement("header", {
-    style: {
-      background: "#141414",
-      borderBottom: "1px solid #222",
-      height: 50,
-      padding: "0 12px 0 20px",
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      flexShrink: 0
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 700,
-      fontSize: 19,
-      letterSpacing: -0.5,
-      color: "#fff"
-    }
-  }, "ZIRME"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#888"
-    }
-  }, t.subtitle)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }), " ", /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: undoSel,
-    disabled: !canUndo,
-    title: "Ctrl+Z",
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 500,
-      border: "1px solid #282828",
-      borderRadius: 5,
-      padding: "5px 11px",
-      cursor: canUndo ? "pointer" : "not-allowed",
-      background: "transparent",
-      color: canUndo ? "#d0d0d0" : "#333",
-      display: "flex",
-      alignItems: "center",
-      gap: 5,
-      opacity: canUndo ? 1 : 0.4
-    }
-  }, "\u21A9 ", canUndo ? t.undoCount((activeFile?.history || []).length) : t.undo), /*#__PURE__*/React.createElement("button", {
-    onClick: redoSel,
-    disabled: !canRedo,
-    title: "Ctrl+Y",
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 500,
-      border: "1px solid #282828",
-      borderRadius: 5,
-      padding: "5px 11px",
-      cursor: canRedo ? "pointer" : "not-allowed",
-      background: "transparent",
-      color: canRedo ? "#d0d0d0" : "#333",
-      display: "flex",
-      alignItems: "center",
-      gap: 5,
-      opacity: canRedo ? 1 : 0.4
-    }
-  }, "\u21AA ", canRedo ? t.redoCount((activeFile?.future || []).length) : t.redo), /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 1,
-      height: 16,
-      background: "#2a2a2a"
-    }
-  }), /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
-      if (window.confirm(t.clearAllConfirm)) {
-        setFiles([]);
-        setSelId(null);
-        setEditId(null);
-        setMultiSel(new Set());
-      }
-    },
-    disabled: files.length === 0,
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 500,
-      border: "1px solid #282828",
-      borderRadius: 5,
-      padding: "5px 11px",
-      cursor: files.length > 0 ? "pointer" : "not-allowed",
-      background: "transparent",
-      color: files.length > 0 ? "#f87171" : "#333",
-      display: "flex",
-      alignItems: "center",
-      gap: 5,
-      opacity: files.length > 0 ? 1 : 0.4
-    }
-  }, "\uD83D\uDDD1 ", t.clearAll)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }), " ", /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => window.open("https://zirme.canny.io/", "_blank", "noopener,noreferrer"),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 500,
-      background: "transparent",
-      border: "1px solid #2a2a2a",
-      borderRadius: 5,
-      color: "#aaa",
-      padding: "5px 11px",
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      gap: 6,
-      whiteSpace: "nowrap",
-      transition: "all .12s"
-    },
-    onMouseEnter: e => {
-      e.currentTarget.style.background = "#2a2a2a";
-      e.currentTarget.style.color = "#e0e0e0";
-    },
-    onMouseLeave: e => {
-      e.currentTarget.style.background = "transparent";
-      e.currentTarget.style.color = "#aaa";
-    }
-  }, "\uD83D\uDCA1 ", t.feedback), /*#__PURE__*/React.createElement(BuyMeACoffeeButton, {
-    lang: lang
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 1,
-      height: 16,
-      background: "#2a2a2a"
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    ref: helpRef,
-    style: {
-      position: "relative"
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setHelpOpen(o => !o),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 600,
-      background: helpOpen ? "#2a2a2a" : "transparent",
-      border: "1px solid #2a2a2a",
-      borderRadius: 5,
-      color: helpOpen ? "#d0d0d0" : "#555",
-      width: 28,
-      height: 28,
-      cursor: "pointer",
-      lineHeight: 1,
-      transition: "all .12s",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center"
-    },
-    title: t.helpBtn || "Help"
-  }, "?"), helpOpen && /*#__PURE__*/React.createElement("div", {
-    className: "help-menu"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "help-accordion",
-    onClick: () => setHelpTab(h => h === "howto" ? null : "howto")
-  }, /*#__PURE__*/React.createElement("span", null, t.secHowTo), /*#__PURE__*/React.createElement("span", {
-    className: "help-accordion-arrow",
-    style: {
-      transform: helpTab === "howto" ? "rotate(180deg)" : "rotate(0deg)"
-    }
-  }, "\u25BE")), /*#__PURE__*/React.createElement("div", {
-    className: "help-accordion-body",
-    style: {
-      maxHeight: helpTab === "howto" ? 500 : 0,
-      opacity: helpTab === "howto" ? 1 : 0,
-      overflow: "hidden"
-    }
-  }, t.howTo.map((item, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    className: "help-menu-item",
-    style: {
-      cursor: "default",
-      padding: "6px 14px"
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 13,
-      width: 18,
-      textAlign: "center",
-      flexShrink: 0,
-      opacity: 0.7
-    }
-  }, item.icon), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 10,
-      color: "#b0b0b0",
-      lineHeight: 1.4
-    }
-  }, item.text)))), /*#__PURE__*/React.createElement("div", {
-    className: "help-menu-sep"
-  }), /*#__PURE__*/React.createElement("button", {
-    className: "help-accordion",
-    onClick: () => setHelpTab(h => h === "shortcuts" ? null : "shortcuts")
-  }, /*#__PURE__*/React.createElement("span", null, t.secShortcuts || "Atajos"), /*#__PURE__*/React.createElement("span", {
-    className: "help-accordion-arrow",
-    style: {
-      transform: helpTab === "shortcuts" ? "rotate(180deg)" : "rotate(0deg)"
-    }
-  }, "\u25BE")), /*#__PURE__*/React.createElement("div", {
-    className: "help-accordion-body",
-    style: {
-      maxHeight: helpTab === "shortcuts" ? 500 : 0,
-      opacity: helpTab === "shortcuts" ? 1 : 0,
-      overflow: "hidden"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: "#444",
-      textTransform: "uppercase",
-      letterSpacing: "0.8px",
-      padding: "8px 14px 4px"
-    }
-  }, t.shortcutsGeneral), (t.shortcuts?.general || []).map((item, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    className: "help-menu-item",
-    style: {
-      cursor: "default",
-      padding: "6px 14px",
-      justifyContent: "space-between"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 13,
-      width: 18,
-      textAlign: "center",
-      flexShrink: 0,
-      opacity: 0.7
-    }
-  }, item.icon), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 10,
-      color: "#999",
-      fontFamily: "'SF Mono',Menlo,monospace",
-      background: "#242424",
-      padding: "3px 8px",
-      borderRadius: 4,
-      border: "1px solid #2e2e2e"
-    }
-  }, item.key)), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 10,
-      color: "#b0b0b0"
-    }
-  }, item.text))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: "#444",
-      textTransform: "uppercase",
-      letterSpacing: "0.8px",
-      padding: "8px 14px 4px",
-      marginTop: 2,
-      borderTop: "1px solid #1e1e1e"
-    }
-  }, "Editor"), (t.shortcuts?.editor || []).map((item, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    className: "help-menu-item",
-    style: {
-      cursor: "default",
-      padding: "6px 14px",
-      justifyContent: "space-between"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 13,
-      width: 18,
-      textAlign: "center",
-      flexShrink: 0,
-      opacity: 0.7
-    }
-  }, item.icon), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 10,
-      color: "#999",
-      fontFamily: "'SF Mono',Menlo,monospace",
-      background: "#242424",
-      padding: "3px 8px",
-      borderRadius: 4,
-      border: "1px solid #2e2e2e"
-    }
-  }, item.key)), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 10,
-      color: "#b0b0b0"
-    }
-  }, item.text)))), /*#__PURE__*/React.createElement("div", {
-    className: "help-menu-sep"
-  }), /*#__PURE__*/React.createElement("button", {
-    className: "help-accordion",
-    onClick: () => setHelpTab(h => h === "about" ? null : "about")
-  }, /*#__PURE__*/React.createElement("span", null, t.secAbout || "Acerca de ZIRME"), /*#__PURE__*/React.createElement("span", {
-    className: "help-accordion-arrow",
-    style: {
-      transform: helpTab === "about" ? "rotate(180deg)" : "rotate(0deg)"
-    }
-  }, "\u25BE")), /*#__PURE__*/React.createElement("div", {
-    className: "help-accordion-body",
-    style: {
-      maxHeight: helpTab === "about" ? 600 : 0,
-      opacity: helpTab === "about" ? 1 : 0,
-      overflow: "hidden"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "help-about-text"
-  }, (t.aboutText || "").split("\n\n").map((p, i) => /*#__PURE__*/React.createElement("p", {
-    key: i,
-    style: {
-      margin: i === 0 ? "4px 0 10px" : "10px 0 4px"
-    }
-  }, p)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 12,
-      display: "flex",
-      flexDirection: "column",
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("a", {
-    href: "https://github.com/SrAIRO/ZIRME.git",
-    target: "_blank",
-    rel: "noopener noreferrer",
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    width: "14",
-    height: "14",
-    viewBox: "0 0 24 24",
-    fill: "#7c5cff"
-  }, /*#__PURE__*/React.createElement("path", {
-    d: "M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
-  })), "ZIRME en GitHub"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: "#666",
-      marginTop: 8,
-      marginBottom: 4,
-      textTransform: "uppercase",
-      letterSpacing: "0.5px",
-      fontWeight: 600
-    }
-  }, t.coreLibraries), /*#__PURE__*/React.createElement("a", {
-    href: "https://github.com/jwagner/smartcrop-cli.git",
-    target: "_blank",
-    rel: "noopener noreferrer",
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    width: "14",
-    height: "14",
-    viewBox: "0 0 24 24",
-    fill: "#7c5cff"
-  }, /*#__PURE__*/React.createElement("path", {
-    d: "M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
-  })), "smartcrop.js"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: "#666",
-      marginTop: 8,
-      marginBottom: 4,
-      textTransform: "uppercase",
-      letterSpacing: "0.5px",
-      fontWeight: 600
-    }
-  }, t.mlDetection), /*#__PURE__*/React.createElement("a", {
-    href: "https://github.com/tensorflow/tfjs",
-    target: "_blank",
-    rel: "noopener noreferrer",
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    width: "14",
-    height: "14",
-    viewBox: "0 0 24 24",
-    fill: "#7c5cff"
-  }, /*#__PURE__*/React.createElement("path", {
-    d: "M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
-  })), "TensorFlow.js"), /*#__PURE__*/React.createElement("a", {
-    href: "https://github.com/tensorflow/tfjs-models/tree/master/coco-ssd",
-    target: "_blank",
-    rel: "noopener noreferrer",
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    width: "14",
-    height: "14",
-    viewBox: "0 0 24 24",
-    fill: "#7c5cff"
-  }, /*#__PURE__*/React.createElement("path", {
-    d: "M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
-  })), "COCO-SSD"), /*#__PURE__*/React.createElement("a", {
-    href: "https://github.com/vladmandic/face-api",
-    target: "_blank",
-    rel: "noopener noreferrer",
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    width: "14",
-    height: "14",
-    viewBox: "0 0 24 24",
-    fill: "#7c5cff"
-  }, /*#__PURE__*/React.createElement("path", {
-    d: "M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
-  })), "Face-API.js")))))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 1,
-      height: 16,
-      background: "#2a2a2a"
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    ref: langRef,
-    style: {
-      position: "relative"
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setLangOpen(o => !o),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 500,
-      background: "#1e1e1e",
-      border: "1px solid #2a2a2a",
-      borderRadius: 5,
-      color: "#aaa",
-      padding: "5px 10px",
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      gap: 6,
-      whiteSpace: "nowrap"
-    }
-  }, langNames[lang], /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 10,
-      color: "#555",
-      marginLeft: 2,
-      display: "inline-block",
-      transform: langOpen ? "rotate(180deg)" : "rotate(0deg)",
-      transition: "transform .15s"
-    }
-  }, "\u25BE")), langOpen && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "absolute",
-      top: "calc(100% + 6px)",
-      right: 0,
-      background: "#1a1a1a",
-      border: "1px solid #2a2a2a",
-      borderRadius: 6,
-      overflow: "hidden",
-      zIndex: 9999,
-      minWidth: "110px",
-      boxShadow: "0 8px 24px rgba(0,0,0,0.5)"
-    }
-  }, Object.entries(langNames).map(([code, name]) => /*#__PURE__*/React.createElement("button", {
-    key: code,
-    onClick: () => {
-      setLang(code);
-      setLangOpen(false);
-    },
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: code === lang ? 600 : 400,
-      background: code === lang ? "#2a2a2a" : "transparent",
-      color: code === lang ? "#e0e0e0" : "#888",
-      border: "none",
-      padding: "9px 14px",
-      cursor: "pointer",
-      width: "100%",
-      textAlign: "left",
-      display: "flex",
-      alignItems: "center",
-      gap: 8
-    },
-    onMouseEnter: e => {
-      if (code !== lang) e.currentTarget.style.background = "#222";
-    },
-    onMouseLeave: e => {
-      if (code !== lang) e.currentTarget.style.background = "transparent";
-    }
-  }, code === lang && /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: "#7c5cff",
-      fontSize: 10
-    }
-  }, "\u25CF"), code !== lang && /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 10,
-      opacity: 0
-    }
-  }, "\u25CF"), name)))), /*#__PURE__*/React.createElement("label", {
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 600,
-      background: PURPLE,
-      border: "none",
-      borderRadius: 5,
-      padding: "7px 14px",
-      cursor: "pointer",
-      color: "#fff",
-      whiteSpace: "nowrap"
-    }
-  }, t.add, /*#__PURE__*/React.createElement("input", {
-    type: "file",
-    accept: "image/*",
-    multiple: true,
-    onChange: e => loadFiles(e.target.files),
-    style: {
-      display: "none"
-    }
-  })))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      display: "flex",
-      overflow: "hidden"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      overflowY: "auto",
-      padding: 16,
-      position: "relative"
-    },
-    onClick: e => {
-      // Deseleccionar si se hace click en el fondo vacío
-      if (e.target === e.currentTarget || e.target.closest('.justified-grid-bg')) {
-        setSelId(null);
-        setMultiSel(new Set());
-      }
-    }
-  }, multiSel.size > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "sticky",
-      top: 0,
-      zIndex: 10,
-      background: "rgba(20,14,40,0.92)",
-      border: "1px solid rgba(124,92,255,0.45)",
-      borderRadius: 8,
-      padding: "9px 16px",
-      marginBottom: 12,
-      display: "flex",
-      alignItems: "center",
-      boxShadow: "0 2px 12px rgba(0,0,0,0.35)"
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      visibility: "hidden",
-      fontSize: 11,
-      padding: "2px 9px",
-      flexShrink: 0
-    }
-  }, "\u2715"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      flex: 1,
-      textAlign: "center",
-      fontSize: 12,
-      fontWeight: 500,
-      color: "#a78bfa",
-      letterSpacing: 0.2
-    }
-  }, t.selectedHint(multiSel.size)), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setMultiSel(new Set()),
-    style: {
-      background: "transparent",
-      border: "1px solid rgba(124,92,255,0.35)",
-      borderRadius: 5,
-      color: "#a78bfa",
-      cursor: "pointer",
-      fontSize: 11,
-      padding: "2px 9px",
-      flexShrink: 0,
-      fontFamily: "Inter,sans-serif",
-      transition: "background .12s"
-    },
-    onMouseEnter: e => e.currentTarget.style.background = "rgba(124,92,255,0.18)",
-    onMouseLeave: e => e.currentTarget.style.background = "transparent"
-  }, "\u2715")), files.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: "100%",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 14,
-      color: "#282828"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 64
-    }
-  }, "\uD83D\uDDBC"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 500
-    }
-  }, t.emptyHint), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12
-    }
-  }, t.emptySub)) : /*#__PURE__*/React.createElement(JustifiedGrid, {
-    files: files,
-    cellH: cellH,
-    settings: settings,
-    selId: selId,
-    multiSel: multiSel,
-    t: t,
-    tick: tick,
-    onSelect: handleSelect,
-    onCropChange: setCropForId,
-    onUndoPush: pushUndo,
-    onRemove: removeFile,
-    onEdit: setEditId,
-    onPreview: setPreviewId,
-    loadFiles: loadFiles,
-    onReorder: reorderFiles
-  })), !panelOpen && !editFile && /*#__PURE__*/React.createElement("button", {
-    onClick: () => setPanelOpen(true),
-    style: {
-      position: "absolute",
-      right: 0,
-      top: "50%",
-      transform: "translateY(-50%)",
-      zIndex: 50,
-      fontFamily: "Inter",
-      fontSize: 11,
-      background: "#1e1e1e",
-      border: "1px solid #2a2a2a",
-      borderRadius: "6px 0 0 6px",
-      color: "#666",
-      padding: "12px 6px",
-      cursor: "pointer",
-      writingMode: "vertical-lr",
-      letterSpacing: 1
-    }
-  }, t.panelShow), panelOpen && /*#__PURE__*/React.createElement("aside", {
-    style: {
-      width: 360,
-      background: "#1e1e1e",
-      borderLeft: "1px solid #242424",
-      overflowY: "auto",
-      padding: "10px 14px",
-      flexShrink: 0,
-      display: "flex",
-      flexDirection: "column"
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setPanelOpen(false),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 10,
-      background: "transparent",
-      border: "none",
-      color: "#444",
-      cursor: "pointer",
-      textAlign: "right",
-      padding: "2px 0",
-      marginBottom: 4
-    }
-  }, t.panelHide), /*#__PURE__*/React.createElement("div", {
-    className: "tab-bar"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "tab-btn " + (panelTab === "image" ? "active" : "inactive"),
-    onClick: () => setPanelTab("image")
-  }, t.tabImage), /*#__PURE__*/React.createElement("button", {
-    className: "tab-btn " + (panelTab === "export" ? "active" : "inactive"),
-    onClick: () => setPanelTab("export")
-  }, t.tabExport)), panelTab === "image" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "sec-block"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "sec-title"
-  }, t.secThumbs), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.thumbSize(cellH)), /*#__PURE__*/React.createElement("input", {
-    type: "range",
-    min: 180,
-    max: 700,
-    value: cellH,
-    onChange: e => setCellH(+e.target.value),
-    style: {
-      marginBottom: 6
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "sec-block"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "sec-title"
-  }, t.secComposition), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.secOutput), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 4,
-      marginBottom: 12,
-      background: "#181818",
-      borderRadius: 6,
-      padding: 3,
-      border: "1px solid #242424"
-    }
-  }, ["fixed", "autoW", "autoH"].map(m => /*#__PURE__*/React.createElement("button", {
-    key: m,
-    onClick: () => setSettings(s => ({
-      ...s,
-      sizeMode: m
-    })),
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 10,
-      fontWeight: settings.sizeMode === m ? 600 : 400,
-      border: "none",
-      borderRadius: 4,
-      padding: "7px 4px",
-      cursor: "pointer",
-      transition: "all .12s",
-      background: settings.sizeMode === m ? "#7c5cff" : "transparent",
-      color: settings.sizeMode === m ? "#fff" : "#555",
-      whiteSpace: "nowrap"
-    }
-  }, m === "fixed" ? t.sizeFixed : m === "autoW" ? t.sizeAutoW : t.sizeAutoH))), settings.sizeMode === "fixed" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("label", {
-    className: "lbl",
-    style: {
-      marginBottom: 0
-    }
-  }, t.lockAspectRatio), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setSettings(s => ({
-      ...s,
-      lockAspect: !s.lockAspect
-    })),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 10,
-      fontWeight: 600,
-      border: "1px solid",
-      borderRadius: 4,
-      padding: "3px 10px",
-      cursor: "pointer",
-      transition: "all .12s",
-      background: settings.lockAspect ? "#7c5cff" : "transparent",
-      borderColor: settings.lockAspect ? "#7c5cff" : "#2e2e2e",
-      color: settings.lockAspect ? "#fff" : "#555"
-    }
-  }, settings.lockAspect ? "ON" : "OFF"))), settings.sizeMode !== "autoW" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.widthLbl), /*#__PURE__*/React.createElement("input", {
-    type: "number",
-    min: 1,
-    value: wInput,
-    style: {
-      marginBottom: 8,
-      color: parseInt(wInput, 10) >= 1 ? "" : "#666"
-    },
-    onFocus: () => {
-      dimEditingRef.current = "w";
-    },
-    onBlur: () => {
-      dimEditingRef.current = null;
-      const v = parseInt(wInput, 10);
-      if (!v || v < 1) setWInput(String(settings.w)); // revert if invalid
-    },
-    onChange: e => {
-      setWInput(e.target.value);
-      const newW = parseInt(e.target.value, 10);
-      if (!newW || newW < 1) return;
-      if (settings.lockAspect && settings.sizeMode === "fixed") {
-        const ratio = settings.w / settings.h;
-        setSettings(s => ({
-          ...s,
-          w: newW,
-          h: Math.round(newW / ratio)
-        }));
-      } else {
-        setSettings(s => ({
-          ...s,
-          w: newW
-        }));
-      }
-    }
-  })), settings.sizeMode !== "autoH" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.heightLbl), /*#__PURE__*/React.createElement("input", {
-    type: "number",
-    min: 1,
-    value: hInput,
-    style: {
-      marginBottom: 8,
-      color: parseInt(hInput, 10) >= 1 ? "" : "#666"
-    },
-    onFocus: () => {
-      dimEditingRef.current = "h";
-    },
-    onBlur: () => {
-      dimEditingRef.current = null;
-      const v = parseInt(hInput, 10);
-      if (!v || v < 1) setHInput(String(settings.h)); // revert if invalid
-    },
-    onChange: e => {
-      setHInput(e.target.value);
-      const newH = parseInt(e.target.value, 10);
-      if (!newH || newH < 1) return;
-      if (settings.lockAspect && settings.sizeMode === "fixed") {
-        const ratio = settings.w / settings.h;
-        setSettings(s => ({
-          ...s,
-          h: newH,
-          w: Math.round(newH * ratio)
-        }));
-      } else {
-        setSettings(s => ({
-          ...s,
-          h: newH
-        }));
-      }
-    }
-  })), settings.sizeMode === "fixed" && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: "#555",
-      marginBottom: 4
-    }
-  }, t.ratioLbl, ": ", oW / dv, ":", oH / dv), /*#__PURE__*/React.createElement("label", {
-    className: "lbl",
-    style: {
-      marginTop: 12
-    }
-  }, t.cropModeLbl), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "grid",
-      gridTemplateColumns: "repeat(2,1fr)",
-      gap: 4,
-      marginBottom: 8,
-      background: "#181818",
-      borderRadius: 6,
-      padding: 3,
-      border: "1px solid #242424"
-    }
-  }, [{
-    mode: "auto",
-    label: t.cropModeAuto
-  }, {
-    mode: "manual",
-    label: t.cropModeManual
-  }, {
-    mode: "face",
-    label: t.cropModeFace
-  }, {
-    mode: "body",
-    label: t.cropModeBody
-  }].map(({
-    mode,
-    label
-  }) => {
-    const isActive = settings.detectionMode === mode;
-    const iconColor = isActive ? "#fff" : "#666";
+  const{w:oW,h:oH}=settings,dv=gcd(oW,oH);
+  const manualCrop=files.filter(f=>f.crop?.auto===false).length;
+  const autoCrop=files.filter(f=>!f.crop || f.crop?.auto===true).length;
+  const PURPLE="#7c5cff";
 
-    // Iconos SVG minimalistas
-    const icons = {
-      auto: /*#__PURE__*/React.createElement("svg", {
-        width: "14",
-        height: "14",
-        viewBox: "0 0 24 24",
-        fill: "none",
-        stroke: iconColor,
-        strokeWidth: "2",
-        strokeLinecap: "round",
-        strokeLinejoin: "round"
-      }, /*#__PURE__*/React.createElement("circle", {
-        cx: "12",
-        cy: "12",
-        r: "3"
-      }), /*#__PURE__*/React.createElement("path", {
-        d: "M12 1v6m0 6v6m5.196-14.196l-4.242 4.242m0 5.908l4.242 4.242M23 12h-6m-6 0H1m14.196 5.196l-4.242-4.242m0-5.908l-4.242-4.242"
-      })),
-      manual: /*#__PURE__*/React.createElement("svg", {
-        width: "14",
-        height: "14",
-        viewBox: "0 0 24 24",
-        fill: "none",
-        stroke: iconColor,
-        strokeWidth: "2",
-        strokeLinecap: "round",
-        strokeLinejoin: "round"
-      }, /*#__PURE__*/React.createElement("rect", {
-        x: "3",
-        y: "3",
-        width: "7",
-        height: "7"
-      }), /*#__PURE__*/React.createElement("rect", {
-        x: "14",
-        y: "3",
-        width: "7",
-        height: "7"
-      }), /*#__PURE__*/React.createElement("rect", {
-        x: "14",
-        y: "14",
-        width: "7",
-        height: "7"
-      }), /*#__PURE__*/React.createElement("rect", {
-        x: "3",
-        y: "14",
-        width: "7",
-        height: "7"
-      })),
-      face: /*#__PURE__*/React.createElement("svg", {
-        width: "14",
-        height: "14",
-        viewBox: "0 0 24 24",
-        fill: "none",
-        stroke: iconColor,
-        strokeWidth: "2",
-        strokeLinecap: "round",
-        strokeLinejoin: "round"
-      }, /*#__PURE__*/React.createElement("circle", {
-        cx: "12",
-        cy: "12",
-        r: "10"
-      }), /*#__PURE__*/React.createElement("path", {
-        d: "M8 14s1.5 2 4 2 4-2 4-2"
-      }), /*#__PURE__*/React.createElement("line", {
-        x1: "9",
-        y1: "9",
-        x2: "9.01",
-        y2: "9"
-      }), /*#__PURE__*/React.createElement("line", {
-        x1: "15",
-        y1: "9",
-        x2: "15.01",
-        y2: "9"
-      })),
-      body: /*#__PURE__*/React.createElement("svg", {
-        width: "14",
-        height: "14",
-        viewBox: "0 0 24 24",
-        fill: "none",
-        stroke: iconColor,
-        strokeWidth: "2",
-        strokeLinecap: "round",
-        strokeLinejoin: "round"
-      }, /*#__PURE__*/React.createElement("circle", {
-        cx: "12",
-        cy: "5",
-        r: "2"
-      }), /*#__PURE__*/React.createElement("path", {
-        d: "M12 7v5m0 0l-3 6m3-6l3 6M9 12l-2-2m8 2l2-2"
-      }))
-    };
-    return /*#__PURE__*/React.createElement("button", {
-      key: mode,
-      onClick: async () => {
-        // Si es modo ML y no han dicho "no volver a preguntar", mostrar diálogo
-        if ((mode === "face" || mode === "body") && !mlDontShowAgain) {
-          setMlWarningDialog({
-            show: true,
-            mode
-          });
-        } else {
-          // Capturar valores AHORA (antes de setState)
-          const currentMode = mode;
-          const currentFocalAuto = mode !== "manual";
-          const currentSettings = settingsRef.current;
-          const currentSelId = selIdRef.current;
-          const currentMultiSel = new Set(multiSelRef.current);
+  const mBtn=(label,onClick,disabled,bg)=>(
+    <button onClick={onClick} disabled={!!disabled} style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"none",borderRadius:5,padding:"7px 14px",cursor:disabled?"not-allowed":"pointer",background:disabled?"#2e2e2e":(bg||PURPLE),color:disabled?"#666":"#fff",whiteSpace:"nowrap",transition:"opacity .12s",width:"100%"}}>{label}</button>
+  );
+  const smBtn=(label,onClick,disabled)=>(
+    <button onClick={disabled?undefined:onClick} style={{fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"6px 10px",cursor:disabled?"not-allowed":"pointer",background:"transparent",color:disabled?"#555":"#aaa",width:"100%",marginBottom:6,textAlign:"left",opacity:disabled?0.6:1}}>{label}</button>
+  );
 
-          // Aplicar settings
-          setSettings(s => ({
-            ...s,
-            detectionMode: mode,
-            focalAuto: mode !== "manual"
-          }));
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#181818",color:"#d0d0d0"}}>
 
-          // Ejecutar INMEDIATAMENTE con valores capturados
-          const {
-            w: oW,
-            h: oH,
-            focalPoint,
-            adjustToTargetSize,
-            poseNetEnabled
-          } = currentSettings;
+      {/* Header - V11.5: 3 zonas (LEFT | CENTER | RIGHT) */}
+      <header style={{background:"#141414",borderBottom:"1px solid #222",height:50,padding:"0 12px 0 20px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
 
-          // Determinar targets
-          let targets;
-          if (currentSelId && currentMultiSel.size === 0) {
-            targets = [currentSelId];
-          } else if (currentMultiSel.size > 0) {
-            targets = [...currentMultiSel];
-          } else {
-            targets = filesRef.current.map(f => f.id);
-          }
-          if (!targets.length) return;
-          setSmartBatch({
-            running: true,
-            done: 0,
-            total: targets.length
-          });
-          let applied = 0;
-          for (let i = 0; i < targets.length; i++) {
-            const id = targets[i];
-            const f = filesRef.current.find(ff => ff.id === id);
-            if (!f) {
-              setSmartBatch(s => ({
-                ...s,
-                done: s.done + 1
-              }));
-              continue;
-            }
-            let nc = null;
-            if (currentMode === "face") {
-              nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
-            } else if (currentMode === "body") {
-              nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
-            } else if (currentFocalAuto && currentMode === "auto") {
-              nc = await runSmartCrop(f.ec, oW, oH);
-            }
-            if (!nc || nc.w < 2 || nc.h < 2) {
-              const {
-                ax,
-                ay
-              } = focalPoint || {
-                ax: 0.5,
-                ay: 0.5
-              };
-              nc = focalCrop(f.ec.width, f.ec.height, oW, oH, ax, ay);
-            }
-            const crop = {
-              ...nc,
-              auto: true
-            };
-            setFiles(prev => prev.map(ff => ff.id === id ? {
-              ...ff,
-              crop
-            } : ff));
-            applied++;
-            setSmartBatch(s => ({
-              ...s,
-              done: s.done + 1
-            }));
-          }
-          setSmartBatch({
-            running: false,
-            done: 0,
-            total: 0
-          });
-          const modeLabel = currentMode === "face" ? t.detFaces : currentMode === "body" ? t.detBodies : "";
-          const countMsg = targets.length === 1 ? t.toastProcessed1 : t.toastCroppedN(applied);
-          showToast(modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`);
-        }
-      },
-      style: {
-        fontFamily: "Inter,sans-serif",
-        fontSize: 10,
-        fontWeight: isActive ? 600 : 400,
-        border: "none",
-        borderRadius: 4,
-        padding: "7px 4px",
-        cursor: "pointer",
-        transition: "all .12s",
-        background: isActive ? "#7c5cff" : "transparent",
-        color: isActive ? "#fff" : "#555",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6
-      }
-    }, icons[mode], /*#__PURE__*/React.createElement("span", null, label));
-  })), (settings.detectionMode === "face" || settings.detectionMode === "body") && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 10,
-      padding: "8px",
-      background: "#1a1a1a",
-      borderRadius: 4
-    }
-  }, /*#__PURE__*/React.createElement("label", {
-    className: "lbl",
-    style: {
-      marginBottom: 0,
-      fontSize: 10
-    }
-  }, t.adjustToTargetSize), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setSettings(s => ({
-      ...s,
-      adjustToTargetSize: !s.adjustToTargetSize
-    })),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 9,
-      fontWeight: 600,
-      border: "1px solid",
-      borderRadius: 3,
-      padding: "2px 8px",
-      cursor: "pointer",
-      transition: "all .12s",
-      background: settings.adjustToTargetSize ? "#7c5cff" : "transparent",
-      borderColor: settings.adjustToTargetSize ? "#7c5cff" : "#2e2e2e",
-      color: settings.adjustToTargetSize ? "#fff" : "#555"
-    }
-  }, settings.adjustToTargetSize ? "ON" : "OFF")), settings.detectionMode === "body" && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 10,
-      padding: "8px",
-      background: "#1a1a1a",
-      borderRadius: 4
-    }
-  }, /*#__PURE__*/React.createElement("label", {
-    className: "lbl",
-    style: {
-      marginBottom: 0,
-      fontSize: 10
-    }
-  }, t.poseNetRefinement), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setSettings(s => ({
-      ...s,
-      poseNetEnabled: !s.poseNetEnabled
-    })),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 9,
-      fontWeight: 600,
-      border: "1px solid",
-      borderRadius: 3,
-      padding: "2px 8px",
-      cursor: "pointer",
-      transition: "all .12s",
-      background: settings.poseNetEnabled ? "#7c5cff" : "transparent",
-      borderColor: settings.poseNetEnabled ? "#7c5cff" : "#2e2e2e",
-      color: settings.poseNetEnabled ? "#fff" : "#555"
-    }
-  }, settings.poseNetEnabled ? "ON" : "OFF")), settings.detectionMode !== "manual" && settings.detectionMode !== "auto" && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: "#888",
-      marginBottom: 10,
-      padding: "6px 8px",
-      background: "#1a1a1a",
-      borderRadius: 4,
-      lineHeight: 1.4
-    }
-  }, settings.detectionMode === "face" && (settings.adjustToTargetSize ? t.faceHintFixed : t.faceHintAuto), settings.detectionMode === "body" && (settings.adjustToTargetSize ? t.bodyHintFixed : t.bodyHintAuto)), settings.detectionMode === "manual" && (() => {
-    const pts = [{
-      ax: 0,
-      ay: 0
-    }, {
-      ax: 0.5,
-      ay: 0
-    }, {
-      ax: 1,
-      ay: 0
-    }, {
-      ax: 0,
-      ay: 0.5
-    }, {
-      ax: 0.5,
-      ay: 0.5
-    }, {
-      ax: 1,
-      ay: 0.5
-    }, {
-      ax: 0,
-      ay: 1
-    }, {
-      ax: 0.5,
-      ay: 1
-    }, {
-      ax: 1,
-      ay: 1
-    }];
-    const fp = settings.focalPoint || {
-      ax: 0.5,
-      ay: 0.5
-    };
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "grid",
-        gridTemplateColumns: "repeat(3,1fr)",
-        gap: 4,
-        marginBottom: 10,
-        padding: "8px",
-        background: "#181818",
-        borderRadius: 6,
-        border: "1px solid #2a2a2a"
-      }
-    }, pts.map(({
-      ax,
-      ay
-    }, i) => {
-      const active = fp.ax === ax && fp.ay === ay;
-      return /*#__PURE__*/React.createElement("button", {
-        key: i,
-        onClick: async () => {
-          // Actualizar punto focal
-          setSettings(s => ({
-            ...s,
-            focalPoint: {
-              ax,
-              ay
-            }
-          }));
+        {/* ═══ LEFT: Logo + Subtitle ═══ */}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{fontWeight:700,fontSize:19,letterSpacing:-0.5,color:"#fff"}}>ZIRME</div>
+          <div style={{fontSize:11,color:"#888"}}>{t.subtitle}</div>
+        </div>
 
-          // Aplicar crop INMEDIATAMENTE con nuevo punto focal
-          const currentSelId = selIdRef.current;
-          const currentMultiSel = new Set(multiSelRef.current);
-          const {
-            w: oW,
-            h: oH
-          } = settingsRef.current;
+        <div style={{flex:1}}/> {/* Spacer */}
 
-          // Determinar targets
-          let targets;
-          if (currentSelId && currentMultiSel.size === 0) {
-            targets = [currentSelId];
-          } else if (currentMultiSel.size > 0) {
-            targets = [...currentMultiSel];
-          } else {
-            targets = filesRef.current.map(f => f.id);
-          }
-          if (!targets.length) return;
+        {/* ═══ CENTER: Undo | Redo | Clear All ═══ */}
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={undoSel} disabled={!canUndo} title="Ctrl+Z"
+            style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canUndo?"pointer":"not-allowed",background:"transparent",color:canUndo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canUndo?1:0.4}}>
+            ↩ {canUndo?t.undoCount((activeFile?.history||[]).length):t.undo}
+          </button>
+          <button onClick={redoSel} disabled={!canRedo} title="Ctrl+Y"
+            style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:canRedo?"pointer":"not-allowed",background:"transparent",color:canRedo?"#d0d0d0":"#333",display:"flex",alignItems:"center",gap:5,opacity:canRedo?1:0.4}}>
+            ↪ {canRedo?t.redoCount((activeFile?.future||[]).length):t.redo}
+          </button>
+          <div style={{width:1,height:16,background:"#2a2a2a"}}/>
+          {/* V11.5: Clear All */}
+          <button
+            onClick={()=>{
+              if(window.confirm(t.clearAllConfirm)){
+                setFiles([]);
+                setSelId(null);
+                setEditId(null);
+                setMultiSel(new Set());
+              }
+            }}
+            disabled={files.length===0}
+            style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #282828",borderRadius:5,padding:"5px 11px",cursor:files.length>0?"pointer":"not-allowed",background:"transparent",color:files.length>0?"#f87171":"#333",display:"flex",alignItems:"center",gap:5,opacity:files.length>0?1:0.4}}>
+            🗑 {t.clearAll}
+          </button>
+        </div>
 
-          // Aplicar crop con el nuevo punto focal
-          for (let j = 0; j < targets.length; j++) {
-            const id = targets[j];
-            const f = filesRef.current.find(ff => ff.id === id);
-            if (!f) continue;
-            const nc = focalCrop(f.ec.width, f.ec.height, oW, oH, ax, ay);
-            const crop = {
-              ...nc,
-              auto: true
-            };
-            setFiles(prev => prev.map(ff => ff.id === id ? {
-              ...ff,
-              crop
-            } : ff));
-          }
-          const countMsg = targets.length === 1 ? t.toastProcessed1 : t.toastCroppedN(targets.length);
-          showToast(`✦ ${countMsg}`);
-        },
-        style: {
-          aspectRatio: "1",
-          border: "1.5px solid " + (active ? "#7c5cff" : "#252525"),
-          borderRadius: 5,
-          background: active ? "rgba(124,92,255,0.18)" : "transparent",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "all .12s",
-          padding: 0
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          width: 7,
-          height: 7,
-          borderRadius: "50%",
-          background: active ? "#7c5cff" : "#333",
-          boxShadow: active ? "0 0 0 2px rgba(124,92,255,0.35)" : "none",
-          transition: "all .12s"
-        }
-      }));
-    }));
-  })()), /*#__PURE__*/React.createElement("div", {
-    className: "sec-block"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "sec-title"
-  }, t.transformLabel), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.rotationLabel), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 6,
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => rotateImages(270),
-    disabled: !files.length,
-    title: t.rotateLeftTitle,
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 20,
-      fontWeight: 400,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "8px",
-      cursor: files.length ? "pointer" : "not-allowed",
-      background: "transparent",
-      color: files.length ? "#aaa" : "#555",
-      textAlign: "center",
-      transition: "all .15s"
-    },
-    onMouseEnter: e => files.length && (e.currentTarget.style.background = "#252525"),
-    onMouseLeave: e => e.currentTarget.style.background = "transparent"
-  }, "\u21B6"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => rotateImages(90),
-    disabled: !files.length,
-    title: t.rotateRightTitle,
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 20,
-      fontWeight: 400,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "8px",
-      cursor: files.length ? "pointer" : "not-allowed",
-      background: "transparent",
-      color: files.length ? "#aaa" : "#555",
-      textAlign: "center",
-      transition: "all .15s"
-    },
-    onMouseEnter: e => files.length && (e.currentTarget.style.background = "#252525"),
-    onMouseLeave: e => e.currentTarget.style.background = "transparent"
-  }, "\u21B7")), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.flipLabel), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 6,
-      marginBottom: 6
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => flipImages('horizontal'),
-    disabled: !files.length,
-    title: t.flipHTitle,
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 18,
-      fontWeight: 400,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "6px",
-      cursor: files.length ? "pointer" : "not-allowed",
-      background: "transparent",
-      color: files.length ? "#aaa" : "#555",
-      textAlign: "center",
-      transition: "all .15s"
-    },
-    onMouseEnter: e => files.length && (e.currentTarget.style.background = "#252525"),
-    onMouseLeave: e => e.currentTarget.style.background = "transparent"
-  }, "\u21C4"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => flipImages('vertical'),
-    disabled: !files.length,
-    title: t.flipVTitle,
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 18,
-      fontWeight: 400,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "6px",
-      cursor: files.length ? "pointer" : "not-allowed",
-      background: "transparent",
-      color: files.length ? "#aaa" : "#555",
-      textAlign: "center",
-      transition: "all .15s"
-    },
-    onMouseEnter: e => files.length && (e.currentTarget.style.background = "#252525"),
-    onMouseLeave: e => e.currentTarget.style.background = "transparent"
-  }, "\u21C5"))), /*#__PURE__*/React.createElement("div", {
-    className: "sec-block"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "sec-title"
-  }, t.secBorder), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.borderWidthLbl(settings.borderW)), /*#__PURE__*/React.createElement("input", {
-    type: "range",
-    min: 0,
-    max: 100,
-    value: settings.borderW,
-    onChange: e => setSettings(s => ({
-      ...s,
-      borderW: +e.target.value
-    })),
-    style: {
-      marginBottom: 8
-    }
-  }), settings.borderW > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.borderColorLbl), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 6,
-      alignItems: "center",
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("input", {
-    type: "color",
-    value: settings.borderColor,
-    onChange: e => setSettings(s => ({
-      ...s,
-      borderColor: e.target.value
-    })),
-    style: {
-      width: 28,
-      height: 28,
-      border: "1px solid #303030",
-      borderRadius: 4,
-      padding: 0,
-      cursor: "pointer",
-      background: "transparent"
-    }
-  }), /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    value: settings.borderColor,
-    onChange: e => setSettings(s => ({
-      ...s,
-      borderColor: e.target.value
-    })),
-    style: {
-      flex: 1,
-      marginBottom: 0,
-      fontFamily: "monospace",
-      fontSize: 11
-    }
-  })))), /*#__PURE__*/React.createElement("div", {
-    className: "sec-block"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "sec-title"
-  }, t.secActions), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8,
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: clearAllCrops,
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 500,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "7px 10px",
-      cursor: "pointer",
-      background: "transparent",
-      color: "#aaa",
-      textAlign: "center"
-    }
-  }, t.clearAllCrops), /*#__PURE__*/React.createElement("button", {
-    onClick: applyFocalAll,
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 500,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "7px 10px",
-      cursor: "pointer",
-      background: "transparent",
-      color: "#aaa",
-      textAlign: "center"
-    }
-  }, t.applyToAll)), (selId || multiSel.size > 0) && /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
-      setSelId(null);
-      setMultiSel(new Set());
-    },
-    style: {
-      width: "100%",
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 500,
-      border: "1px solid rgba(124,92,255,0.3)",
-      borderRadius: 5,
-      padding: "7px 10px",
-      cursor: "pointer",
-      background: "rgba(124,92,255,0.08)",
-      color: "#a78bfa",
-      textAlign: "center",
-      marginBottom: 12,
-      transition: "all .15s"
-    },
-    onMouseEnter: e => {
-      e.currentTarget.style.background = "rgba(124,92,255,0.15)";
-      e.currentTarget.style.borderColor = "rgba(124,92,255,0.5)";
-    },
-    onMouseLeave: e => {
-      e.currentTarget.style.background = "rgba(124,92,255,0.08)";
-      e.currentTarget.style.borderColor = "rgba(124,92,255,0.3)";
-    }
-  }, t.deselectAll), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "#202020",
-      borderRadius: 5,
-      padding: "8px 10px",
-      fontSize: 10,
-      color: "#666"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 2
-    }
-  }, t.totalLbl), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 600,
-      color: "#888"
-    }
-  }, files.length)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: selId || multiSel.size > 0 ? "rgba(124,92,255,0.12)" : "#202020",
-      borderRadius: 5,
-      padding: "8px 10px",
-      fontSize: 10,
-      color: "#666",
-      transition: "all .2s"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 2
-    }
-  }, t.selectedLabel), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 600,
-      color: selId || multiSel.size > 0 ? "#a78bfa" : "#888"
-    }
-  }, selId && multiSel.size === 0 ? 1 : multiSel.size)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "#202020",
-      borderRadius: 5,
-      padding: "8px 10px",
-      fontSize: 10,
-      color: "#666"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 2
-    }
-  }, t.withCropLbl), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 600,
-      color: "#a78bfa"
-    }
-  }, manualCrop)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "#202020",
-      borderRadius: 5,
-      padding: "8px 10px",
-      fontSize: 10,
-      color: "#666"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 2
-    }
-  }, t.noCropLbl), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 600,
-      color: "#888"
-    }
-  }, autoCrop))))), panelTab === "export" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "sec-block"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "sec-title"
-  }, t.secExport), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.formatLbl), /*#__PURE__*/React.createElement("select", {
-    value: settings.fmt,
-    onChange: e => setSettings(s => ({
-      ...s,
-      fmt: e.target.value
-    }))
-  }, /*#__PURE__*/React.createElement("option", {
-    value: "jpeg"
-  }, "JPG"), /*#__PURE__*/React.createElement("option", {
-    value: "png"
-  }, "PNG"), /*#__PURE__*/React.createElement("option", {
-    value: "webp"
-  }, "WebP"), /*#__PURE__*/React.createElement("option", {
-    value: "avif"
-  }, "AVIF")), settings.fmt !== "png" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.qualityLbl?.(settings.quality) || `Calidad: ${settings.quality}%`), /*#__PURE__*/React.createElement("input", {
-    type: "range",
-    min: 1,
-    max: 100,
-    value: settings.quality,
-    onChange: e => setSettings(s => ({
-      ...s,
-      quality: +e.target.value
-    })),
-    style: {
-      marginBottom: 6
-    }
-  }))), /*#__PURE__*/React.createElement("div", {
-    className: "sec-block"
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "sec-title",
-    style: {
-      marginBottom: 0,
-      marginTop: 0,
-      borderBottom: "none",
-      paddingBottom: 0
-    }
-  }, t.secWatermark), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setSettings(s => ({
-      ...s,
-      wmEnabled: !s.wmEnabled
-    })),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 10,
-      fontWeight: 600,
-      border: "1px solid",
-      borderRadius: 4,
-      padding: "3px 10px",
-      cursor: "pointer",
-      transition: "all .12s",
-      background: settings.wmEnabled ? "#7c5cff" : "transparent",
-      borderColor: settings.wmEnabled ? "#7c5cff" : "#2e2e2e",
-      color: settings.wmEnabled ? "#fff" : "#555"
-    }
-  }, settings.wmEnabled ? "ON" : "OFF")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: 1,
-      background: "#2a2a2a",
-      marginBottom: 10
-    }
-  }), settings.wmEnabled && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.wmTypeLbl), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 4,
-      marginBottom: 10
-    }
-  }, ["texto", "imagen"].map(m => /*#__PURE__*/React.createElement("button", {
-    key: m,
-    onClick: () => setSettings(s => ({
-      ...s,
-      wmType: m
-    })),
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 10,
-      fontWeight: 600,
-      border: "1px solid",
-      borderRadius: 4,
-      padding: "6px 0",
-      cursor: "pointer",
-      transition: "all .12s",
-      background: (settings.wmType || "texto") === m ? "#7c5cff" : "transparent",
-      borderColor: (settings.wmType || "texto") === m ? "#7c5cff" : "#2e2e2e",
-      color: (settings.wmType || "texto") === m ? "#fff" : "#555"
-    }
-  }, m === "texto" ? t.wmTypeText : t.wmTypeImage))), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.wmTextLbl), /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    placeholder: "WATERMARK",
-    value: settings.wmText || "",
-    onChange: e => setSettings(s => ({
-      ...s,
-      wmText: e.target.value
-    }))
-  }), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.wmFontLbl), /*#__PURE__*/React.createElement("select", {
-    value: settings.wmFont,
-    onChange: e => setSettings(s => ({
-      ...s,
-      wmFont: e.target.value
-    }))
-  }, /*#__PURE__*/React.createElement("option", {
-    value: "Inter"
-  }, "Inter"), /*#__PURE__*/React.createElement("option", {
-    value: "Arial"
-  }, "Arial"), /*#__PURE__*/React.createElement("option", {
-    value: "Georgia"
-  }, "Georgia"), /*#__PURE__*/React.createElement("option", {
-    value: "Times New Roman"
-  }, "Times New Roman"), /*#__PURE__*/React.createElement("option", {
-    value: "Courier New"
-  }, "Courier New")), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.wmSizeLbl(settings.wmSize)), /*#__PURE__*/React.createElement("input", {
-    type: "range",
-    min: 8,
-    max: 200,
-    value: settings.wmSize,
-    onChange: e => setSettings(s => ({
-      ...s,
-      wmSize: +e.target.value
-    })),
-    style: {
-      marginBottom: 8
-    }
-  }), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.wmColorLbl), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 6,
-      alignItems: "center",
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("input", {
-    type: "color",
-    value: settings.wmColor,
-    onChange: e => setSettings(s => ({
-      ...s,
-      wmColor: e.target.value
-    })),
-    style: {
-      width: 28,
-      height: 28,
-      border: "1px solid #303030",
-      borderRadius: 4,
-      padding: 0,
-      cursor: "pointer",
-      background: "transparent"
-    }
-  }), /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    value: settings.wmColor,
-    onChange: e => setSettings(s => ({
-      ...s,
-      wmColor: e.target.value
-    })),
-    style: {
-      flex: 1,
-      marginBottom: 0,
-      fontFamily: "monospace",
-      fontSize: 11
-    }
-  })), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.wmOpacityLbl(settings.wmOpacity)), /*#__PURE__*/React.createElement("input", {
-    type: "range",
-    min: 5,
-    max: 100,
-    value: settings.wmOpacity,
-    onChange: e => setSettings(s => ({
-      ...s,
-      wmOpacity: +e.target.value
-    })),
-    style: {
-      marginBottom: 8
-    }
-  }), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.wmPosLbl), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "grid",
-      gridTemplateColumns: "repeat(3,1fr)",
-      gap: 3,
-      marginBottom: 6
-    }
-  }, [{
-    k: "tl",
-    l: t.wmPosTL
-  }, {
-    k: "center-top",
-    l: ""
-  }, {
-    k: "tr",
-    l: t.wmPosTR
-  }, {
-    k: "bl",
-    l: t.wmPosBL
-  }, {
-    k: "center",
-    l: t.wmPosCenter
-  }, {
-    k: "br",
-    l: t.wmPosBR
-  }].map(({
-    k,
-    l
-  }, i) => i === 1 ? /*#__PURE__*/React.createElement("div", {
-    key: "spacer"
-  }) : /*#__PURE__*/React.createElement("button", {
-    key: k,
-    onClick: () => setSettings(s => ({
-      ...s,
-      wmPos: k
-    })),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 9,
-      fontWeight: settings.wmPos === k ? 600 : 400,
-      border: "1px solid",
-      borderRadius: 4,
-      padding: "5px 2px",
-      cursor: "pointer",
-      transition: "all .12s",
-      background: settings.wmPos === k ? "#7c5cff" : "transparent",
-      borderColor: settings.wmPos === k ? "#7c5cff" : "#2a2a2a",
-      color: settings.wmPos === k ? "#fff" : "#555"
-    }
-  }, l))))), /*#__PURE__*/React.createElement("div", {
-    className: "sec-block"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "sec-title"
-  }, t.secRename), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 4,
-      marginBottom: 10
-    }
-  }, ["keep", "custom"].map(m => /*#__PURE__*/React.createElement("button", {
-    key: m,
-    onClick: () => setSettings(s => ({
-      ...s,
-      renameMode: m
-    })),
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 10,
-      fontWeight: 600,
-      border: "1px solid",
-      borderRadius: 4,
-      padding: "6px 0",
-      cursor: "pointer",
-      transition: "all .12s",
-      background: settings.renameMode === m ? "#7c5cff" : "transparent",
-      borderColor: settings.renameMode === m ? "#7c5cff" : "#2e2e2e",
-      color: settings.renameMode === m ? "#fff" : "#555"
-    }
-  }, m === "keep" ? t.renameModeKeep : t.renameModeCustom))), settings.renameMode === "keep" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.prefixLbl), /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    placeholder: "instagram_",
-    value: settings.prefix || "",
-    onChange: e => setSettings(s => ({
-      ...s,
-      prefix: e.target.value
-    }))
-  }), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.suffixLbl), /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    placeholder: "_final",
-    value: settings.suffix || "",
-    onChange: e => setSettings(s => ({
-      ...s,
-      suffix: e.target.value
-    }))
-  })), settings.renameMode === "custom" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.renameBaseLbl), /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    placeholder: "image",
-    value: settings.renameBase || "image",
-    onChange: e => setSettings(s => ({
-      ...s,
-      renameBase: e.target.value || "image"
-    }))
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: "#444",
-      marginTop: -4,
-      marginBottom: 8,
-      padding: "0 2px"
-    }
-  }, t.originalNameHint), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("label", {
-    className: "lbl",
-    style: {
-      marginBottom: 0
-    }
-  }, t.renameNumberingLbl), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setSettings(s => ({
-      ...s,
-      renameNum: !s.renameNum
-    })),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 10,
-      fontWeight: 600,
-      border: "1px solid",
-      borderRadius: 4,
-      padding: "3px 8px",
-      cursor: "pointer",
-      transition: "all .12s",
-      background: settings.renameNum ? "#7c5cff" : "transparent",
-      borderColor: settings.renameNum ? "#7c5cff" : "#2e2e2e",
-      color: settings.renameNum ? "#fff" : "#555"
-    }
-  }, settings.renameNum ? "ON" : "OFF")), settings.renameNum && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.renameStartLbl), /*#__PURE__*/React.createElement("input", {
-    type: "number",
-    min: 0,
-    value: settings.renameStart || 1,
-    onChange: e => setSettings(s => ({
-      ...s,
-      renameStart: Math.max(0, +e.target.value)
-    }))
-  })))), /*#__PURE__*/React.createElement("div", {
-    className: "sec-block"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "sec-title"
-  }, t.downloadLabel), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, mBtn(t.saveCurrent, exportCurrent, !sel, PURPLE)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, mBtn(zipping ? `${t.zipGenerating} ${zipPct}%` : t.zipBtn(multiSel.size > 0 ? multiSel.size : files.length), exportZip, !files.length || zipping, "#4f46e5"))), zipping && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 8,
-      height: 4,
-      background: "#2a2a2a",
-      borderRadius: 2,
-      overflow: "hidden"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: "100%",
-      background: "#7c5cff",
-      width: zipPct + "%",
-      transition: "width .2s",
-      borderRadius: 2
-    }
-  })))))), editFile && /*#__PURE__*/React.createElement(EditOverlay, {
-    file: editFile,
-    settings: settings,
-    blurCfg: blurCfg,
-    t: t,
-    onClose: () => setEditId(null),
-    onCropChange: setCropForId,
-    onUndoPush: pushUndo,
-    panelOpen: panelOpen,
-    onBlurCfgChange: setBlurCfg,
-    tick: tick,
-    onTick: () => setTick(n => n + 1)
-  }), previewFile && /*#__PURE__*/React.createElement(PreviewModal, {
-    file: previewFile,
-    settings: settings,
-    t: t,
-    onClose: () => setPreviewId(null)
-  }), showAnnouncement && ANNOUNCEMENT.enabled && /*#__PURE__*/React.createElement(AnnouncementPopup, {
-    lang: lang,
-    t: t,
-    onClose: dismissAnnouncement
-  }), mlWarningDialog.show && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: "rgba(0,0,0,0.75)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 10000
-    },
-    onClick: e => {
-      if (e.target === e.currentTarget) setMlWarningDialog({
-        show: false,
-        mode: null
-      });
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "#1e1e1e",
-      borderRadius: 8,
-      padding: "24px",
-      maxWidth: 480,
-      width: "90%",
-      border: "1px solid #2e2e2e",
-      boxShadow: "0 20px 60px rgba(0,0,0,0.5)"
-    },
-    onClick: e => e.stopPropagation()
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "flex-start",
-      gap: 12,
-      marginBottom: 16
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 32
-    }
-  }, "\u26A0\uFE0F"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 600,
-      color: "#e9c46a",
-      marginBottom: 8
-    }
-  }, t.aiDetectionTitle), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: "#b0b0b0",
-      lineHeight: 1.6
-    }
-  }, t.aiDetectionBody))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      marginBottom: 20,
-      padding: "10px 12px",
-      background: "#181818",
-      borderRadius: 5,
-      border: "1px solid #2a2a2a"
-    }
-  }, /*#__PURE__*/React.createElement("input", {
-    type: "checkbox",
-    id: "ml-dont-warn",
-    checked: mlDontShowAgain,
-    onChange: e => {
-      setMlDontShowAgain(e.target.checked);
-      try {
-        localStorage.setItem("zirme-ml-dont-warn", e.target.checked ? "true" : "false");
-      } catch (err) {}
-    }
-  }), /*#__PURE__*/React.createElement("label", {
-    htmlFor: "ml-dont-warn",
-    style: {
-      fontSize: 12,
-      color: "#888",
-      cursor: "pointer",
-      userSelect: "none"
-    }
-  }, t.dontShowWarning)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 10
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setMlWarningDialog({
-      show: false,
-      mode: null
-    }),
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 500,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "10px",
-      cursor: "pointer",
-      background: "transparent",
-      color: "#aaa"
-    }
-  }, t.cancelBtn), /*#__PURE__*/React.createElement("button", {
-    onClick: async () => {
-      const currentMode = mlWarningDialog.mode;
-      const currentSettings = settingsRef.current;
-      const currentSelId = selIdRef.current;
-      const currentMultiSel = new Set(multiSelRef.current);
-      setMlWarningDialog({
-        show: false,
-        mode: null
-      });
-      setSettings(s => ({
-        ...s,
-        detectionMode: currentMode,
-        focalAuto: true
-      }));
+        <div style={{flex:1}}/> {/* Spacer */}
 
-      // Ejecutar INMEDIATAMENTE con valores capturados
-      const {
-        w: oW,
-        h: oH,
-        focalPoint,
-        adjustToTargetSize,
-        poseNetEnabled
-      } = currentSettings;
+        {/* ═══ RIGHT: Feedback | Coffee | Help | Lang | Add ═══ */}
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {/* V11.5: Feedback Button */}
+          <button
+            onClick={()=>window.open("https://zirme.canny.io/","_blank","noopener,noreferrer")}
+            style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,background:"transparent",border:"1px solid #2a2a2a",borderRadius:5,color:"#aaa",padding:"5px 11px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",transition:"all .12s"}}
+            onMouseEnter={e=>{e.currentTarget.style.background="#2a2a2a";e.currentTarget.style.color="#e0e0e0";}}
+            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#aaa";}}>
+            💡 {t.feedback}
+          </button>
 
-      // Determinar targets
-      let targets;
-      if (currentSelId && currentMultiSel.size === 0) {
-        targets = [currentSelId];
-      } else if (currentMultiSel.size > 0) {
-        targets = [...currentMultiSel];
-      } else {
-        targets = filesRef.current.map(f => f.id);
-      }
-      if (!targets.length) return;
-      setSmartBatch({
-        running: true,
-        done: 0,
-        total: targets.length
-      });
-      let applied = 0;
-      for (let i = 0; i < targets.length; i++) {
-        const id = targets[i];
-        const f = filesRef.current.find(ff => ff.id === id);
-        if (!f) {
-          setSmartBatch(s => ({
-            ...s,
-            done: s.done + 1
-          }));
-          continue;
-        }
-        let nc = null;
-        if (currentMode === "face") {
-          nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
-        } else if (currentMode === "body") {
-          nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
-        }
-        if (!nc || nc.w < 2 || nc.h < 2) {
-          const {
-            ax,
-            ay
-          } = focalPoint || {
-            ax: 0.5,
-            ay: 0.5
-          };
-          nc = focalCrop(f.ec.width, f.ec.height, oW, oH, ax, ay);
-        }
-        const crop = {
-          ...nc,
-          auto: true
-        };
-        setFiles(prev => prev.map(ff => ff.id === id ? {
-          ...ff,
-          crop
-        } : ff));
-        applied++;
-        setSmartBatch(s => ({
-          ...s,
-          done: s.done + 1
-        }));
-      }
-      setSmartBatch({
-        running: false,
-        done: 0,
-        total: 0
-      });
-      const modeLabel = currentMode === "face" ? t.detFaces : currentMode === "body" ? t.detBodies : "";
-      const countMsg = targets.length === 1 ? t.toastProcessed1 : t.toastCroppedN(applied);
-      showToast(modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`);
-    },
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 12,
-      fontWeight: 600,
-      border: "none",
-      borderRadius: 5,
-      padding: "10px",
-      cursor: "pointer",
-      background: "#7c5cff",
-      color: "#fff"
-    }
-  }, t.continueBtn)))));
+          {/* Buy Me a Coffee Button */}
+          <BuyMeACoffeeButton lang={lang} />
+
+          <div style={{width:1,height:16,background:"#2a2a2a"}}/>
+
+        {/* Help ? button */}
+        <div ref={helpRef} style={{position:"relative"}}>
+          <button onClick={()=>setHelpOpen(o=>!o)}
+            style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,background:helpOpen?"#2a2a2a":"transparent",border:"1px solid #2a2a2a",borderRadius:5,color:helpOpen?"#d0d0d0":"#555",width:28,height:28,cursor:"pointer",lineHeight:1,transition:"all .12s",display:"flex",alignItems:"center",justifyContent:"center"}}
+            title={t.helpBtn||"Help"}>
+            ?
+          </button>
+          {helpOpen&&(
+            <div className="help-menu">
+
+              {/* Accordion: How to use */}
+              <button className="help-accordion" onClick={()=>setHelpTab(h=>h==="howto"?null:"howto")}>
+                <span>{t.secHowTo}</span>
+                <span className="help-accordion-arrow" style={{transform:helpTab==="howto"?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
+              </button>
+              <div className="help-accordion-body" style={{maxHeight:helpTab==="howto"?500:0,opacity:helpTab==="howto"?1:0,overflow:"hidden"}}>
+                {t.howTo.map((item,i)=>(
+                  <div key={i} className="help-menu-item" style={{cursor:"default",padding:"6px 14px"}}>
+                    <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0,opacity:0.7}}>{item.icon}</span>
+                    <span style={{fontSize:10,color:"#b0b0b0",lineHeight:1.4}}>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="help-menu-sep"/>
+
+              {/* Accordion: Shortcuts */}
+              <button className="help-accordion" onClick={()=>setHelpTab(h=>h==="shortcuts"?null:"shortcuts")}>
+                <span>{t.secShortcuts||"Atajos"}</span>
+                <span className="help-accordion-arrow" style={{transform:helpTab==="shortcuts"?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
+              </button>
+              <div className="help-accordion-body" style={{maxHeight:helpTab==="shortcuts"?500:0,opacity:helpTab==="shortcuts"?1:0,overflow:"hidden"}}>
+                {/* ── Generales ── */}
+                <div style={{fontSize:9,fontWeight:700,color:"#444",textTransform:"uppercase",letterSpacing:"0.8px",padding:"8px 14px 4px"}}>
+                  {t.shortcutsGeneral}
+                </div>
+                {(t.shortcuts?.general||[]).map((item,i)=>(
+                  <div key={i} className="help-menu-item" style={{cursor:"default",padding:"6px 14px",justifyContent:"space-between"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0,opacity:0.7}}>{item.icon}</span>
+                      <span style={{fontSize:10,color:"#999",fontFamily:"'SF Mono',Menlo,monospace",background:"#242424",padding:"3px 8px",borderRadius:4,border:"1px solid #2e2e2e"}}>{item.key}</span>
+                    </div>
+                    <span style={{fontSize:10,color:"#b0b0b0"}}>{item.text}</span>
+                  </div>
+                ))}
+                {/* ── Editor ── */}
+                <div style={{fontSize:9,fontWeight:700,color:"#444",textTransform:"uppercase",letterSpacing:"0.8px",padding:"8px 14px 4px",marginTop:2,borderTop:"1px solid #1e1e1e"}}>
+                  Editor
+                </div>
+                {(t.shortcuts?.editor||[]).map((item,i)=>(
+                  <div key={i} className="help-menu-item" style={{cursor:"default",padding:"6px 14px",justifyContent:"space-between"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <span style={{fontSize:13,width:18,textAlign:"center",flexShrink:0,opacity:0.7}}>{item.icon}</span>
+                      <span style={{fontSize:10,color:"#999",fontFamily:"'SF Mono',Menlo,monospace",background:"#242424",padding:"3px 8px",borderRadius:4,border:"1px solid #2e2e2e"}}>{item.key}</span>
+                    </div>
+                    <span style={{fontSize:10,color:"#b0b0b0"}}>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="help-menu-sep"/>
+
+              {/* Accordion: About */}
+              <button className="help-accordion" onClick={()=>setHelpTab(h=>h==="about"?null:"about")}>
+                <span>{t.secAbout||"Acerca de ZIRME"}</span>
+                <span className="help-accordion-arrow" style={{transform:helpTab==="about"?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
+              </button>
+              <div className="help-accordion-body" style={{maxHeight:helpTab==="about"?600:0,opacity:helpTab==="about"?1:0,overflow:"hidden"}}>
+                <div className="help-about-text">
+                  {(t.aboutText||"").split("\n\n").map((p,i)=>(
+                    <p key={i} style={{margin:i===0?"4px 0 10px":"10px 0 4px"}}>{p}</p>
+                  ))}
+                  <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:6}}>
+                    <a href="https://github.com/SrAIRO/ZIRME.git" target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:6}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c5cff"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                      ZIRME en GitHub
+                    </a>
+                    <div style={{fontSize:9,color:"#666",marginTop:8,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px",fontWeight:600}}>{t.coreLibraries}</div>
+                    <a href="https://github.com/jwagner/smartcrop-cli.git" target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:6}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c5cff"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                      smartcrop.js
+                    </a>
+                    <div style={{fontSize:9,color:"#666",marginTop:8,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px",fontWeight:600}}>{t.mlDetection}</div>
+                    <a href="https://github.com/tensorflow/tfjs" target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:6}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c5cff"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                      TensorFlow.js
+                    </a>
+                    <a href="https://github.com/tensorflow/tfjs-models/tree/master/coco-ssd" target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:6}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c5cff"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                      COCO-SSD
+                    </a>
+                    <a href="https://github.com/vladmandic/face-api" target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:6}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c5cff"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                      Face-API.js
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+        </div>
+        <div style={{width:1,height:16,background:"#2a2a2a"}}/>
+        {/* Lang selector */}
+        <div ref={langRef} style={{position:"relative"}}>
+          <button onClick={()=>setLangOpen(o=>!o)} style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,background:"#1e1e1e",border:"1px solid #2a2a2a",borderRadius:5,color:"#aaa",padding:"5px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
+            {langNames[lang]}
+            <span style={{fontSize:10,color:"#555",marginLeft:2,display:"inline-block",transform:langOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform .15s"}}>▾</span>
+          </button>
+          {langOpen&&(
+            <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:6,overflow:"hidden",zIndex:9999,minWidth:"110px",boxShadow:"0 8px 24px rgba(0,0,0,0.5)"}}>
+              {Object.entries(langNames).map(([code,name])=>(
+                <button key={code} onClick={()=>{setLang(code);setLangOpen(false);}}
+                  style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:code===lang?600:400,background:code===lang?"#2a2a2a":"transparent",color:code===lang?"#e0e0e0":"#888",border:"none",padding:"9px 14px",cursor:"pointer",width:"100%",textAlign:"left",display:"flex",alignItems:"center",gap:8}}
+                  onMouseEnter={e=>{if(code!==lang)e.currentTarget.style.background="#222";}}
+                  onMouseLeave={e=>{if(code!==lang)e.currentTarget.style.background="transparent";}}>
+                  {code===lang&&<span style={{color:"#7c5cff",fontSize:10}}>●</span>}
+                  {code!==lang&&<span style={{fontSize:10,opacity:0}}>●</span>}
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+          <label style={{fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,background:PURPLE,border:"none",borderRadius:5,padding:"7px 14px",cursor:"pointer",color:"#fff",whiteSpace:"nowrap"}}>
+            {t.add}
+            <input type="file" accept="image/*" multiple onChange={e=>loadFiles(e.target.files)} style={{display:"none"}}/>
+          </label>
+        </div>{/* end RIGHT zone */}
+
+      </header>
+
+      {/* Body */}
+      <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+
+        {/* Grid */}
+        <div style={{flex:1,overflowY:"auto",padding:16,position:"relative"}}
+             onClick={(e)=>{
+               // Deseleccionar si se hace click en el fondo vacío
+               if(e.target === e.currentTarget || e.target.closest('.justified-grid-bg')){
+                 setSelId(null);
+                 setMultiSel(new Set());
+               }
+             }}>
+          {/* Multi-select hint */}
+          {multiSel.size>0&&(
+            <div style={{position:"sticky",top:0,zIndex:10,background:"rgba(20,14,40,0.92)",border:"1px solid rgba(124,92,255,0.45)",borderRadius:8,padding:"9px 16px",marginBottom:12,display:"flex",alignItems:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.35)"}}>
+              <span style={{visibility:"hidden",fontSize:11,padding:"2px 9px",flexShrink:0}}>✕</span>
+              <span style={{flex:1,textAlign:"center",fontSize:12,fontWeight:500,color:"#a78bfa",letterSpacing:0.2}}>
+                {t.selectedHint(multiSel.size)}
+              </span>
+              <button onClick={()=>setMultiSel(new Set())}
+                style={{background:"transparent",border:"1px solid rgba(124,92,255,0.35)",borderRadius:5,color:"#a78bfa",cursor:"pointer",fontSize:11,padding:"2px 9px",flexShrink:0,fontFamily:"Inter,sans-serif",transition:"background .12s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="rgba(124,92,255,0.18)"}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                ✕
+              </button>
+            </div>
+          )}
+          {files.length===0?(
+            <div style={{height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,color:"#282828"}}>
+              <div style={{fontSize:64}}>🖼</div>
+              <div style={{fontSize:16,fontWeight:500}}>{t.emptyHint}</div>
+              <div style={{fontSize:12}}>{t.emptySub}</div>
+            </div>
+          ):(
+            <JustifiedGrid
+              files={files} cellH={cellH} settings={settings}
+              selId={selId} multiSel={multiSel} t={t} tick={tick}
+              onSelect={handleSelect} onCropChange={setCropForId}
+              onUndoPush={pushUndo} onRemove={removeFile}
+              onEdit={setEditId} onPreview={setPreviewId}
+              loadFiles={loadFiles} onReorder={reorderFiles}
+            />
+          )}
+        </div>
+
+        {/* Panel toggle button — hidden while editor is active to avoid overlap */}
+        {!panelOpen&&!editFile&&(
+          <button onClick={()=>setPanelOpen(true)}
+            style={{position:"absolute",right:0,top:"50%",transform:"translateY(-50%)",zIndex:50,fontFamily:"Inter",fontSize:11,background:"#1e1e1e",border:"1px solid #2a2a2a",borderRadius:"6px 0 0 6px",color:"#666",padding:"12px 6px",cursor:"pointer",writingMode:"vertical-lr",letterSpacing:1}}>
+            {t.panelShow}
+          </button>
+        )}
+
+        {/* Right panel */}
+        {panelOpen&&(
+        <aside style={{width:360,background:"#1e1e1e",borderLeft:"1px solid #242424",overflowY:"auto",padding:"10px 14px",flexShrink:0,display:"flex",flexDirection:"column"}}>
+
+          {/* Panel hide button */}
+          <button onClick={()=>setPanelOpen(false)}
+            style={{fontFamily:"Inter,sans-serif",fontSize:10,background:"transparent",border:"none",color:"#444",cursor:"pointer",textAlign:"right",padding:"2px 0",marginBottom:4}}>
+            {t.panelHide}
+          </button>
+
+          {/* Tabs */}
+          <div className="tab-bar">
+            <button className={"tab-btn "+(panelTab==="image"?"active":"inactive")} onClick={()=>setPanelTab("image")}>{t.tabImage}</button>
+            <button className={"tab-btn "+(panelTab==="export"?"active":"inactive")} onClick={()=>setPanelTab("export")}>{t.tabExport}</button>
+          </div>
+
+          {/* ─── EDITAR TAB ─── */}
+          {panelTab==="image"&&(<>
+
+            {/* VISTA */}
+            <div className="sec-block">
+              <span className="sec-title">{t.secThumbs}</span>
+              <label className="lbl">{t.thumbSize(cellH)}</label>
+              <input type="range" min={180} max={700} value={cellH} onChange={e=>setCellH(+e.target.value)} style={{marginBottom:6}}/>
+            </div>
+
+            {/* COMPOSICIÓN */}
+            <div className="sec-block">
+              <span className="sec-title">{t.secComposition}</span>
+
+              {/* Tamaño de salida - botones */}
+              <label className="lbl">{t.secOutput}</label>
+              <div style={{display:"flex",gap:4,marginBottom:12,background:"#181818",borderRadius:6,padding:3,border:"1px solid #242424"}}>
+                {["fixed","autoW","autoH"].map(m=>(
+                  <button key={m} onClick={()=>setSettings(s=>({...s,sizeMode:m}))}
+                    style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:settings.sizeMode===m?600:400,border:"none",borderRadius:4,padding:"7px 4px",cursor:"pointer",transition:"all .12s",
+                      background:settings.sizeMode===m?"#7c5cff":"transparent",
+                      color:settings.sizeMode===m?"#fff":"#555",whiteSpace:"nowrap"}}>
+                    {m==="fixed"?t.sizeFixed:m==="autoW"?t.sizeAutoW:t.sizeAutoH}
+                  </button>
+                ))}
+              </div>
+
+              {/* Bloquear proporción - solo en modo fixed */}
+              {settings.sizeMode==="fixed"&&<>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                  <label className="lbl" style={{marginBottom:0}}>{t.lockAspectRatio}</label>
+                  <button onClick={()=>setSettings(s=>({...s,lockAspect:!s.lockAspect}))}
+                    style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"3px 10px",cursor:"pointer",transition:"all .12s",
+                      background:settings.lockAspect?"#7c5cff":"transparent",
+                      borderColor:settings.lockAspect?"#7c5cff":"#2e2e2e",
+                      color:settings.lockAspect?"#fff":"#555"}}>
+                    {settings.lockAspect?"ON":"OFF"}
+                  </button>
+                </div>
+              </>}
+
+              {/* Ancho */}
+              {settings.sizeMode!=="autoW"&&<>
+                <label className="lbl">{t.widthLbl}</label>
+                <input type="number" min={1} value={settings.w} onChange={e=>{
+                  const newW = parseInt(e.target.value, 10);
+                  if(!newW || newW < 1) return;
+                  if(settings.lockAspect && settings.sizeMode==="fixed"){
+                    const ratio = settings.w / settings.h;
+                    setSettings(s=>({...s, w:newW, h:Math.round(newW/ratio)}));
+                  } else {
+                    setSettings(s=>({...s, w:newW}));
+                  }
+                }} style={{marginBottom:8}}/>
+              </>}
+
+              {/* Alto */}
+              {settings.sizeMode!=="autoH"&&<>
+                <label className="lbl">{t.heightLbl}</label>
+                <input type="number" min={1} value={settings.h} onChange={e=>{
+                  const newH = parseInt(e.target.value, 10);
+                  if(!newH || newH < 1) return;
+                  if(settings.lockAspect && settings.sizeMode==="fixed"){
+                    const ratio = settings.w / settings.h;
+                    setSettings(s=>({...s, h:newH, w:Math.round(newH*ratio)}));
+                  } else {
+                    setSettings(s=>({...s, h:newH}));
+                  }
+                }} style={{marginBottom:8}}/>
+              </>}
+
+              {settings.sizeMode==="fixed"&&<div style={{fontSize:10,color:"#555",marginBottom:4}}>{t.ratioLbl}: {oW/dv}:{oH/dv}</div>}
+
+              {/* Foco de recorte - 4 MODOS */}
+              <label className="lbl" style={{marginTop:12}}>{t.cropModeLbl}</label>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:4,marginBottom:8,background:"#181818",borderRadius:6,padding:3,border:"1px solid #242424"}}>
+                {[
+                  {mode:"auto",label:t.cropModeAuto},
+                  {mode:"manual",label:t.cropModeManual},
+                  {mode:"face",label:t.cropModeFace},
+                  {mode:"body",label:t.cropModeBody}
+                ].map(({mode,label})=>{
+                  const isActive = settings.detectionMode===mode;
+                  const iconColor = isActive?"#fff":"#666";
+                  
+                  // Iconos SVG minimalistas
+                  const icons = {
+                    auto: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m5.196-14.196l-4.242 4.242m0 5.908l4.242 4.242M23 12h-6m-6 0H1m14.196 5.196l-4.242-4.242m0-5.908l-4.242-4.242"/></svg>,
+                    manual: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
+                    face: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>,
+                    body: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v5m0 0l-3 6m3-6l3 6M9 12l-2-2m8 2l2-2"/></svg>
+                  };
+                  
+                  return (
+                    <button key={mode} onClick={async()=>{
+                      // Si es modo ML y no han dicho "no volver a preguntar", mostrar diálogo
+                      if((mode==="face"||mode==="body") && !mlDontShowAgain){
+                        setMlWarningDialog({show:true, mode});
+                      } else {
+                        // Capturar valores AHORA (antes de setState)
+                        const currentMode = mode;
+                        const currentFocalAuto = mode !== "manual";
+                        const currentSettings = settingsRef.current;
+                        const currentSelId = selIdRef.current;
+                        const currentMultiSel = new Set(multiSelRef.current);
+                        
+                        // Aplicar settings
+                        setSettings(s=>({...s,detectionMode:mode,focalAuto:mode!=="manual"}));
+                        
+                        // Ejecutar INMEDIATAMENTE con valores capturados
+                        const{w:oW,h:oH,focalPoint,adjustToTargetSize,poseNetEnabled}=currentSettings;
+                        
+                        // Determinar targets
+                        let targets;
+                        if(currentSelId && currentMultiSel.size===0) {
+                          targets = [currentSelId];
+                        } else if(currentMultiSel.size > 0) {
+                          targets = [...currentMultiSel];
+                        } else {
+                          targets = filesRef.current.map(f=>f.id);
+                        }
+                        
+                        if(!targets.length) return;
+                        
+                        setSmartBatch({running:true,done:0,total:targets.length});
+                        let applied=0;
+                        
+                        for(let i=0;i<targets.length;i++){
+                          const id=targets[i];
+                          const f=filesRef.current.find(ff=>ff.id===id);
+                          if(!f){ setSmartBatch(s=>({...s,done:s.done+1})); continue; }
+                          let nc=null;
+                          
+                          if(currentMode === "face"){
+                            nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
+                          } else if(currentMode === "body"){
+                            nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
+                          } else if(currentFocalAuto && currentMode === "auto"){
+                            nc = await runSmartCrop(f.ec, oW, oH);
+                          }
+                          
+                          if(!nc||nc.w<2||nc.h<2){
+                            const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+                            nc=focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay);
+                          }
+                          const crop={...nc,auto:true};
+                          setFiles(prev=>prev.map(ff=>ff.id===id?{...ff,crop}:ff));
+                          applied++;
+                          setSmartBatch(s=>({...s,done:s.done+1}));
+                        }
+                        
+                        setSmartBatch({running:false,done:0,total:0});
+                        const modeLabel = currentMode==="face"?t.detFaces:currentMode==="body"?t.detBodies:"";
+                        const countMsg = targets.length===1 ? t.toastProcessed1 : t.toastCroppedN(applied);
+                        showToast(modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`);
+                      }
+                    }}
+                      style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:isActive?600:400,border:"none",borderRadius:4,padding:"7px 4px",cursor:"pointer",transition:"all .12s",
+                        background:isActive?"#7c5cff":"transparent",
+                        color:isActive?"#fff":"#555",
+                        display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                      {icons[mode]}
+                      <span>{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Toggle ajustar tamaño objetivo (solo para modos ML) */}
+              {(settings.detectionMode==="face"||settings.detectionMode==="body")&&(
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,padding:"8px",background:"#1a1a1a",borderRadius:4}}>
+                  <label className="lbl" style={{marginBottom:0,fontSize:10}}>{t.adjustToTargetSize}</label>
+                  <button onClick={()=>setSettings(s=>({...s,adjustToTargetSize:!s.adjustToTargetSize}))}
+                    style={{fontFamily:"Inter,sans-serif",fontSize:9,fontWeight:600,border:"1px solid",borderRadius:3,padding:"2px 8px",cursor:"pointer",transition:"all .12s",
+                      background:settings.adjustToTargetSize?"#7c5cff":"transparent",
+                      borderColor:settings.adjustToTargetSize?"#7c5cff":"#2e2e2e",
+                      color:settings.adjustToTargetSize?"#fff":"#555"}}>
+                    {settings.adjustToTargetSize?"ON":"OFF"}
+                  </button>
+                </div>
+              )}
+
+              {/* V11.1: Toggle PoseNet (solo para modo cuerpo) */}
+              {settings.detectionMode==="body"&&(
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,padding:"8px",background:"#1a1a1a",borderRadius:4}}>
+                  <label className="lbl" style={{marginBottom:0,fontSize:10}}>
+                    {t.poseNetRefinement}
+                  </label>
+                  <button onClick={()=>setSettings(s=>({...s,poseNetEnabled:!s.poseNetEnabled}))}
+                    style={{fontFamily:"Inter,sans-serif",fontSize:9,fontWeight:600,border:"1px solid",borderRadius:3,padding:"2px 8px",cursor:"pointer",transition:"all .12s",
+                      background:settings.poseNetEnabled?"#7c5cff":"transparent",
+                      borderColor:settings.poseNetEnabled?"#7c5cff":"#2e2e2e",
+                      color:settings.poseNetEnabled?"#fff":"#555"}}>
+                    {settings.poseNetEnabled?"ON":"OFF"}
+                  </button>
+                </div>
+              )}
+
+              {/* Info de cada modo */}
+              {settings.detectionMode!=="manual"&&settings.detectionMode!=="auto"&&(
+                <div style={{fontSize:9,color:"#888",marginBottom:10,padding:"6px 8px",background:"#1a1a1a",borderRadius:4,lineHeight:1.4}}>
+                  {settings.detectionMode==="face"&&(settings.adjustToTargetSize?t.faceHintFixed:t.faceHintAuto)}
+                  {settings.detectionMode==="body"&&(settings.adjustToTargetSize?t.bodyHintFixed:t.bodyHintAuto)}
+                </div>
+              )}
+
+              {/* Grid manual de 3x3 */}
+              {settings.detectionMode==="manual"&&(()=>{
+                const pts=[{ax:0,ay:0},{ax:0.5,ay:0},{ax:1,ay:0},{ax:0,ay:0.5},{ax:0.5,ay:0.5},{ax:1,ay:0.5},{ax:0,ay:1},{ax:0.5,ay:1},{ax:1,ay:1}];
+                const fp=settings.focalPoint||{ax:0.5,ay:0.5};
+                return (
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4,marginBottom:10,padding:"8px",background:"#181818",borderRadius:6,border:"1px solid #2a2a2a"}}>
+                    {pts.map(({ax,ay},i)=>{
+                      const active=fp.ax===ax&&fp.ay===ay;
+                      return (
+                        <button key={i} onClick={async()=>{
+                          // Actualizar punto focal
+                          setSettings(s=>({...s,focalPoint:{ax,ay}}));
+                          
+                          // Aplicar crop INMEDIATAMENTE con nuevo punto focal
+                          const currentSelId = selIdRef.current;
+                          const currentMultiSel = new Set(multiSelRef.current);
+                          const{w:oW,h:oH}=settingsRef.current;
+                          
+                          // Determinar targets
+                          let targets;
+                          if(currentSelId && currentMultiSel.size===0) {
+                            targets = [currentSelId];
+                          } else if(currentMultiSel.size > 0) {
+                            targets = [...currentMultiSel];
+                          } else {
+                            targets = filesRef.current.map(f=>f.id);
+                          }
+                          
+                          if(!targets.length) return;
+                          
+                          // Aplicar crop con el nuevo punto focal
+                          for(let j=0;j<targets.length;j++){
+                            const id=targets[j];
+                            const f=filesRef.current.find(ff=>ff.id===id);
+                            if(!f) continue;
+                            
+                            const nc=focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay);
+                            const crop={...nc,auto:true};
+                            setFiles(prev=>prev.map(ff=>ff.id===id?{...ff,crop}:ff));
+                          }
+                          
+                          const countMsg = targets.length===1 ? t.toastProcessed1 : t.toastCroppedN(targets.length);
+                          showToast(`✦ ${countMsg}`);
+                        }}
+                          style={{aspectRatio:"1",border:"1.5px solid "+(active?"#7c5cff":"#252525"),borderRadius:5,background:active?"rgba(124,92,255,0.18)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .12s",padding:0}}>
+                          <div style={{width:7,height:7,borderRadius:"50%",background:active?"#7c5cff":"#333",boxShadow:active?"0 0 0 2px rgba(124,92,255,0.35)":"none",transition:"all .12s"}}/>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* TRANSFORMAR */}
+            <div className="sec-block">
+              <span className="sec-title">{t.transformLabel}</span>
+              
+              <label className="lbl">{t.rotationLabel}</label>
+              <div style={{display:"flex",gap:6,marginBottom:10}}>
+                <button onClick={()=>rotateImages(270)} disabled={!files.length} title={t.rotateLeftTitle}
+                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:20,fontWeight:400,border:"1px solid #2e2e2e",borderRadius:5,padding:"8px",cursor:files.length?"pointer":"not-allowed",background:"transparent",color:files.length?"#aaa":"#555",textAlign:"center",transition:"all .15s"}}
+                  onMouseEnter={e=>files.length&&(e.currentTarget.style.background="#252525")}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  ↶
+                </button>
+                <button onClick={()=>rotateImages(90)} disabled={!files.length} title={t.rotateRightTitle}
+                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:20,fontWeight:400,border:"1px solid #2e2e2e",borderRadius:5,padding:"8px",cursor:files.length?"pointer":"not-allowed",background:"transparent",color:files.length?"#aaa":"#555",textAlign:"center",transition:"all .15s"}}
+                  onMouseEnter={e=>files.length&&(e.currentTarget.style.background="#252525")}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  ↷
+                </button>
+              </div>
+
+              <label className="lbl">{t.flipLabel}</label>
+              <div style={{display:"flex",gap:6,marginBottom:6}}>
+                <button onClick={()=>flipImages('horizontal')} disabled={!files.length} title={t.flipHTitle}
+                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:18,fontWeight:400,border:"1px solid #2e2e2e",borderRadius:5,padding:"6px",cursor:files.length?"pointer":"not-allowed",background:"transparent",color:files.length?"#aaa":"#555",textAlign:"center",transition:"all .15s"}}
+                  onMouseEnter={e=>files.length&&(e.currentTarget.style.background="#252525")}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  ⇄
+                </button>
+                <button onClick={()=>flipImages('vertical')} disabled={!files.length} title={t.flipVTitle}
+                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:18,fontWeight:400,border:"1px solid #2e2e2e",borderRadius:5,padding:"6px",cursor:files.length?"pointer":"not-allowed",background:"transparent",color:files.length?"#aaa":"#555",textAlign:"center",transition:"all .15s"}}
+                  onMouseEnter={e=>files.length&&(e.currentTarget.style.background="#252525")}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  ⇅
+                </button>
+              </div>
+            </div>
+
+            {/* MARCO */}
+            <div className="sec-block">
+              <span className="sec-title">{t.secBorder}</span>
+              <label className="lbl">{t.borderWidthLbl(settings.borderW)}</label>
+              <input type="range" min={0} max={100} value={settings.borderW} onChange={e=>setSettings(s=>({...s,borderW:+e.target.value}))} style={{marginBottom:8}}/>
+              {settings.borderW>0&&<>
+                <label className="lbl">{t.borderColorLbl}</label>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+                  <input type="color" value={settings.borderColor} onChange={e=>setSettings(s=>({...s,borderColor:e.target.value}))}
+                    style={{width:28,height:28,border:"1px solid #303030",borderRadius:4,padding:0,cursor:"pointer",background:"transparent"}}/>
+                  <input type="text" value={settings.borderColor} onChange={e=>setSettings(s=>({...s,borderColor:e.target.value}))}
+                    style={{flex:1,marginBottom:0,fontFamily:"monospace",fontSize:11}}/>
+                </div>
+              </>}
+            </div>
+
+            {/* ACCIONES */}
+            <div className="sec-block">
+              <span className="sec-title">{t.secActions}</span>
+              <div style={{display:"flex",gap:8,marginBottom:12}}>
+                <button onClick={clearAllCrops}
+                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"7px 10px",cursor:"pointer",background:"transparent",color:"#aaa",textAlign:"center"}}>
+                  {t.clearAllCrops}
+                </button>
+                <button onClick={applyFocalAll}
+                  style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"7px 10px",cursor:"pointer",background:"transparent",color:"#aaa",textAlign:"center"}}>
+                  {t.applyToAll}
+                </button>
+              </div>
+              
+              {/* Botón Deseleccionar todas - solo visible si hay selección */}
+              {(selId || multiSel.size>0)&&(
+                <button onClick={()=>{setSelId(null);setMultiSel(new Set());}}
+                  style={{width:"100%",fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:500,border:"1px solid rgba(124,92,255,0.3)",borderRadius:5,padding:"7px 10px",cursor:"pointer",background:"rgba(124,92,255,0.08)",color:"#a78bfa",textAlign:"center",marginBottom:12,transition:"all .15s"}}
+                  onMouseEnter={e=>{e.currentTarget.style.background="rgba(124,92,255,0.15)";e.currentTarget.style.borderColor="rgba(124,92,255,0.5)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.background="rgba(124,92,255,0.08)";e.currentTarget.style.borderColor="rgba(124,92,255,0.3)";}}>
+                  {t.deselectAll}
+                </button>
+              )}
+              
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{background:"#202020",borderRadius:5,padding:"8px 10px",fontSize:10,color:"#666"}}>
+                  <div style={{marginBottom:2}}>{t.totalLbl}</div>
+                  <div style={{fontSize:16,fontWeight:600,color:"#888"}}>{files.length}</div>
+                </div>
+                <div style={{background:selId||multiSel.size>0?"rgba(124,92,255,0.12)":"#202020",borderRadius:5,padding:"8px 10px",fontSize:10,color:"#666",transition:"all .2s"}}>
+                  <div style={{marginBottom:2}}>{t.selectedLabel}</div>
+                  <div style={{fontSize:16,fontWeight:600,color:selId||multiSel.size>0?"#a78bfa":"#888"}}>
+                    {selId && multiSel.size===0 ? 1 : multiSel.size}
+                  </div>
+                </div>
+                <div style={{background:"#202020",borderRadius:5,padding:"8px 10px",fontSize:10,color:"#666"}}>
+                  <div style={{marginBottom:2}}>{t.withCropLbl}</div>
+                  <div style={{fontSize:16,fontWeight:600,color:"#a78bfa"}}>{manualCrop}</div>
+                </div>
+                <div style={{background:"#202020",borderRadius:5,padding:"8px 10px",fontSize:10,color:"#666"}}>
+                  <div style={{marginBottom:2}}>{t.noCropLbl}</div>
+                  <div style={{fontSize:16,fontWeight:600,color:"#888"}}>{autoCrop}</div>
+                </div>
+              </div>
+            </div>
+
+          </>)}
+
+                    {/* ─── EXPORT TAB ─── */}
+          {panelTab==="export"&&(<>
+
+            {/* FORMATO */}
+            <div className="sec-block">
+              <span className="sec-title">{t.secExport}</span>
+              <label className="lbl">{t.formatLbl}</label>
+              <select value={settings.fmt} onChange={e=>setSettings(s=>({...s,fmt:e.target.value}))}>
+                <option value="jpeg">JPG</option>
+                <option value="png">PNG</option>
+                <option value="webp">WebP</option>
+                <option value="avif">AVIF</option>
+              </select>
+              {settings.fmt!=="png"&&<>
+                <label className="lbl">{t.qualityLbl?.(settings.quality)||`Calidad: ${settings.quality}%`}</label>
+                <input type="range" min={1} max={100} value={settings.quality} onChange={e=>setSettings(s=>({...s,quality:+e.target.value}))} style={{marginBottom:6}}/>
+              </>}
+            </div>
+
+            {/* MARCA DE AGUA */}
+            <div className="sec-block">
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <span className="sec-title" style={{marginBottom:0,marginTop:0,borderBottom:"none",paddingBottom:0}}>
+                  {t.secWatermark}
+                </span>
+                <button onClick={()=>setSettings(s=>({...s,wmEnabled:!s.wmEnabled}))}
+                  style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"3px 10px",cursor:"pointer",transition:"all .12s",
+                    background:settings.wmEnabled?"#7c5cff":"transparent",
+                    borderColor:settings.wmEnabled?"#7c5cff":"#2e2e2e",
+                    color:settings.wmEnabled?"#fff":"#555"}}>
+                  {settings.wmEnabled?"ON":"OFF"}
+                </button>
+              </div>
+              <div style={{height:1,background:"#2a2a2a",marginBottom:10}}/>
+
+              {settings.wmEnabled&&<>
+                {/* Tipo: Texto / Imagen */}
+                <label className="lbl">{t.wmTypeLbl}</label>
+                <div style={{display:"flex",gap:4,marginBottom:10}}>
+                  {["texto","imagen"].map(m=>(
+                    <button key={m} onClick={()=>setSettings(s=>({...s,wmType:m}))}
+                      style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"6px 0",cursor:"pointer",transition:"all .12s",
+                        background:(settings.wmType||"texto")===m?"#7c5cff":"transparent",
+                        borderColor:(settings.wmType||"texto")===m?"#7c5cff":"#2e2e2e",
+                        color:(settings.wmType||"texto")===m?"#fff":"#555"}}>
+                      {m==="texto"?t.wmTypeText:t.wmTypeImage}
+                    </button>
+                  ))}
+                </div>
+
+                <label className="lbl">{t.wmTextLbl}</label>
+                <input type="text" placeholder="WATERMARK" value={settings.wmText||""} onChange={e=>setSettings(s=>({...s,wmText:e.target.value}))}/>
+
+                <label className="lbl">{t.wmFontLbl}</label>
+                <select value={settings.wmFont} onChange={e=>setSettings(s=>({...s,wmFont:e.target.value}))}>
+                  <option value="Inter">Inter</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Times New Roman">Times New Roman</option>
+                  <option value="Courier New">Courier New</option>
+                </select>
+
+                <label className="lbl">{t.wmSizeLbl(settings.wmSize)}</label>
+                <input type="range" min={8} max={200} value={settings.wmSize} onChange={e=>setSettings(s=>({...s,wmSize:+e.target.value}))} style={{marginBottom:8}}/>
+
+                <label className="lbl">{t.wmColorLbl}</label>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+                  <input type="color" value={settings.wmColor} onChange={e=>setSettings(s=>({...s,wmColor:e.target.value}))}
+                    style={{width:28,height:28,border:"1px solid #303030",borderRadius:4,padding:0,cursor:"pointer",background:"transparent"}}/>
+                  <input type="text" value={settings.wmColor} onChange={e=>setSettings(s=>({...s,wmColor:e.target.value}))}
+                    style={{flex:1,marginBottom:0,fontFamily:"monospace",fontSize:11}}/>
+                </div>
+
+                <label className="lbl">{t.wmOpacityLbl(settings.wmOpacity)}</label>
+                <input type="range" min={5} max={100} value={settings.wmOpacity} onChange={e=>setSettings(s=>({...s,wmOpacity:+e.target.value}))} style={{marginBottom:8}}/>
+
+                <label className="lbl">{t.wmPosLbl}</label>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:3,marginBottom:6}}>
+                  {[
+                    {k:"tl",l:t.wmPosTL},
+                    {k:"center-top",l:""},
+                    {k:"tr",l:t.wmPosTR},
+                    {k:"bl",l:t.wmPosBL},
+                    {k:"center",l:t.wmPosCenter},
+                    {k:"br",l:t.wmPosBR}
+                  ].map(({k,l},i)=>(
+                    i===1?<div key="spacer" />:
+                    <button key={k} onClick={()=>setSettings(s=>({...s,wmPos:k}))}
+                      style={{fontFamily:"Inter,sans-serif",fontSize:9,fontWeight:settings.wmPos===k?600:400,border:"1px solid",borderRadius:4,padding:"5px 2px",cursor:"pointer",transition:"all .12s",
+                        background:settings.wmPos===k?"#7c5cff":"transparent",
+                        borderColor:settings.wmPos===k?"#7c5cff":"#2a2a2a",
+                        color:settings.wmPos===k?"#fff":"#555"}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </>}
+            </div>
+
+            {/* NOMBRE DE ARCHIVO */}
+            <div className="sec-block">
+              <span className="sec-title">{t.secRename}</span>
+              <div style={{display:"flex",gap:4,marginBottom:10}}>
+                {["keep","custom"].map(m=>(
+                  <button key={m} onClick={()=>setSettings(s=>({...s,renameMode:m}))}
+                    style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"6px 0",cursor:"pointer",transition:"all .12s",
+                      background:settings.renameMode===m?"#7c5cff":"transparent",
+                      borderColor:settings.renameMode===m?"#7c5cff":"#2e2e2e",
+                      color:settings.renameMode===m?"#fff":"#555"}}>
+                    {m==="keep"?t.renameModeKeep:t.renameModeCustom}
+                  </button>
+                ))}
+              </div>
+
+              {settings.renameMode==="keep"&&<>
+                <label className="lbl">{t.prefixLbl}</label>
+                <input type="text" placeholder="instagram_" value={settings.prefix||""} onChange={e=>setSettings(s=>({...s,prefix:e.target.value}))}/>
+                <label className="lbl">{t.suffixLbl}</label>
+                <input type="text" placeholder="_final" value={settings.suffix||""} onChange={e=>setSettings(s=>({...s,suffix:e.target.value}))}/>
+              </>}
+
+              {settings.renameMode==="custom"&&<>
+                <label className="lbl">{t.renameBaseLbl}</label>
+                <input type="text" placeholder="image" value={settings.renameBase||"image"} onChange={e=>setSettings(s=>({...s,renameBase:e.target.value||"image"}))}/>
+                <div style={{fontSize:9,color:"#444",marginTop:-4,marginBottom:8,padding:"0 2px"}}>
+                  {t.originalNameHint}
+                </div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <label className="lbl" style={{marginBottom:0}}>{t.renameNumberingLbl}</label>
+                  <button onClick={()=>setSettings(s=>({...s,renameNum:!s.renameNum}))}
+                    style={{fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600,border:"1px solid",borderRadius:4,padding:"3px 8px",cursor:"pointer",transition:"all .12s",
+                      background:settings.renameNum?"#7c5cff":"transparent",
+                      borderColor:settings.renameNum?"#7c5cff":"#2e2e2e",
+                      color:settings.renameNum?"#fff":"#555"}}>
+                    {settings.renameNum?"ON":"OFF"}
+                  </button>
+                </div>
+                {settings.renameNum&&<>
+                  <label className="lbl">{t.renameStartLbl}</label>
+                  <input type="number" min={0} value={settings.renameStart||1} onChange={e=>setSettings(s=>({...s,renameStart:Math.max(0,+e.target.value)}))}/>
+                </>}
+              </>}
+            </div>
+
+            {/* DESCARGAR */}
+            <div className="sec-block">
+              <span className="sec-title">{t.downloadLabel}</span>
+              <div style={{display:"flex",gap:8}}>
+                <div style={{flex:1}}>{mBtn(t.saveCurrent,exportCurrent,!sel,PURPLE)}</div>
+                <div style={{flex:1}}>{mBtn(zipping?`${t.zipGenerating} ${zipPct}%`:t.zipBtn(files.length),exportZip,!files.length||zipping,"#4f46e5")}</div>
+              </div>
+              {zipping&&<div style={{marginTop:8,height:4,background:"#2a2a2a",borderRadius:2,overflow:"hidden"}}>
+                <div style={{height:"100%",background:"#7c5cff",width:zipPct+"%",transition:"width .2s",borderRadius:2}}/>
+              </div>}
+            </div>
+          </>)}
+
+                  </aside>
+        )}
+      </div>
+
+      {/* Edit overlay */}
+      {editFile&&(
+        <EditOverlay file={editFile} settings={settings} blurCfg={blurCfg} t={t}
+          onClose={()=>setEditId(null)} onCropChange={setCropForId} onUndoPush={pushUndo} panelOpen={panelOpen} onBlurCfgChange={setBlurCfg}
+          tick={tick} onTick={()=>setTick(n=>n+1)}/>
+      )}
+
+      {/* Preview modal */}
+      {previewFile&&(
+        <PreviewModal file={previewFile} settings={settings} t={t} onClose={()=>setPreviewId(null)}/>
+      )}
+
+      {/* Announcement Popup */}
+      {showAnnouncement&&ANNOUNCEMENT.enabled&&(
+        <AnnouncementPopup lang={lang} t={t} onClose={dismissAnnouncement}/>
+      )}
+
+      {/* ML Warning Dialog */}
+      {mlWarningDialog.show&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10000}}
+             onClick={(e)=>{if(e.target===e.currentTarget) setMlWarningDialog({show:false,mode:null});}}>
+          <div style={{background:"#1e1e1e",borderRadius:8,padding:"24px",maxWidth:480,width:"90%",border:"1px solid #2e2e2e",boxShadow:"0 20px 60px rgba(0,0,0,0.5)"}}
+               onClick={(e)=>e.stopPropagation()}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:16}}>
+              <span style={{fontSize:32}}>⚠️</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:16,fontWeight:600,color:"#e9c46a",marginBottom:8}}>
+                  {t.aiDetectionTitle}
+                </div>
+                <div style={{fontSize:13,color:"#b0b0b0",lineHeight:1.6}}>
+                  {t.aiDetectionBody}
+                </div>
+              </div>
+            </div>
+            
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:20,padding:"10px 12px",background:"#181818",borderRadius:5,border:"1px solid #2a2a2a"}}>
+              <input type="checkbox" id="ml-dont-warn" checked={mlDontShowAgain} onChange={(e)=>{
+                setMlDontShowAgain(e.target.checked);
+                try{ localStorage.setItem("zirme-ml-dont-warn",e.target.checked?"true":"false"); }catch(err){}
+              }}/>
+              <label htmlFor="ml-dont-warn" style={{fontSize:12,color:"#888",cursor:"pointer",userSelect:"none"}}>
+                {t.dontShowWarning}
+              </label>
+            </div>
+            
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setMlWarningDialog({show:false,mode:null})}
+                style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:500,border:"1px solid #2e2e2e",borderRadius:5,padding:"10px",cursor:"pointer",background:"transparent",color:"#aaa"}}>
+                {t.cancelBtn}
+              </button>
+              <button onClick={async()=>{
+                const currentMode = mlWarningDialog.mode;
+                const currentSettings = settingsRef.current;
+                const currentSelId = selIdRef.current;
+                const currentMultiSel = new Set(multiSelRef.current);
+                
+                setMlWarningDialog({show:false,mode:null});
+                setSettings(s=>({...s,detectionMode:currentMode,focalAuto:true}));
+                
+                // Ejecutar INMEDIATAMENTE con valores capturados
+                const{w:oW,h:oH,focalPoint,adjustToTargetSize,poseNetEnabled}=currentSettings;
+                
+                // Determinar targets
+                let targets;
+                if(currentSelId && currentMultiSel.size===0) {
+                  targets = [currentSelId];
+                } else if(currentMultiSel.size > 0) {
+                  targets = [...currentMultiSel];
+                } else {
+                  targets = filesRef.current.map(f=>f.id);
+                }
+                
+                if(!targets.length) return;
+                
+                setSmartBatch({running:true,done:0,total:targets.length});
+                let applied=0;
+                
+                for(let i=0;i<targets.length;i++){
+                  const id=targets[i];
+                  const f=filesRef.current.find(ff=>ff.id===id);
+                  if(!f){ setSmartBatch(s=>({...s,done:s.done+1})); continue; }
+                  let nc=null;
+                  
+                  if(currentMode === "face"){
+                    nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
+                  } else if(currentMode === "body"){
+                    nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
+                  }
+                  
+                  if(!nc||nc.w<2||nc.h<2){
+                    const{ax,ay}=focalPoint||{ax:0.5,ay:0.5};
+                    nc=focalCrop(f.ec.width,f.ec.height,oW,oH,ax,ay);
+                  }
+                  const crop={...nc,auto:true};
+                  setFiles(prev=>prev.map(ff=>ff.id===id?{...ff,crop}:ff));
+                  applied++;
+                  setSmartBatch(s=>({...s,done:s.done+1}));
+                }
+                
+                setSmartBatch({running:false,done:0,total:0});
+                const modeLabel = currentMode==="face"?t.detFaces:currentMode==="body"?t.detBodies:"";
+                const countMsg = targets.length===1 ? t.toastProcessed1 : t.toastCroppedN(applied);
+                showToast(modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`);
+              }}
+                style={{flex:1,fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,border:"none",borderRadius:5,padding:"10px",cursor:"pointer",background:"#7c5cff",color:"#fff"}}>
+                {t.continueBtn}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(ZIRME, null));
 </script>
