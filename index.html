@@ -3338,7 +3338,8 @@ async function detectFacesCrop(canvas, outW, outH, adjustToTargetSize = true) {
 }
 
 // V11.1: JERARQUÍA CORRECTA: PoseNet → Face-API → COCO-SSD
-async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, poseNetEnabled = false) {
+// cropFromHead: when true (auto mode), include head in the crop frame instead of starting at the clavicle
+async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, poseNetEnabled = false, cropFromHead = false) {
   const targetRatio = outW / outH;
   let detectionMethod = 'none';
   try {
@@ -3409,7 +3410,7 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, pos
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // NIVEL 2: FACE-API (Crop preciso desde clavícula)
+    // NIVEL 2: FACE-API (Crop desde clavícula en body mode; persona completa en auto mode)
     // ═══════════════════════════════════════════════════════════════════
     const faceLoaded = await loadFaceApi();
     if (faceLoaded) {
@@ -3424,13 +3425,24 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, pos
             return currentSize > bestSize ? current : best;
           });
 
-          // Crop desde clavícula (50% debajo del rostro)
-          const clavicleY = face.box.y + face.box.height * 1.5;
           const faceCenter = face.box.x + face.box.width / 2;
 
-          // Estimar dimensiones del cuerpo desde rostro
-          const estimatedWidth = face.box.width * 3.5;
-          const estimatedHeight = face.box.height * 6;
+          // When cropFromHead: frame from above head to include full body.
+          // When body mode (default): frame from clavicle downward.
+          let startY, estimatedWidth, estimatedHeight;
+          if (cropFromHead) {
+            detectionMethod = 'face-fullperson';
+            // Start above the head with 30% headroom, estimate full-person height
+            startY = face.box.y - face.box.height * 0.3;
+            estimatedWidth = face.box.width * 3.5;
+            estimatedHeight = face.box.height * 9; // head + full body
+          } else {
+            detectionMethod = 'face-clavicle';
+            // Start at clavicle (50% below face bottom)
+            startY = face.box.y + face.box.height * 1.5;
+            estimatedWidth = face.box.width * 3.5;
+            estimatedHeight = face.box.height * 6;
+          }
           let cropW = estimatedWidth * 1.1;
           let cropH = estimatedHeight * 1.1;
 
@@ -3448,7 +3460,7 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, pos
             cropH *= scale;
           }
           let cropX = faceCenter - cropW / 2;
-          let cropY = clavicleY;
+          let cropY = startY;
 
           // Clamp
           cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
@@ -3487,11 +3499,13 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, pos
     console.log(`⚠ COCO-SSD: sin rostro/hombros → modo conservador`);
     let [x, y, width, height] = bestPerson.bbox;
 
-    // V11.1 CRÍTICO: Modo conservador sin forzar tamaño
-    // Quitar solo 12% superior (MUY conservador)
-    const headOffset = height * 0.12;
-    y = y + headOffset;
-    height = height - headOffset;
+    // In full-person (auto) mode keep the complete bounding box including the head.
+    // In body mode only, shift 12% down to approximate clavicle framing.
+    if (!cropFromHead) {
+      const headOffset = height * 0.12;
+      y = y + headOffset;
+      height = height - headOffset;
+    }
 
     // Margen moderado
     let cropW = width * 1.25;
@@ -4640,42 +4654,6 @@ function EditOverlay({
     if (cr && cr.w > 2) drawCropShadow(ctx, cr, 1, 0, 0, iW, iH);
     ctx.restore();
 
-    // Cursor visual de brocha (con hardness y opacity)
-    const _cp = cursorPosRef.current;
-    if (_cp && (toolRef.current === 'blur' || toolRef.current === 'pixelate' || toolRef.current === 'eraser' || toolRef.current === 'annotate')) {
-      const cfg = toolRef.current === 'blur' ? blurCfgRef.current : toolRef.current === 'eraser' ? eraserCfgRef.current : annotateCfgRef.current;
-      const r = (cfg.size || 50) / 2;
-      const hardness = (cfg.hardness || 50) / 100;
-      const opacity = (cfg.opacity || 100) / 100;
-      ctx.save();
-
-      // Círculo exterior (tamaño total de la brocha)
-      ctx.strokeStyle = '#7c5cff';
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = opacity * 0.8;
-      ctx.beginPath();
-      ctx.arc(_cp.x, _cp.y, r * z, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Círculo interior (hardness)
-      if (hardness < 0.99) {
-        ctx.globalAlpha = opacity * 0.5;
-        ctx.beginPath();
-        ctx.arc(_cp.x, _cp.y, r * hardness * z, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Cruz central para precisión
-      ctx.globalAlpha = opacity * 0.6;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(_cp.x - 5, _cp.y);
-      ctx.lineTo(_cp.x + 5, _cp.y);
-      ctx.moveTo(_cp.x, _cp.y - 5);
-      ctx.lineTo(_cp.x, _cp.y + 5);
-      ctx.stroke();
-      ctx.restore();
-    }
     ctx.font = "500 11px Inter,sans-serif";
     ctx.fillStyle = "rgba(150,150,150,0.5)";
     const sc = cr && cr.w > 2 ? `   ✂ ${Math.round(cr.w)}×${Math.round(cr.h)}` : "";
@@ -6753,6 +6731,7 @@ function ZIRME() {
   const [wInput, setWInput] = useState(String(settings.w));
   const [hInput, setHInput] = useState(String(settings.h));
   const dimEditingRef = useRef(null); // "w" | "h" | null — which field is focused
+  const [autoRecalcTick, setAutoRecalcTick] = useState(0); // incremented on blur to re-trigger auto-recalc
   // Sync display when settings.w/h change from other sources (e.g. aspect ratio lock)
   useEffect(() => {
     if (dimEditingRef.current !== "w") setWInput(String(settings.w));
@@ -6842,6 +6821,7 @@ function ZIRME() {
   const filesRef = useRef([]);
   const settingsRef = useRef(settings);
   const editIdRef = useRef(editId);
+  const autoRecalcGenRef = useRef(0);
   const selIdRef = useRef(selId);
   const multiSelRef = useRef(multiSel);
   useEffect(() => {
@@ -7082,6 +7062,10 @@ function ZIRME() {
   // — in edit mode: only recalculates the current image
   // — in gallery mode: recalculates all auto-flagged images
   useEffect(() => {
+    // Skip while user is actively typing in a dimension input — synchronous focalCrop
+    // in onChange already provides an instant preview; async detection would race.
+    if (dimEditingRef.current !== null) return;
+    const gen = ++autoRecalcGenRef.current;
     const {
       w: oW,
       h: oH,
@@ -7109,9 +7093,11 @@ function ZIRME() {
         batches.push(autoFiles.slice(i, i + BATCH_SIZE));
       }
       for (const batch of batches) {
+        // Abort if a newer recalculation was triggered
+        if (autoRecalcGenRef.current !== gen) return;
         const results = await Promise.all(batch.map(async f => {
-          // Auto mode: try full-body detection first, fall back to smartcrop
-          let nc = await detectBodyCrop(f.ec, oW, oH, true, false);
+          // Auto mode: full-person framing (head included), fall back to smartcrop
+          let nc = await detectBodyCrop(f.ec, oW, oH, true, false, true);
           if (!nc || nc.w < 2) nc = await runSmartCrop(f.ec, oW, oH);
           const crop = nc && nc.w > 2 ? {
             ...nc,
@@ -7126,6 +7112,8 @@ function ZIRME() {
           };
         }));
 
+        // Abort if superseded before writing state
+        if (autoRecalcGenRef.current !== gen) return;
         // Un solo setState por lote
         setFiles(prev => prev.map(ff => {
           const result = results.find(r => r.id === ff.id);
@@ -7136,7 +7124,7 @@ function ZIRME() {
         }));
       }
     })();
-  }, [settings.w, settings.h, settings.focalPoint]);
+  }, [settings.w, settings.h, settings.focalPoint, autoRecalcTick]);
 
   // Unified focal-point crop — uses smartcrop when focalAuto is ON, anchor-based otherwise.
   // Processes sequentially to avoid memory pressure on large galleries.
@@ -7168,7 +7156,7 @@ function ZIRME() {
       } else if (detectionMode === "body") {
         nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true); // always PoseNet in body mode
       } else if (focalAuto && detectionMode === "auto") {
-        nc = await detectBodyCrop(f.ec, oW, oH, true, false);
+        nc = await detectBodyCrop(f.ec, oW, oH, true, false, true);
         if (!nc || nc.w < 2) nc = await runSmartCrop(f.ec, oW, oH);
       }
       if (!nc || nc.w < 2 || nc.h < 2) {
@@ -7241,7 +7229,7 @@ function ZIRME() {
         } else if (detectionMode === "body") {
           nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true); // always PoseNet in body mode
         } else if (focalAuto && detectionMode === "auto") {
-          nc = await detectBodyCrop(f.ec, oW, oH, true, false);
+          nc = await detectBodyCrop(f.ec, oW, oH, true, false, true);
           if (!nc || nc.w < 2) nc = await runSmartCrop(f.ec, oW, oH);
         }
         if (!nc || nc.w < 2 || nc.h < 2) {
@@ -7312,8 +7300,8 @@ function ZIRME() {
     } else if (detectionMode === "body") {
       nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
     } else if (focalAuto && detectionMode === "auto") {
-      // Auto: try full-body detection first, fall back to smartcrop
-      nc = await detectBodyCrop(f.ec, oW, oH, true, false);
+      // Auto: full-person framing (head included), fall back to smartcrop
+      nc = await detectBodyCrop(f.ec, oW, oH, true, false, true);
       if (!nc || nc.w < 2) nc = await runSmartCrop(f.ec, oW, oH);
     }
     if (!nc || nc.w < 2) {
@@ -8692,7 +8680,11 @@ function ZIRME() {
     onBlur: () => {
       dimEditingRef.current = null;
       const v = parseInt(wInput, 10);
-      if (!v || v < 1) setWInput(String(sel?.w ?? settings.w));
+      if (!v || v < 1) { setWInput(String(sel?.w ?? settings.w)); return; }
+      // Re-trigger auto-recalc that was suppressed while typing (global mode only)
+      if (!sel && multiSel.size === 0 && settingsRef.current.focalAuto && !editIdRef.current) {
+        setAutoRecalcTick(n => n + 1);
+      }
     },
     onChange: e => {
       setWInput(e.target.value);
@@ -8756,7 +8748,11 @@ function ZIRME() {
     onBlur: () => {
       dimEditingRef.current = null;
       const v = parseInt(hInput, 10);
-      if (!v || v < 1) setHInput(String(sel?.h ?? settings.h));
+      if (!v || v < 1) { setHInput(String(sel?.h ?? settings.h)); return; }
+      // Re-trigger auto-recalc that was suppressed while typing (global mode only)
+      if (!sel && multiSel.size === 0 && settingsRef.current.focalAuto && !editIdRef.current) {
+        setAutoRecalcTick(n => n + 1);
+      }
     },
     onChange: e => {
       setHInput(e.target.value);
@@ -9001,8 +8997,8 @@ function ZIRME() {
             } else if (currentMode === "body") {
               nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true); // always PoseNet in body mode
             } else if (currentFocalAuto && currentMode === "auto") {
-              // Auto: try full-body detection first, fall back to smartcrop
-              nc = await detectBodyCrop(f.ec, oW, oH, true, false);
+              // Auto: full-person framing (head included), fall back to smartcrop
+              nc = await detectBodyCrop(f.ec, oW, oH, true, false, true);
               if (!nc || nc.w < 2) nc = await runSmartCrop(f.ec, oW, oH);
             }
             if (!nc || nc.w < 2 || nc.h < 2) {
