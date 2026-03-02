@@ -4595,42 +4595,9 @@ function EditOverlay({
     fileRef.current = file;
   }, [file]); // keeps fileRef current without recreating drawNow
 
-  // V11.5: Re-dibujar cuando tick cambia (detecta undo/redo externos)
-  useEffect(() => {
-    if (file.ec) {
-      fileRef.current = file;
-      drawNow();
-    }
-  }, [tick]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Redraw when border settings change
-  useEffect(() => {
-    draw();
-  }, [settings.borderW, settings.borderColor, draw]);
-
-  // Fires synchronously BEFORE browser paint → no blank-frame window.
-  // Calls drawNow() directly (not draw/RAF) so canvas is updated in the same commit frame.
-  // Guard: skip cropRef overwrite while a drag is live.
-  const {
-    useLayoutEffect
-  } = React;
-  useLayoutEffect(() => {
-    if (!isDraggingRef.current) cropRef.current = file.crop;
-    drawNow(); // synchronous — the RAF gap was the root cause of the flicker
-  }, [file.crop, drawNow]); // drawNow is stable ([] deps) → effectively just [file.crop]
-
-  const st = useRef({
-    mode: "none",
-    isPan: false,
-    panStart: null,
-    panOrig: null,
-    cropOrig: null,
-    cropStart: null,
-    moveStartImg: null,
-    handleIdx: -1
-  });
-
   // ── Imperative draw — called directly, no React state ──────────────────
+  // Declared here (before the effects below) to avoid const TDZ errors
+  // when drawNow/draw appear in useEffect/useLayoutEffect deps arrays.
   const drawNow = useCallback(() => {
     const c = canvasRef.current;
     if (!c || !c.width) return;
@@ -4713,6 +4680,41 @@ function EditOverlay({
       drawNow();
     });
   }, [drawNow]);
+
+  // V11.5: Re-dibujar cuando tick cambia (detecta undo/redo externos)
+  useEffect(() => {
+    if (file.ec) {
+      fileRef.current = file;
+      drawNow();
+    }
+  }, [tick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Redraw when border settings change
+  useEffect(() => {
+    draw();
+  }, [settings.borderW, settings.borderColor, draw]);
+
+  // Fires synchronously BEFORE browser paint → no blank-frame window.
+  // Calls drawNow() directly (not draw/RAF) so canvas is updated in the same commit frame.
+  // Guard: skip cropRef overwrite while a drag is live.
+  const {
+    useLayoutEffect
+  } = React;
+  useLayoutEffect(() => {
+    if (!isDraggingRef.current) cropRef.current = file.crop;
+    drawNow(); // synchronous — the RAF gap was the root cause of the flicker
+  }, [file.crop, drawNow]); // drawNow is stable ([] deps) → effectively just [file.crop]
+
+  const st = useRef({
+    mode: "none",
+    isPan: false,
+    panStart: null,
+    panOrig: null,
+    cropOrig: null,
+    cropStart: null,
+    moveStartImg: null,
+    handleIdx: -1
+  });
 
   // ── Coordinate helpers — pure, use refs ────────────────────────────────
   const getPointerData = (sx, sy) => {
