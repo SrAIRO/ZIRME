@@ -6862,6 +6862,8 @@ function ZIRME() {
   const sel = files.find(f => f.id === selId) ?? null;
   const editFile = files.find(f => f.id === editId) ?? null;
   const previewFile = files.find(f => f.id === previewId) ?? null;
+  // Effective settings for EditOverlay: merge per-image w/h overrides into settings
+  const editSettings = editFile ? {...settings, w: editFile.w ?? settings.w, h: editFile.h ?? settings.h} : settings;
   // V11.3: Usar editFile si está en modo edición, sino sel
   const activeFile = editFile || sel;
   const canUndo = (activeFile?.history || []).length > 0;
@@ -7108,7 +7110,9 @@ function ZIRME() {
       }
       for (const batch of batches) {
         const results = await Promise.all(batch.map(async f => {
-          const nc = await runSmartCrop(f.ec, oW, oH);
+          // Auto mode: try full-body detection first, fall back to smartcrop
+          let nc = await detectBodyCrop(f.ec, oW, oH, true, false);
+          if (!nc || nc.w < 2) nc = await runSmartCrop(f.ec, oW, oH);
           const crop = nc && nc.w > 2 ? {
             ...nc,
             auto: true
@@ -7162,9 +7166,10 @@ function ZIRME() {
       if (detectionMode === "face") {
         nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
       } else if (detectionMode === "body") {
-        nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
+        nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true); // always PoseNet in body mode
       } else if (focalAuto && detectionMode === "auto") {
-        nc = await runSmartCrop(f.ec, oW, oH);
+        nc = await detectBodyCrop(f.ec, oW, oH, true, false);
+        if (!nc || nc.w < 2) nc = await runSmartCrop(f.ec, oW, oH);
       }
       if (!nc || nc.w < 2 || nc.h < 2) {
         const {
@@ -7234,9 +7239,10 @@ function ZIRME() {
         if (detectionMode === "face") {
           nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
         } else if (detectionMode === "body") {
-          nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
+          nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true); // always PoseNet in body mode
         } else if (focalAuto && detectionMode === "auto") {
-          nc = await runSmartCrop(f.ec, oW, oH);
+          nc = await detectBodyCrop(f.ec, oW, oH, true, false);
+          if (!nc || nc.w < 2) nc = await runSmartCrop(f.ec, oW, oH);
         }
         if (!nc || nc.w < 2 || nc.h < 2) {
           // Anchor fallback (or primary when focalAuto is off)
@@ -7306,7 +7312,9 @@ function ZIRME() {
     } else if (detectionMode === "body") {
       nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
     } else if (focalAuto && detectionMode === "auto") {
-      nc = await runSmartCrop(f.ec, oW, oH);
+      // Auto: try full-body detection first, fall back to smartcrop
+      nc = await detectBodyCrop(f.ec, oW, oH, true, false);
+      if (!nc || nc.w < 2) nc = await runSmartCrop(f.ec, oW, oH);
     }
     if (!nc || nc.w < 2) {
       const {
@@ -8640,7 +8648,7 @@ function ZIRME() {
       borderColor: settings.lockAspect ? "#7c5cff" : "#2e2e2e",
       color: settings.lockAspect ? "#fff" : "#555"
     }
-  }, settings.lockAspect ? "ON" : "OFF"))), sel && /*#__PURE__*/React.createElement("div", {
+  }, settings.lockAspect ? "ON" : "OFF"))), (sel || multiSel.size > 0) && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       color: "#7c5cff",
@@ -8667,7 +8675,7 @@ function ZIRME() {
     d: "M2 17l10 5 10-5"
   }), /*#__PURE__*/React.createElement("path", {
     d: "M2 12l10 5 10-5"
-  })), t.sizeOverrideHint || "Solo esta imagen"), settings.sizeMode !== "autoW" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
+  })), multiSel.size > 0 ? t.sizeOverrideMulti || `${multiSel.size} imágenes seleccionadas` : t.sizeOverrideHint || "Solo esta imagen"), settings.sizeMode !== "autoW" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("label", {
     className: "lbl"
   }, t.widthLbl), /*#__PURE__*/React.createElement("input", {
     type: "number",
@@ -8676,7 +8684,7 @@ function ZIRME() {
     style: {
       marginBottom: 8,
       color: parseInt(wInput, 10) >= 1 ? "" : "#666",
-      borderColor: sel ? "rgba(124,92,255,0.4)" : ""
+      borderColor: (sel || multiSel.size > 0) ? "rgba(124,92,255,0.4)" : ""
     },
     onFocus: () => {
       dimEditingRef.current = "w";
@@ -8691,7 +8699,23 @@ function ZIRME() {
       const newW = parseInt(e.target.value, 10);
       if (!newW || newW < 1) return;
       if (sel) {
-        setFiles(prev => prev.map(f => f.id === sel.id ? {...f, w: newW} : f));
+        // Per-image: update w and recompute crop immediately with focalCrop
+        setFiles(prev => prev.map(f => {
+          if (f.id !== sel.id) return f;
+          const effH = f.h ?? settings.h;
+          const {ax, ay} = settings.focalPoint || {ax: 0.5, ay: 0.5};
+          const nc = focalCrop(f.ec.width, f.ec.height, newW, effH, ax, ay);
+          return {...f, w: newW, crop: {...nc, auto: true}};
+        }));
+      } else if (multiSel.size > 0) {
+        // Multi-selection: apply to all selected files
+        setFiles(prev => prev.map(f => {
+          if (!multiSel.has(f.id)) return f;
+          const effH = f.h ?? settings.h;
+          const {ax, ay} = settings.focalPoint || {ax: 0.5, ay: 0.5};
+          const nc = focalCrop(f.ec.width, f.ec.height, newW, effH, ax, ay);
+          return {...f, w: newW, crop: {...nc, auto: true}};
+        }));
       } else if (settings.lockAspect && settings.sizeMode === "fixed") {
         const ratio = settings.w / settings.h;
         setSettings(s => ({
@@ -8715,7 +8739,7 @@ function ZIRME() {
     style: {
       marginBottom: 8,
       color: parseInt(hInput, 10) >= 1 ? "" : "#666",
-      borderColor: sel ? "rgba(124,92,255,0.4)" : ""
+      borderColor: (sel || multiSel.size > 0) ? "rgba(124,92,255,0.4)" : ""
     },
     onFocus: () => {
       dimEditingRef.current = "h";
@@ -8730,7 +8754,23 @@ function ZIRME() {
       const newH = parseInt(e.target.value, 10);
       if (!newH || newH < 1) return;
       if (sel) {
-        setFiles(prev => prev.map(f => f.id === sel.id ? {...f, h: newH} : f));
+        // Per-image: update h and recompute crop immediately
+        setFiles(prev => prev.map(f => {
+          if (f.id !== sel.id) return f;
+          const effW = f.w ?? settings.w;
+          const {ax, ay} = settings.focalPoint || {ax: 0.5, ay: 0.5};
+          const nc = focalCrop(f.ec.width, f.ec.height, effW, newH, ax, ay);
+          return {...f, h: newH, crop: {...nc, auto: true}};
+        }));
+      } else if (multiSel.size > 0) {
+        // Multi-selection: apply to all selected files
+        setFiles(prev => prev.map(f => {
+          if (!multiSel.has(f.id)) return f;
+          const effW = f.w ?? settings.w;
+          const {ax, ay} = settings.focalPoint || {ax: 0.5, ay: 0.5};
+          const nc = focalCrop(f.ec.width, f.ec.height, effW, newH, ax, ay);
+          return {...f, h: newH, crop: {...nc, auto: true}};
+        }));
       } else if (settings.lockAspect && settings.sizeMode === "fixed") {
         const ratio = settings.w / settings.h;
         setSettings(s => ({
@@ -8751,7 +8791,7 @@ function ZIRME() {
       color: "#555",
       marginBottom: 4
     }
-  }, t.ratioLbl, ": ", oW / dv, ":", oH / dv), /*#__PURE__*/React.createElement("label", {
+  }, t.ratioLbl, ": ", (() => { const ew = sel?.w ?? oW, eh = sel?.h ?? oH, ed = gcd(ew, eh); return `${ew/ed}:${eh/ed}`; })()), /*#__PURE__*/React.createElement("label", {
     className: "lbl",
     style: {
       marginTop: 12
@@ -8894,11 +8934,12 @@ function ZIRME() {
           const currentSelId = selIdRef.current;
           const currentMultiSel = new Set(multiSelRef.current);
 
-          // Aplicar settings
+          // Aplicar settings — Body mode auto-enables PoseNet
           setSettings(s => ({
             ...s,
             detectionMode: mode,
-            focalAuto: mode !== "manual"
+            focalAuto: mode !== "manual",
+            ...(mode === "body" ? {poseNetEnabled: true} : {})
           }));
 
           // Ejecutar INMEDIATAMENTE con valores capturados
@@ -8940,9 +8981,11 @@ function ZIRME() {
             if (currentMode === "face") {
               nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
             } else if (currentMode === "body") {
-              nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
+              nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true); // always PoseNet in body mode
             } else if (currentFocalAuto && currentMode === "auto") {
-              nc = await runSmartCrop(f.ec, oW, oH);
+              // Auto: try full-body detection first, fall back to smartcrop
+              nc = await detectBodyCrop(f.ec, oW, oH, true, false);
+              if (!nc || nc.w < 2) nc = await runSmartCrop(f.ec, oW, oH);
             }
             if (!nc || nc.w < 2 || nc.h < 2) {
               const {
@@ -9029,7 +9072,7 @@ function ZIRME() {
       borderColor: settings.adjustToTargetSize ? "#7c5cff" : "#2e2e2e",
       color: settings.adjustToTargetSize ? "#fff" : "#555"
     }
-  }, settings.adjustToTargetSize ? "ON" : "OFF")), settings.detectionMode === "body" && /*#__PURE__*/React.createElement("div", {
+  }, settings.adjustToTargetSize ? "ON" : "OFF")), false && settings.detectionMode === "body" && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       alignItems: "center",
@@ -9888,7 +9931,7 @@ function ZIRME() {
     }
   })))))), editFile && /*#__PURE__*/React.createElement(EditOverlay, {
     file: editFile,
-    settings: settings,
+    settings: editSettings,
     blurCfg: blurCfg,
     t: t,
     onClose: () => setEditId(null),
