@@ -1101,6 +1101,39 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 </script>
 
 <script>
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  ANUNCIO — edita aquí para cambiar el mensaje del popup de aviso    ║
+   ║  enabled: true  → se muestra al abrir la web (una vez por usuario)  ║
+   ║  enabled: false → desactivado (sin afectar a quienes ya lo vieron)  ║
+   ║  id: cambia la cadena para que vuelva a mostrarse a todos           ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+const ANNOUNCEMENT = {
+  enabled: true,
+  id: "v12-multilang",
+  title: {
+    en: "🌍 ZIRME is now available in 9 languages!",
+    es: "🌍 ¡ZIRME ahora está disponible en 9 idiomas!",
+    fr: "🌍 ZIRME est maintenant disponible en 9 langues !",
+    de: "🌍 ZIRME ist jetzt in 9 Sprachen verfügbar!",
+    pt: "🌍 ZIRME agora está disponível em 9 idiomas!",
+    it: "🌍 ZIRME è ora disponibile in 9 lingue!",
+    zh: "🌍 ZIRME 现已支持 9 种语言！",
+    ja: "🌍 ZIRME が 9 言語に対応しました！",
+    ru: "🌍 ZIRME теперь доступен на 9 языках!"
+  },
+  body: {
+    en: "The interface is now fully localized in English, Spanish, French, German, Portuguese, Italian, Chinese, Japanese and Russian. Use the language selector in the top bar to switch.",
+    es: "La interfaz ahora está completamente localizada en inglés, español, francés, alemán, portugués, italiano, chino, japonés y ruso. Usa el selector de idioma en la barra superior para cambiar.",
+    fr: "L'interface est maintenant entièrement localisée en anglais, espagnol, français, allemand, portugais, italien, chinois, japonais et russe. Utilisez le sélecteur de langue dans la barre supérieure.",
+    de: "Die Benutzeroberfläche ist jetzt vollständig auf Englisch, Spanisch, Französisch, Deutsch, Portugiesisch, Italienisch, Chinesisch, Japanisch und Russisch lokalisiert.",
+    pt: "A interface agora está completamente localizada em inglês, espanhol, francês, alemão, português, italiano, chinês, japonês e russo. Use o seletor de idioma na barra superior.",
+    it: "L'interfaccia è ora completamente localizzata in inglese, spagnolo, francese, tedesco, portoghese, italiano, cinese, giapponese e russo.",
+    zh: "界面现已完整支持英语、西班牙语、法语、德语、葡萄牙语、意大利语、中文、日语和俄语。请使用顶部栏的语言选择器切换。",
+    ja: "インターフェースは英語、スペイン語、フランス語、ドイツ語、ポルトガル語、イタリア語、中国語、日本語、ロシア語に完全対応しました。",
+    ru: "Интерфейс теперь полностью локализован на английском, испанском, французском, немецком, португальском, итальянском, китайском, японском и русском языках."
+  }
+};
+
 const {
   useState,
   useRef,
@@ -3028,40 +3061,6 @@ const STRINGS = {
     clearAll: "Очистить всё",
     clearAllConfirm: "Удалить все изображения?",
     feedback: "Отзыв"
-  }
-};
-
-/* ── Announcement System ──────────────────────────────────────────────────
- *  To show a new announcement:                                             *
- *  1. Set enabled: true                                                    *
- *  2. Change id to a unique string (e.g. "v13-feature")                   *
- *  3. Update title and body with your message per language                 *
- *  To disable: set enabled: false — users who already saw it are unaffected *
- * ─────────────────────────────────────────────────────────────────────── */
-const ANNOUNCEMENT = {
-  enabled: true,
-  id: "v12-multilang",
-  title: {
-    en: "🌍 ZIRME is now available in 9 languages!",
-    es: "🌍 ¡ZIRME ahora está disponible en 9 idiomas!",
-    fr: "🌍 ZIRME est maintenant disponible en 9 langues !",
-    de: "🌍 ZIRME ist jetzt in 9 Sprachen verfügbar!",
-    pt: "🌍 ZIRME agora está disponível em 9 idiomas!",
-    it: "🌍 ZIRME è ora disponibile in 9 lingue!",
-    zh: "🌍 ZIRME 现已支持 9 种语言！",
-    ja: "🌍 ZIRME が 9 言語に対応しました！",
-    ru: "🌍 ZIRME теперь доступен на 9 языках!"
-  },
-  body: {
-    en: "The interface is now fully localized in English, Spanish, French, German, Portuguese, Italian, Chinese, Japanese and Russian. Use the language selector in the top bar to switch.",
-    es: "La interfaz ahora está completamente localizada en inglés, español, francés, alemán, portugués, italiano, chino, japonés y ruso. Usa el selector de idioma en la barra superior para cambiar.",
-    fr: "L'interface est maintenant entièrement localisée en anglais, espagnol, français, allemand, portugais, italien, chinois, japonais et russe. Utilisez le sélecteur de langue dans la barre supérieure.",
-    de: "Die Benutzeroberfläche ist jetzt vollständig auf Englisch, Spanisch, Französisch, Deutsch, Portugiesisch, Italienisch, Chinesisch, Japanisch und Russisch lokalisiert.",
-    pt: "A interface agora está completamente localizada em inglês, espanhol, francês, alemão, português, italiano, chinês, japonês e russo. Use o seletor de idioma na barra superior.",
-    it: "L'interfaccia è ora completamente localizzata in inglese, spagnolo, francese, tedesco, portoghese, italiano, cinese, giapponese e russo.",
-    zh: "界面现已完整支持英语、西班牙语、法语、德语、葡萄牙语、意大利语、中文、日语和俄语。请使用顶部栏的语言选择器切换。",
-    ja: "インターフェースは英語、スペイン語、フランス語、ドイツ語、ポルトガル語、イタリア語、中国語、日本語、ロシア語に完全対応しました。",
-    ru: "Интерфейс теперь полностью локализован на английском, испанском, французском, немецком, португальском, итальянском, китайском, японском и русском языках."
   }
 };
 
