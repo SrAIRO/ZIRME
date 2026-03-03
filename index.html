@@ -948,7 +948,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     html, body, #root { height: 100%; width: 100%; overflow: hidden; background: var(--bg-primary); }
     body { font-family: 'Inter', sans-serif; color: var(--text-primary); }
 
-    input[type=range] { -webkit-appearance: none; appearance: none; height: 3px; border-radius: 2px; background: #2e2e2e; outline: none; cursor: pointer; width: 100%; }
+    input[type=range] { -webkit-appearance: none; appearance: none; height: 3px; border-radius: 2px; background: linear-gradient(to right, #7c5cff var(--sl,0%), #2e2e2e var(--sl,0%)); outline: none; cursor: pointer; width: 100%; }
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: #7c5cff; cursor: pointer; box-shadow: 0 0 0 2px rgba(124,92,255,0.25); margin-top: -5px; }
     input[type=number] { background: #222; border: 1px solid #303030; border-radius: 5px; color: #d0d0d0; font-family: Inter,sans-serif; font-size: 12px; padding: 6px 8px; outline: none; width: 100%; margin-bottom: 8px; }
     input[type=number]::-webkit-inner-spin-button,
@@ -1091,22 +1091,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   </div>
 </div>
 
+
 <script>
   let _dc = 0;
   const ov = () => document.getElementById("drop-overlay");
   window.addEventListener("dragenter", e => { e.preventDefault(); if (++_dc===1) ov().classList.add("show"); });
   window.addEventListener("dragleave", e => { if (--_dc<=0){_dc=0;ov().classList.remove("show");} });
   window.addEventListener("dragover",  e => { e.preventDefault(); e.dataTransfer.dropEffect="copy"; });
-  window.addEventListener("drop",      e => { e.preventDefault();_dc=0;ov().classList.remove("show"); window._zirmeDrop&&window._zirmeDrop(e.dataTransfer.files); });
+  window.addEventListener("drop", e => {
+    e.preventDefault(); _dc=0; ov().classList.remove("show");
+    window.dispatchEvent(new CustomEvent('zirme:drop', { detail: { files: e.dataTransfer.files } }));
+  });
 </script>
 
 <script>
-/* ╔══════════════════════════════════════════════════════════════════════╗
-   ║  ANUNCIO — edita aquí para cambiar el mensaje del popup de aviso    ║
-   ║  enabled: true  → se muestra al abrir la web (una vez por usuario)  ║
-   ║  enabled: false → desactivado (sin afectar a quienes ya lo vieron)  ║
-   ║  id: cambia la cadena para que vuelva a mostrarse a todos           ║
-   ╚══════════════════════════════════════════════════════════════════════╝ */
 const ANNOUNCEMENT = {
   enabled: true,
   id: "v12-multilang",
@@ -3077,26 +3075,19 @@ function paintRange(el) {
   const min = parseFloat(el.min) || 0,
     max = parseFloat(el.max) || 100;
   const pct = (el.value - min) / (max - min) * 100;
-  el.style.background = `linear-gradient(to right, #7c5cff ${pct}%, #2e2e2e ${pct}%)`;
+  el.style.setProperty('--sl', pct + '%');
 }
-// Listen for all input events on range sliders (captures React-driven changes too)
 document.addEventListener("input", e => {
   if (e.target.type === "range") paintRange(e.target);
 });
-// Observe DOM for new range inputs and paint them on insertion
 new MutationObserver(muts => {
   for (const m of muts) for (const n of m.addedNodes) {
     if (n.nodeType !== 1) continue;
-    if (n.tagName === "INPUT" && n.type === "range") paintRange(n);else if (n.querySelectorAll) n.querySelectorAll('input[type=range]').forEach(paintRange);
+    if (n.tagName === "INPUT" && n.type === "range") paintRange(n);
+    else if (n.querySelectorAll) n.querySelectorAll('input[type=range]').forEach(paintRange);
   }
-}).observe(document.body, {
-  childList: true,
-  subtree: true
-});
-// Paint any already-existing range inputs
+}).observe(document.body, { childList: true, subtree: true });
 document.querySelectorAll('input[type=range]').forEach(paintRange);
-// Periodic repaint for React-driven value updates (lightweight, ~10 elements max)
-setInterval(() => document.querySelectorAll('input[type=range]').forEach(paintRange), 250);
 function setZipProgress(p) {
   const el = document.getElementById("zip-progress");
   if (el) el.style.transform = `scaleX(${p})`;
@@ -3129,9 +3120,8 @@ async function runSmartCrop(canvas, outW, outH) {
 /* ── ML-based Detection Functions ─────────────────────────────────────── */
 let faceApiLoaded = false;
 let cocoSsdModel = null;
-let poseNetModel = null; // V11: Modelo PoseNet global
-let mlLibsLoading = false;
-let mlLibsLoaded = false;
+let poseNetModel = null;
+let _mlLibsPromise = null;
 
 // Helper para cargar scripts dinámicamente
 function loadScript(src) {
@@ -3149,34 +3139,28 @@ function loadScript(src) {
   });
 }
 
-// Cargar todas las ML libraries de una vez
-async function ensureMLLibs() {
-  if (mlLibsLoaded) return true;
-  if (mlLibsLoading) {
-    // Esperar a que termine la carga en progreso
-    return new Promise(resolve => {
-      const check = setInterval(() => {
-        if (mlLibsLoaded || !mlLibsLoading) {
-          clearInterval(check);
-          resolve(mlLibsLoaded);
-        }
-      }, 100);
-    });
+// ML libraries — Promise singleton (no polling, no boolean flags)
+function ensureMLLibs() {
+  if (!_mlLibsPromise) {
+    _mlLibsPromise = (async () => {
+      try {
+        await Promise.all([
+          loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0'),
+          loadScript('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js')
+        ]);
+        await Promise.all([
+          loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3'),
+          loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js')
+        ]);
+        return true;
+      } catch (e) {
+        _mlLibsPromise = null; // allow retry on next call
+        console.warn("ML libraries load failed:", e);
+        return false;
+      }
+    })();
   }
-  mlLibsLoading = true;
-  try {
-    await Promise.all([loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0'), loadScript('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js')]);
-    // COCO-SSD y PoseNet dependen de TensorFlow, cargar después
-    await Promise.all([loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3'), loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js') // V11: PoseNet integrado
-    ]);
-    mlLibsLoaded = true;
-    return true;
-  } catch (e) {
-    console.warn("ML libraries load failed:", e);
-    return false;
-  } finally {
-    mlLibsLoading = false;
-  }
+  return _mlLibsPromise;
 }
 async function loadFaceApi() {
   if (faceApiLoaded) return true;
@@ -3745,7 +3729,6 @@ function ImageCell({
   onRemove,
   onEdit,
   onPreview,
-  tick,
   dragging,
   onDragStart,
   onDragEnter,
@@ -3838,7 +3821,7 @@ function ImageCell({
       ctx.fillStyle = "#444";
       ctx.fillText(t?.noCrop || "no crop", 6, 15);
     }
-  }, [file, file.crop, cellH, tick, settings.borderW, settings.borderColor]);
+  }, [file, file.version, file.crop, cellH, settings.borderW, settings.borderColor]);
   const onMouseDown = useCallback(e => {
     if (e.button !== 0) return;
     onSelect(file.id, e.shiftKey);
@@ -4081,7 +4064,7 @@ function ImageCell({
 // OPTIMIZACIÓN: React.memo previene re-renders cuando las props no han cambiado
 const ImageCellMemo = React.memo(ImageCell, (prevProps, nextProps) => {
   // Solo re-renderizar si cambió algo relevante de ESTA imagen específica
-  return prevProps.file.id === nextProps.file.id && prevProps.file.crop === nextProps.file.crop && prevProps.file.ec === nextProps.file.ec && prevProps.isSelected === nextProps.isSelected && prevProps.isMultiSel === nextProps.isMultiSel && prevProps.cellH === nextProps.cellH && prevProps.dragging === nextProps.dragging && prevProps.tick === nextProps.tick;
+  return prevProps.file.id === nextProps.file.id && prevProps.file.crop === nextProps.file.crop && prevProps.file.ec === nextProps.file.ec && prevProps.isSelected === nextProps.isSelected && prevProps.isMultiSel === nextProps.isMultiSel && prevProps.cellH === nextProps.cellH && prevProps.dragging === nextProps.dragging && prevProps.file.version === nextProps.file.version;
 });
 
 /* ── JustifiedGrid ────────────────────────────────────────────────────── */
@@ -4092,7 +4075,6 @@ function JustifiedGrid({
   selId,
   multiSel,
   t,
-  tick,
   onSelect,
   onCropChange,
   onUndoPush,
@@ -4166,7 +4148,6 @@ function JustifiedGrid({
       settings: settings,
       cellH: h,
       t: t,
-      tick: tick,
       onSelect: onSelect,
       onCropChange: onCropChange,
       onUndoPush: onUndoPush,
@@ -4466,8 +4447,7 @@ function EditOverlay({
   onUndoPush,
   panelOpen,
   onBlurCfgChange,
-  tick,
-  onTick
+  onVersionBump
 }) {
   const canvasRef = useRef(null);
   const contRef = useRef(null);
@@ -4549,9 +4529,8 @@ function EditOverlay({
   const fileRef = useRef(file); // stable mirror of file prop — prevents drawNow recreation
 
   // Keep refs in sync with props/state (no cost — just assignments)
-  useEffect(() => {
-    toolRef.current = tool;
-  }, [tool]);
+  // Synchronous ref updates (no useEffect async lag)
+  toolRef.current = tool;
 
   // V11.5: Keyboard shortcuts para herramientas del editor
   useEffect(() => {
@@ -4575,24 +4554,12 @@ function EditOverlay({
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, []);
-  useEffect(() => {
-    freeCropRef.current = freeCrop;
-  }, [freeCrop]);
-  useEffect(() => {
-    blurCfgRef.current = blurCfg;
-  }, [blurCfg]);
-  useEffect(() => {
-    eraserCfgRef.current = eraserCfg;
-  }, [eraserCfg]);
-  useEffect(() => {
-    annotateCfgRef.current = annotateCfg;
-  }, [annotateCfg]);
-  useEffect(() => {
-    settingsRef2.current = settings;
-  }, [settings]);
-  useEffect(() => {
-    fileRef.current = file;
-  }, [file]); // keeps fileRef current without recreating drawNow
+  freeCropRef.current = freeCrop;
+  blurCfgRef.current = blurCfg;
+  eraserCfgRef.current = eraserCfg;
+  annotateCfgRef.current = annotateCfg;
+  settingsRef2.current = settings;
+  fileRef.current = file;
 
   // ── Imperative draw — called directly, no React state ──────────────────
   // Declared here (before the effects below) to avoid const TDZ errors
@@ -4680,13 +4647,13 @@ function EditOverlay({
     });
   }, [drawNow]);
 
-  // V11.5: Re-dibujar cuando tick cambia (detecta undo/redo externos)
+  // Redraw when file content changes (undo/redo increments file.version)
   useEffect(() => {
     if (file.ec) {
       fileRef.current = file;
       drawNow();
     }
-  }, [tick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [file.version]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Redraw when border settings change
   useEffect(() => {
@@ -4835,7 +4802,7 @@ function EditOverlay({
     tc.fillRect(0, 0, size, size);
     ctx.drawImage(tmp, bx, by);
     draw(); // direct draw, no setState
-    onTick?.(); // V11.5: actualizar miniatura
+    onVersionBump?.(file.id);
   };
 
   // ── Pixelate helper ──────────────────────────────────────────────────
@@ -4877,7 +4844,7 @@ function EditOverlay({
     tc.fillRect(0, 0, size, size);
     ctx.drawImage(tmp, bx, by);
     draw();
-    onTick?.(); // V11.5: actualizar miniatura
+    onVersionBump?.(file.id);
   };
 
   // ── NUEVO: Eraser helper ────────────────────────────────────────────────
@@ -4986,7 +4953,7 @@ function EditOverlay({
     }
     ctx.globalAlpha = 1;
     draw();
-    onTick?.(); // V11.5: actualizar miniatura
+    onVersionBump?.(file.id);
   };
 
   // ── NUEVO: Annotate helper ──────────────────────────────────────────────
@@ -5061,7 +5028,7 @@ function EditOverlay({
     // Modo text se maneja en onMouseDown (click para colocar texto)
 
     draw();
-    onTick?.(); // V11.5: actualizar miniatura
+    onVersionBump?.(file.id);
   };
 
   // Helper para renderizar texto correctamente (evitar inversión)
@@ -6741,7 +6708,6 @@ function ZIRME() {
     done: 0,
     total: 0
   }); // smart crop batch progress
-  const [tick, setTick] = useState(0);
   const [cellH, setCellH] = useState(380);
   const [panelOpen, setPanelOpen] = useState(true);
   const [panelTab, setPanelTab] = useState("image");
@@ -6793,26 +6759,17 @@ function ZIRME() {
     } catch (e) {}
     ;
   }, [settings.fmt]);
-  const filesRef = useRef([]);
+  const filesRef = useRef(files);
   const settingsRef = useRef(settings);
   const editIdRef = useRef(editId);
   const selIdRef = useRef(selId);
   const multiSelRef = useRef(multiSel);
-  useEffect(() => {
-    filesRef.current = files;
-  }, [files]);
-  useEffect(() => {
-    settingsRef.current = settings;
-  }, [settings]);
-  useEffect(() => {
-    editIdRef.current = editId;
-  }, [editId]);
-  useEffect(() => {
-    selIdRef.current = selId;
-  }, [selId]);
-  useEffect(() => {
-    multiSelRef.current = multiSel;
-  }, [multiSel]);
+  // Synchronous ref updates — reads from event handlers always get current values
+  filesRef.current = files;
+  settingsRef.current = settings;
+  editIdRef.current = editId;
+  selIdRef.current = selId;
+  multiSelRef.current = multiSel;
   const sel = files.find(f => f.id === selId) ?? null;
   const editFile = files.find(f => f.id === editId) ?? null;
   const previewFile = files.find(f => f.id === previewId) ?? null;
@@ -6848,11 +6805,6 @@ function ZIRME() {
     return () => window.removeEventListener("keydown", h);
   }, []); // sin deps: solo se registra/cancela al mount/unmount
 
-  useEffect(() => {
-    const h = () => setTick(n => n + 1);
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
-  }, []);
   const pushUndo = useCallback(id => {
     setFiles(prev => prev.map(f => {
       if (f.id !== id) return f;
@@ -6885,12 +6837,12 @@ function ZIRME() {
       };
       f.ec.getContext("2d").clearRect(0, 0, f.ec.width, f.ec.height);
       f.ec.getContext("2d").drawImage(last.snap, 0, 0);
-      setTick(n => n + 1);
       return {
         ...f,
         history: hist.slice(0, -1),
         future: [futureEntry, ...(f.future || [])].slice(0, 30),
-        crop: last.crop
+        crop: last.crop,
+        version: (f.version || 0) + 1
       };
     }));
   }, [t]);
@@ -6912,12 +6864,12 @@ function ZIRME() {
       };
       f.ec.getContext("2d").clearRect(0, 0, f.ec.width, f.ec.height);
       f.ec.getContext("2d").drawImage(next.snap, 0, 0);
-      setTick(n => n + 1);
       return {
         ...f,
         future: fut.slice(1),
         history: [...(f.history || []), histEntry].slice(-30),
-        crop: next.crop
+        crop: next.crop,
+        version: (f.version || 0) + 1
       };
     }));
   }, [t]);
@@ -7019,21 +6971,24 @@ function ZIRME() {
           thumb: img.src,
           crop,
           history: [],
-          future: []
+          future: [],
+          version: 0
         }]);
-        setTick(n => n + 1); // No auto-select on load
       };
       img.src = URL.createObjectURL(file);
     });
   }, []);
   useEffect(() => {
-    window._zirmeDrop = loadFiles;
+    const h = e => loadFiles(e.detail.files);
+    window.addEventListener('zirme:drop', h);
+    return () => window.removeEventListener('zirme:drop', h);
   }, [loadFiles]);
 
-  // Re-apply auto crop when output size or focal settings change
-  // — in edit mode: only recalculates the current image
-  // — in gallery mode: recalculates all auto-flagged images
+  // Re-apply auto crop when output size or focal settings change — debounced 300ms
+  const _autoCropDebounce = useRef(null);
   useEffect(() => {
+    clearTimeout(_autoCropDebounce.current);
+    _autoCropDebounce.current = setTimeout(() => {
     const {
       w: oW,
       h: oH,
@@ -7086,7 +7041,8 @@ function ZIRME() {
         }));
       }
     })();
-  }, [settings.w, settings.h, settings.focalPoint]);
+    }, 300);
+  }, [settings.w, settings.h, settings.focalPoint]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Unified focal-point crop — uses smartcrop when focalAuto is ON, anchor-based otherwise.
   // Processes sequentially to avoid memory pressure on large galleries.
@@ -7146,22 +7102,8 @@ function ZIRME() {
       return;
     }
 
-    // MODO NORMAL: Leer de refs para obtener valores actuales
-    const currentSelId = selIdRef.current;
-    const currentMultiSel = multiSelRef.current;
-
-    // Determinar qué imágenes procesar según la selección
-    let targets;
-    if (currentSelId && currentMultiSel.size === 0) {
-      // Una sola imagen seleccionada → solo esa
-      targets = [currentSelId];
-    } else if (currentMultiSel.size > 0) {
-      // Multi-selección → solo las seleccionadas
-      targets = [...currentMultiSel];
-    } else {
-      // Sin selección → todas
-      targets = filesRef.current.map(f => f.id);
-    }
+    // MODO NORMAL: determinar qué imágenes procesar
+    const targets = getTargets();
     const total = targets.length;
     if (!total) return;
     setSmartBatch({
@@ -7310,23 +7252,7 @@ function ZIRME() {
       ax: 0.5,
       ay: 0.5
     };
-
-    // Leer de refs para obtener valores actuales
-    const currentSelId = selIdRef.current;
-    const currentMultiSel = multiSelRef.current;
-
-    // Determinar qué imágenes limpiar según la selección
-    let targets;
-    if (currentSelId && currentMultiSel.size === 0) {
-      // Una sola imagen seleccionada → solo esa
-      targets = [currentSelId];
-    } else if (currentMultiSel.size > 0) {
-      // Multi-selección → solo las seleccionadas
-      targets = [...currentMultiSel];
-    } else {
-      // Sin selección → todas
-      targets = filesRef.current.map(f => f.id);
-    }
+    const targets = getTargets();
     setFiles(prev => prev.map(f => {
       if (!targets.includes(f.id)) return f;
       return {
@@ -7352,24 +7278,18 @@ function ZIRME() {
     prevPoseNetRef.current = settings.poseNetEnabled;
   }, [settings.poseNetEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Returns the IDs to operate on: multiSel > single sel > all
+  const getTargets = () => {
+    const multi = multiSelRef.current;
+    if (multi.size > 0) return [...multi];
+    const sel = selIdRef.current;
+    if (sel) return [sel];
+    return filesRef.current.map(f => f.id);
+  };
+
   // Rotación y volteo de imágenes
   const rotateImages = useCallback(angle => {
-    // Leer de refs para obtener valores actuales
-    const currentSelId = selIdRef.current;
-    const currentMultiSel = multiSelRef.current;
-
-    // Determinar qué imágenes rotar según la selección
-    let targets;
-    if (currentSelId && currentMultiSel.size === 0) {
-      // Una sola imagen seleccionada → solo esa
-      targets = [currentSelId];
-    } else if (currentMultiSel.size > 0) {
-      // Multi-selección → solo las seleccionadas
-      targets = [...currentMultiSel];
-    } else {
-      // Sin selección → todas
-      targets = filesRef.current.map(f => f.id);
-    }
+    const targets = getTargets();
     if (!targets.length) return;
     let rotated = 0;
     setFiles(prev => prev.map(f => {
@@ -7425,22 +7345,7 @@ function ZIRME() {
     showToast(t.toastRotated(rotated, angle));
   }, [lang]);
   const flipImages = useCallback(direction => {
-    // Leer de refs para obtener valores actuales
-    const currentSelId = selIdRef.current;
-    const currentMultiSel = multiSelRef.current;
-
-    // Determinar qué imágenes voltear según la selección
-    let targets;
-    if (currentSelId && currentMultiSel.size === 0) {
-      // Una sola imagen seleccionada → solo esa
-      targets = [currentSelId];
-    } else if (currentMultiSel.size > 0) {
-      // Multi-selección → solo las seleccionadas
-      targets = [...currentMultiSel];
-    } else {
-      // Sin selección → todas
-      targets = filesRef.current.map(f => f.id);
-    }
+    const targets = getTargets();
     if (!targets.length) return;
     let flipped = 0;
     setFiles(prev => prev.map(f => {
@@ -8419,7 +8324,6 @@ function ZIRME() {
     selId: selId,
     multiSel: multiSel,
     t: t,
-    tick: tick,
     onSelect: handleSelect,
     onCropChange: setCropForId,
     onUndoPush: pushUndo,
@@ -9783,8 +9687,7 @@ function ZIRME() {
     onUndoPush: pushUndo,
     panelOpen: panelOpen,
     onBlurCfgChange: setBlurCfg,
-    tick: tick,
-    onTick: () => setTick(n => n + 1)
+    onVersionBump: id => setFiles(prev => prev.map(f => f.id === id ? { ...f, version: (f.version || 0) + 1 } : f))
   }), previewFile && /*#__PURE__*/React.createElement(PreviewModal, {
     file: previewFile,
     settings: settings,
