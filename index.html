@@ -1069,6 +1069,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     .help-accordion-body { overflow:hidden; transition:max-height .25s ease, opacity .2s ease; }
     .help-about-text { font-family:Inter,sans-serif; font-size:11px; color:#aaa; line-height:1.65; padding:0 14px 12px; }
     .help-about-text a { color:#7c5cff; text-decoration:none; } .help-about-text a:hover { text-decoration:underline; }
+@keyframes zirme-spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+@keyframes zirme-pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+.zirme-detecting-lbl { animation:zirme-pulse 1.2s ease-in-out infinite; position:relative; z-index:1; }
+.ml-spinner { display:inline-block; width:10px; height:10px; border:2px solid rgba(255,255,255,0.25); border-top-color:#fff; border-radius:50%; animation:zirme-spin 0.7s linear infinite; flex-shrink:0; }
 
     /* Progress bar */
     #zip-progress { position: fixed; top: 50px; left: 0; right: 0; height: 2px; background: #7c5cff; transform-origin: left; transform: scaleX(0); transition: transform .2s; z-index: 9990; }
@@ -1269,8 +1273,8 @@ const STRINGS = {
         key: "← →",
         text: "Navigate images"
       }, {
-        icon: "⇧",
-        key: "Shift+click",
+        icon: "⌃",
+        key: "Ctrl+click",
         text: "Multi-select"
       }],
       editor: [{
@@ -1356,7 +1360,8 @@ const STRINGS = {
     announcementClose: "Got it",
     clearAll: "Clear All",
     clearAllConfirm: "Delete all images?",
-    feedback: "Feedback"
+    feedback: "Feedback",
+    detecting: "Detecting…"
   },
   es: {
     subtitle: "Zoom-In Resizing & Mastering Editor",
@@ -1482,8 +1487,8 @@ const STRINGS = {
         key: "← →",
         text: "Navegar imágenes"
       }, {
-        icon: "⇧",
-        key: "Shift+clic",
+        icon: "⌃",
+        key: "Ctrl+clic",
         text: "Selección múltiple"
       }],
       editor: [{
@@ -1569,7 +1574,8 @@ const STRINGS = {
     announcementClose: "Entendido",
     clearAll: "Limpiar todo",
     clearAllConfirm: "¿Eliminar todas las imágenes?",
-    feedback: "Sugerencias"
+    feedback: "Sugerencias",
+    detecting: "Detectando…"
   },
   fr: {
     subtitle: "Zoom-In Resizing & Mastering Editor",
@@ -1695,8 +1701,8 @@ const STRINGS = {
         key: "← →",
         text: "Naviguer entre images"
       }, {
-        icon: "⇧",
-        key: "Shift+clic",
+        icon: "⌃",
+        key: "Ctrl+clic",
         text: "Sélection multiple"
       }],
       editor: [{
@@ -1782,7 +1788,8 @@ const STRINGS = {
     announcementClose: "Compris",
     clearAll: "Tout effacer",
     clearAllConfirm: "Supprimer toutes les images ?",
-    feedback: "Suggestions"
+    feedback: "Suggestions",
+    detecting: "Détection…"
   },
   de: {
     subtitle: "Zoom-In Resizing & Mastering Editor",
@@ -1908,8 +1915,8 @@ const STRINGS = {
         key: "← →",
         text: "Bilder navigieren"
       }, {
-        icon: "⇧",
-        key: "Shift+Klick",
+        icon: "⌃",
+        key: "Ctrl+Klick",
         text: "Mehrfachauswahl"
       }],
       editor: [{
@@ -1995,7 +2002,8 @@ const STRINGS = {
     announcementClose: "Verstanden",
     clearAll: "Alles löschen",
     clearAllConfirm: "Alle Bilder löschen?",
-    feedback: "Feedback"
+    feedback: "Feedback",
+    detecting: "Erkennung…"
   },
   pt: {
     subtitle: "Zoom-In Resizing & Mastering Editor",
@@ -2121,8 +2129,8 @@ const STRINGS = {
         key: "← →",
         text: "Navegar imagens"
       }, {
-        icon: "⇧",
-        key: "Shift+clique",
+        icon: "⌃",
+        key: "Ctrl+clique",
         text: "Seleção múltipla"
       }],
       editor: [{
@@ -2208,7 +2216,8 @@ const STRINGS = {
     announcementClose: "Entendido",
     clearAll: "Limpar tudo",
     clearAllConfirm: "Apagar todas as imagens?",
-    feedback: "Sugestões"
+    feedback: "Sugestões",
+    detecting: "Detectando…"
   },
   it: {
     subtitle: "Zoom-In Resizing & Mastering Editor",
@@ -2334,8 +2343,8 @@ const STRINGS = {
         key: "← →",
         text: "Naviga immagini"
       }, {
-        icon: "⇧",
-        key: "Shift+clic",
+        icon: "⌃",
+        key: "Ctrl+clic",
         text: "Selezione multipla"
       }],
       editor: [{
@@ -2421,7 +2430,8 @@ const STRINGS = {
     announcementClose: "Capito",
     clearAll: "Cancella tutto",
     clearAllConfirm: "Eliminare tutte le immagini?",
-    feedback: "Suggerimenti"
+    feedback: "Suggerimenti",
+    detecting: "Rilevamento…"
   },
   zh: {
     subtitle: "Zoom-In Resizing & Mastering Editor",
@@ -2547,8 +2557,8 @@ const STRINGS = {
         key: "← →",
         text: "浏览图片"
       }, {
-        icon: "⇧",
-        key: "Shift+点击",
+        icon: "⌃",
+        key: "Ctrl+点击",
         text: "多选"
       }],
       editor: [{
@@ -2634,7 +2644,8 @@ const STRINGS = {
     announcementClose: "知道了",
     clearAll: "清除全部",
     clearAllConfirm: "删除所有图片?",
-    feedback: "反馈"
+    feedback: "反馈",
+    detecting: "检测中…"
   },
   ja: {
     subtitle: "Zoom-In Resizing & Mastering Editor",
@@ -2760,8 +2771,8 @@ const STRINGS = {
         key: "← →",
         text: "画像を移動"
       }, {
-        icon: "⇧",
-        key: "Shift+クリック",
+        icon: "⌃",
+        key: "Ctrl+クリック",
         text: "複数選択"
       }],
       editor: [{
@@ -2847,7 +2858,8 @@ const STRINGS = {
     announcementClose: "了解",
     clearAll: "すべて消去",
     clearAllConfirm: "すべての画像を削除しますか?",
-    feedback: "フィードバック"
+    feedback: "フィードバック",
+    detecting: "検出中…"
   },
   ru: {
     subtitle: "Zoom-In Resizing & Mastering Editor",
@@ -2973,8 +2985,8 @@ const STRINGS = {
         key: "← →",
         text: "Навигация по изображениям"
       }, {
-        icon: "⇧",
-        key: "Shift+клик",
+        icon: "⌃",
+        key: "Ctrl+клик",
         text: "Множественный выбор"
       }],
       editor: [{
@@ -3060,7 +3072,8 @@ const STRINGS = {
     announcementClose: "Понятно",
     clearAll: "Очистить всё",
     clearAllConfirm: "Удалить все изображения?",
-    feedback: "Отзыв"
+    feedback: "Отзыв",
+    detecting: "Анализ…"
   }
 };
 
@@ -3838,10 +3851,11 @@ function ImageCell({
       ctx.fillStyle = "#444";
       ctx.fillText(t?.noCrop || "no crop", 6, 15);
     }
-  }, [file, file.crop, cellH, tick, settings.borderW, settings.borderColor]);
+  }, [file, file.crop, cellH, tick, settings.borderW, settings.borderColor, settings.w, settings.h]);
   const onMouseDown = useCallback(e => {
     if (e.button !== 0) return;
-    onSelect(file.id, e.shiftKey);
+    e.preventDefault(); // prevent native browser drag
+    onSelect(file.id, e.ctrlKey || e.metaKey);
     const cp = evToCanvas(e);
     const p = evToImg(e);
     if (!cp || !p) return;
@@ -4017,7 +4031,7 @@ function ImageCell({
       width: "100%"
     },
     draggable: false,
-    onDragStart: e => e.preventDefault(),
+    onDragStart: e => { e.preventDefault(); e.stopPropagation(); },
     onMouseDown: onMouseDown
   }), (isSelected || isMultiSel) && /*#__PURE__*/React.createElement("button", {
     onClick: e => {
@@ -4081,7 +4095,7 @@ function ImageCell({
 // OPTIMIZACIÓN: React.memo previene re-renders cuando las props no han cambiado
 const ImageCellMemo = React.memo(ImageCell, (prevProps, nextProps) => {
   // Solo re-renderizar si cambió algo relevante de ESTA imagen específica
-  return prevProps.file.id === nextProps.file.id && prevProps.file.crop === nextProps.file.crop && prevProps.file.ec === nextProps.file.ec && prevProps.isSelected === nextProps.isSelected && prevProps.isMultiSel === nextProps.isMultiSel && prevProps.cellH === nextProps.cellH && prevProps.dragging === nextProps.dragging && prevProps.tick === nextProps.tick;
+  return prevProps.file.id === nextProps.file.id && prevProps.file.crop === nextProps.file.crop && prevProps.file.ec === nextProps.file.ec && prevProps.isSelected === nextProps.isSelected && prevProps.isMultiSel === nextProps.isMultiSel && prevProps.cellH === nextProps.cellH && prevProps.dragging === nextProps.dragging && prevProps.tick === nextProps.tick && prevProps.settings.w === nextProps.settings.w && prevProps.settings.h === nextProps.settings.h;
 });
 
 /* ── JustifiedGrid ────────────────────────────────────────────────────── */
@@ -4632,41 +4646,7 @@ function EditOverlay({
     ctx.restore();
 
     // Cursor visual de brocha (con hardness y opacity)
-    const _cp = cursorPosRef.current;
-    if (_cp && (toolRef.current === 'blur' || toolRef.current === 'pixelate' || toolRef.current === 'eraser' || toolRef.current === 'annotate')) {
-      const cfg = toolRef.current === 'blur' ? blurCfgRef.current : toolRef.current === 'eraser' ? eraserCfgRef.current : annotateCfgRef.current;
-      const r = (cfg.size || 50) / 2;
-      const hardness = (cfg.hardness || 50) / 100;
-      const opacity = (cfg.opacity || 100) / 100;
-      ctx.save();
-
-      // Círculo exterior (tamaño total de la brocha)
-      ctx.strokeStyle = '#7c5cff';
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = opacity * 0.8;
-      ctx.beginPath();
-      ctx.arc(_cp.x, _cp.y, r * z, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Círculo interior (hardness)
-      if (hardness < 0.99) {
-        ctx.globalAlpha = opacity * 0.5;
-        ctx.beginPath();
-        ctx.arc(_cp.x, _cp.y, r * hardness * z, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Cruz central para precisión
-      ctx.globalAlpha = opacity * 0.6;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(_cp.x - 5, _cp.y);
-      ctx.lineTo(_cp.x + 5, _cp.y);
-      ctx.moveTo(_cp.x, _cp.y - 5);
-      ctx.lineTo(_cp.x, _cp.y + 5);
-      ctx.stroke();
-      ctx.restore();
-    }
+    /* cursor handled exclusively by blurCircleRef DOM div */
     ctx.font = "500 11px Inter,sans-serif";
     ctx.fillStyle = "rgba(150,150,150,0.5)";
     const sc = cr && cr.w > 2 ? `   ✂ ${Math.round(cr.w)}×${Math.round(cr.h)}` : "";
@@ -4835,7 +4815,6 @@ function EditOverlay({
     tc.fillRect(0, 0, size, size);
     ctx.drawImage(tmp, bx, by);
     draw(); // direct draw, no setState
-    onTick?.(); // V11.5: actualizar miniatura
   };
 
   // ── Pixelate helper ──────────────────────────────────────────────────
@@ -4877,7 +4856,6 @@ function EditOverlay({
     tc.fillRect(0, 0, size, size);
     ctx.drawImage(tmp, bx, by);
     draw();
-    onTick?.(); // V11.5: actualizar miniatura
   };
 
   // ── NUEVO: Eraser helper ────────────────────────────────────────────────
@@ -4986,7 +4964,6 @@ function EditOverlay({
     }
     ctx.globalAlpha = 1;
     draw();
-    onTick?.(); // V11.5: actualizar miniatura
   };
 
   // ── NUEVO: Annotate helper ──────────────────────────────────────────────
@@ -5061,7 +5038,6 @@ function EditOverlay({
     // Modo text se maneja en onMouseDown (click para colocar texto)
 
     draw();
-    onTick?.(); // V11.5: actualizar miniatura
   };
 
   // Helper para renderizar texto correctamente (evitar inversión)
@@ -5323,11 +5299,18 @@ function EditOverlay({
     isDraggingRef.current = false;
   };
   const onMouseUp = useCallback(() => {
+    const _prevMode = st.current.mode;
     commitCrop();
+    if (blurCircleRef.current) blurCircleRef.current.style.display = "none";
+    if (_prevMode === "blur" || _prevMode === "pixelate" || _prevMode === "eraser" || _prevMode === "annotate") {
+      draw();
+      onTick?.();
+    }
   }, [file, onCropChange]);
   const onMouseLeave = useCallback(() => {
     commitCrop();
     cursorPosRef.current = null;
+    if (blurCircleRef.current) blurCircleRef.current.style.display = "none";
   }, [file, onCropChange]);
   const onWheel = useCallback(e => {
     e.preventDefault();
@@ -6632,11 +6615,7 @@ function BuyMeACoffeeButton({
       e.currentTarget.style.background = '#7c5cff';
       e.currentTarget.style.transform = 'translateY(0)';
     }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: '16px'
-    }
-  }, "\u2615"), /*#__PURE__*/React.createElement("span", null, text));
+  }, /*#__PURE__*/React.createElement("svg", {width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round"}, /*#__PURE__*/React.createElement("path", {d: "M18 8h1a4 4 0 0 1 0 8h-1"}), /*#__PURE__*/React.createElement("path", {d: "M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"}), /*#__PURE__*/React.createElement("line", {x1: "6", y1: "1", x2: "6", y2: "4"}), /*#__PURE__*/React.createElement("line", {x1: "10", y1: "1", x2: "10", y2: "4"}), /*#__PURE__*/React.createElement("line", {x1: "14", y1: "1", x2: "14", y2: "4"})), /*#__PURE__*/React.createElement("span", null, text));
 }
 
 /* ── ZIRME Main ───────────────────────────────────────────────────────── */
@@ -6741,6 +6720,7 @@ function ZIRME() {
     done: 0,
     total: 0
   }); // smart crop batch progress
+  const [mlDetecting, setMlDetecting] = useState(false);
   const [tick, setTick] = useState(0);
   const [cellH, setCellH] = useState(380);
   const [panelOpen, setPanelOpen] = useState(true);
@@ -6927,6 +6907,31 @@ function ZIRME() {
       ...crop,
       auto: false
     } : null;
+    const currentMultiSel = multiSelRef.current;
+    // In edit mode, skip multiSel propagation — only the edited image is affected
+    if (manualCrop && !editIdRef.current && currentMultiSel.size > 1 && currentMultiSel.has(id)) {
+      const srcFile = filesRef.current.find(f => f.id === id);
+      if (srcFile && srcFile.ec.width > 0 && srcFile.ec.height > 0) {
+        const nx = manualCrop.x / srcFile.ec.width;
+        const ny = manualCrop.y / srcFile.ec.height;
+        const nw = manualCrop.w / srcFile.ec.width;
+        const nh = manualCrop.h / srcFile.ec.height;
+        setFiles(prev => prev.map(f => {
+          if (!currentMultiSel.has(f.id)) return f;
+          return {
+            ...f,
+            crop: {
+              x: Math.round(nx * f.ec.width),
+              y: Math.round(ny * f.ec.height),
+              w: Math.max(10, Math.round(nw * f.ec.width)),
+              h: Math.max(10, Math.round(nh * f.ec.height)),
+              auto: false
+            }
+          };
+        }));
+        return;
+      }
+    }
     setFiles(prev => prev.map(f => f.id === id ? {
       ...f,
       crop: manualCrop
@@ -7050,7 +7055,11 @@ function ZIRME() {
     // SOLO procesar si focalAuto está ON (Auto/Rostro/Cuerpo)
     // Manual NO auto-procesa - el usuario controla con applyFocalAll()
     if (!focalAuto) return;
-    const autoFiles = filesRef.current.filter(f => f.crop?.auto !== false);
+    const _ms = multiSelRef.current;
+    const autoFiles = filesRef.current.filter(f => {
+      if (_ms.size > 0 && !_ms.has(f.id)) return false;
+      return f.crop?.auto !== false;
+    });
     if (!autoFiles.length) return;
 
     // OPTIMIZACIÓN: Procesar en lotes
@@ -7116,7 +7125,7 @@ function ZIRME() {
       if (detectionMode === "face") {
         nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
       } else if (detectionMode === "body") {
-        nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
+        nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true);
       } else if (focalAuto && detectionMode === "auto") {
         nc = await runSmartCrop(f.ec, oW, oH);
       }
@@ -7188,7 +7197,7 @@ function ZIRME() {
         if (detectionMode === "face") {
           nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
         } else if (detectionMode === "body") {
-          nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
+          nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true);
         } else if (focalAuto && detectionMode === "auto") {
           nc = await runSmartCrop(f.ec, oW, oH);
         }
@@ -7258,7 +7267,7 @@ function ZIRME() {
     if (detectionMode === "face") {
       nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
     } else if (detectionMode === "body") {
-      nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
+      nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true);
     } else if (focalAuto && detectionMode === "auto") {
       nc = await runSmartCrop(f.ec, oW, oH);
     }
@@ -7342,15 +7351,7 @@ function ZIRME() {
 
   // V11.5: Re-trigger automático cuando toggle PoseNet cambia
   // Usa refs para evitar closures rancias con detectionMode y files
-  const prevPoseNetRef = useRef(settings.poseNetEnabled);
-  useEffect(() => {
-    if (settingsRef.current.detectionMode === "body" && settings.poseNetEnabled !== prevPoseNetRef.current) {
-      if (filesRef.current.length > 0) {
-        applyFocalAll();
-      }
-    }
-    prevPoseNetRef.current = settings.poseNetEnabled;
-  }, [settings.poseNetEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  // PoseNet always active for body: no toggle effect needed
 
   // Rotación y volteo de imágenes
   const rotateImages = useCallback(angle => {
@@ -7902,7 +7903,7 @@ function ZIRME() {
       e.currentTarget.style.background = "transparent";
       e.currentTarget.style.color = "#aaa";
     }
-  }, "\uD83D\uDCA1 ", t.feedback), /*#__PURE__*/React.createElement(BuyMeACoffeeButton, {
+  }, /*#__PURE__*/React.createElement("svg", {width: 12, height: 12, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", style: {flexShrink: 0}}, /*#__PURE__*/React.createElement("path", {d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"})), " ", t.feedback), /*#__PURE__*/React.createElement(BuyMeACoffeeButton, {
     lang: lang
   }), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8807,6 +8808,7 @@ function ZIRME() {
             targets = filesRef.current.map(f => f.id);
           }
           if (!targets.length) return;
+          setMlDetecting(true);
           setSmartBatch({
             running: true,
             done: 0,
@@ -8827,7 +8829,7 @@ function ZIRME() {
             if (currentMode === "face") {
               nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
             } else if (currentMode === "body") {
-              nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
+              nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true);
             } else if (currentFocalAuto && currentMode === "auto") {
               nc = await runSmartCrop(f.ec, oW, oH);
             }
@@ -8855,6 +8857,7 @@ function ZIRME() {
               done: s.done + 1
             }));
           }
+          setMlDetecting(false);
           setSmartBatch({
             running: false,
             done: 0,
@@ -8874,14 +8877,16 @@ function ZIRME() {
         padding: "7px 4px",
         cursor: "pointer",
         transition: "all .12s",
-        background: isActive ? "#7c5cff" : "transparent",
+        background: (mlDetecting && isActive && (mode === "face" || mode === "body")) ? "#2a1a5e" : isActive ? "#7c5cff" : "transparent",
         color: isActive ? "#fff" : "#555",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: 6
+        gap: 6,
+        position: "relative",
+        overflow: "hidden"
       }
-    }, icons[mode], /*#__PURE__*/React.createElement("span", null, label));
+    }, (mlDetecting && isActive && (mode === "face" || mode === "body")) ? /*#__PURE__*/React.createElement("div", {style: {position: "absolute", top: 0, left: 0, bottom: 0, width: (smartBatch.total > 0 ? Math.min(100, Math.round((smartBatch.done / smartBatch.total) * 100)) : 10) + "%", background: "rgba(124,92,255,0.45)", transition: "width 0.4s ease", pointerEvents: "none", borderRadius: 4}}) : null, icons[mode], /*#__PURE__*/React.createElement("span", {className: (mlDetecting && isActive && (mode === "face" || mode === "body")) ? "zirme-detecting-lbl" : undefined}, (mlDetecting && isActive && (mode === "face" || mode === "body")) ? ((t.detecting || "Detecting…") + (smartBatch.total > 0 ? " " + smartBatch.done + "/" + smartBatch.total : "")) : label));
   })), (settings.detectionMode === "face" || settings.detectionMode === "body") && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -8916,41 +8921,7 @@ function ZIRME() {
       borderColor: settings.adjustToTargetSize ? "#7c5cff" : "#2e2e2e",
       color: settings.adjustToTargetSize ? "#fff" : "#555"
     }
-  }, settings.adjustToTargetSize ? "ON" : "OFF")), settings.detectionMode === "body" && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 10,
-      padding: "8px",
-      background: "#1a1a1a",
-      borderRadius: 4
-    }
-  }, /*#__PURE__*/React.createElement("label", {
-    className: "lbl",
-    style: {
-      marginBottom: 0,
-      fontSize: 10
-    }
-  }, t.poseNetRefinement), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setSettings(s => ({
-      ...s,
-      poseNetEnabled: !s.poseNetEnabled
-    })),
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 9,
-      fontWeight: 600,
-      border: "1px solid",
-      borderRadius: 3,
-      padding: "2px 8px",
-      cursor: "pointer",
-      transition: "all .12s",
-      background: settings.poseNetEnabled ? "#7c5cff" : "transparent",
-      borderColor: settings.poseNetEnabled ? "#7c5cff" : "#2e2e2e",
-      color: settings.poseNetEnabled ? "#fff" : "#555"
-    }
-  }, settings.poseNetEnabled ? "ON" : "OFF")), settings.detectionMode !== "manual" && settings.detectionMode !== "auto" && /*#__PURE__*/React.createElement("div", {
+  }, settings.adjustToTargetSize ? "ON" : "OFF")), /* PoseNet integrated into body */ settings.detectionMode !== "manual" && settings.detectionMode !== "auto" && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9,
       color: "#888",
@@ -9938,6 +9909,7 @@ function ZIRME() {
         targets = filesRef.current.map(f => f.id);
       }
       if (!targets.length) return;
+      setMlDetecting(true);
       setSmartBatch({
         running: true,
         done: 0,
@@ -9958,7 +9930,7 @@ function ZIRME() {
         if (currentMode === "face") {
           nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
         } else if (currentMode === "body") {
-          nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, poseNetEnabled);
+          nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true);
         }
         if (!nc || nc.w < 2 || nc.h < 2) {
           const {
@@ -9984,6 +9956,7 @@ function ZIRME() {
           done: s.done + 1
         }));
       }
+      setMlDetecting(false);
       setSmartBatch({
         running: false,
         done: 0,
