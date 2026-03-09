@@ -1157,7 +1157,7 @@ const STRINGS = {
     redoCount: n => `Redo (${n})`,
     saveCurrent: "↓ Save Image",
     zipBtn: n => `↓ ZIP (${n})`,
-    filesBtn: n => `↓ Files (${n})`,
+    filesBtn: n => `↓ Images (${n})`,
     zipGenerating: "Generating ZIP…",
     add: "+ Add",
     dropLabel: "Drop your images here",
@@ -1373,7 +1373,7 @@ const STRINGS = {
     redoCount: n => `Rehacer (${n})`,
     saveCurrent: "↓ Imagen actual",
     zipBtn: n => `↓ ZIP (${n})`,
-    filesBtn: n => `↓ Files (${n})`,
+    filesBtn: n => `↓ Images (${n})`,
     zipGenerating: "Generando ZIP…",
     add: "+ Añadir",
     dropLabel: "Suelta tus imágenes aquí",
@@ -1589,7 +1589,7 @@ const STRINGS = {
     redoCount: n => `Rétablir (${n})`,
     saveCurrent: "↓ Image actuelle",
     zipBtn: n => `↓ ZIP (${n})`,
-    filesBtn: n => `↓ Files (${n})`,
+    filesBtn: n => `↓ Images (${n})`,
     zipGenerating: "Génération ZIP…",
     add: "+ Ajouter",
     dropLabel: "Déposez vos images ici",
@@ -1805,7 +1805,7 @@ const STRINGS = {
     redoCount: n => `Wiederholen (${n})`,
     saveCurrent: "↓ Aktuelles Bild",
     zipBtn: n => `↓ ZIP (${n})`,
-    filesBtn: n => `↓ Files (${n})`,
+    filesBtn: n => `↓ Images (${n})`,
     zipGenerating: "ZIP wird erstellt…",
     add: "+ Hinzufügen",
     dropLabel: "Bilder hier ablegen",
@@ -2021,7 +2021,7 @@ const STRINGS = {
     redoCount: n => `Refazer (${n})`,
     saveCurrent: "↓ Imagem atual",
     zipBtn: n => `↓ ZIP (${n})`,
-    filesBtn: n => `↓ Files (${n})`,
+    filesBtn: n => `↓ Images (${n})`,
     zipGenerating: "Gerando ZIP…",
     add: "+ Adicionar",
     dropLabel: "Solte suas imagens aqui",
@@ -2237,7 +2237,7 @@ const STRINGS = {
     redoCount: n => `Ripristina (${n})`,
     saveCurrent: "↓ Immagine corrente",
     zipBtn: n => `↓ ZIP (${n})`,
-    filesBtn: n => `↓ Files (${n})`,
+    filesBtn: n => `↓ Images (${n})`,
     zipGenerating: "Generazione ZIP…",
     add: "+ Aggiungi",
     dropLabel: "Trascina le tue immagini qui",
@@ -2453,7 +2453,7 @@ const STRINGS = {
     redoCount: n => `重做 (${n})`,
     saveCurrent: "↓ 保存当前图片",
     zipBtn: n => `↓ ZIP (${n})`,
-    filesBtn: n => `↓ Files (${n})`,
+    filesBtn: n => `↓ Images (${n})`,
     zipGenerating: "正在生成 ZIP…",
     add: "+ 添加",
     dropLabel: "在此处拖放图片",
@@ -2669,7 +2669,7 @@ const STRINGS = {
     redoCount: n => `やり直す (${n})`,
     saveCurrent: "↓ 現在の画像を保存",
     zipBtn: n => `↓ ZIP (${n})`,
-    filesBtn: n => `↓ Files (${n})`,
+    filesBtn: n => `↓ Images (${n})`,
     zipGenerating: "ZIP を生成中…",
     add: "+ 追加",
     dropLabel: "ここに画像をドロップ",
@@ -2885,7 +2885,7 @@ const STRINGS = {
     redoCount: n => `Повторить (${n})`,
     saveCurrent: "↓ Текущее изображение",
     zipBtn: n => `↓ ZIP (${n})`,
-    filesBtn: n => `↓ Files (${n})`,
+    filesBtn: n => `↓ Images (${n})`,
     zipGenerating: "Создание ZIP…",
     add: "+ Добавить",
     dropLabel: "Перетащите изображения сюда",
@@ -8423,64 +8423,7 @@ function ZIRME() {
         setMultiSel(new Set());
       }
     }
-  }, multiSel.size > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "sticky",
-      top: 0,
-      zIndex: 10,
-      background: "rgba(20,14,40,0.92)",
-      border: "1px solid rgba(124,92,255,0.45)",
-      borderRadius: 8,
-      padding: "7px 12px",
-      marginBottom: 12,
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      boxShadow: "0 2px 12px rgba(0,0,0,0.35)"
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: multiSel.size < files.length ? selectAll : () => setMultiSel(new Set()),
-    style: {
-      background: "transparent",
-      border: "1px solid rgba(124,92,255,0.35)",
-      borderRadius: 5,
-      color: "#a78bfa",
-      cursor: "pointer",
-      fontSize: 11,
-      padding: "3px 9px",
-      flexShrink: 0,
-      fontFamily: "Inter,sans-serif",
-      transition: "background .12s"
-    },
-    onMouseEnter: e => e.currentTarget.style.background = "rgba(124,92,255,0.18)",
-    onMouseLeave: e => e.currentTarget.style.background = "transparent"
-  }, multiSel.size < files.length ? t.selectAll : t.deselectAll), /*#__PURE__*/React.createElement("span", {
-    style: {
-      flex: 1,
-      textAlign: "center",
-      fontSize: 12,
-      fontWeight: 500,
-      color: "#a78bfa",
-      letterSpacing: 0.2
-    }
-  }, t.selectedHint(multiSel.size), " / ", files.length), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setMultiSel(new Set()),
-    style: {
-      background: "transparent",
-      border: "1px solid rgba(124,92,255,0.35)",
-      borderRadius: 5,
-      color: "#a78bfa",
-      cursor: "pointer",
-      fontSize: 13,
-      padding: "2px 8px",
-      flexShrink: 0,
-      fontFamily: "Inter,sans-serif",
-      lineHeight: 1,
-      transition: "background .12s"
-    },
-    onMouseEnter: e => e.currentTarget.style.background = "rgba(124,92,255,0.18)",
-    onMouseLeave: e => e.currentTarget.style.background = "transparent"
-  }, "\u2715")), files.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, files.length === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
       height: "100%",
       display: "flex",
@@ -9829,15 +9772,11 @@ function ZIRME() {
     style: {
       flex: 1
     }
-  }, mBtn(t.saveCurrent, exportCurrent, !sel, PURPLE)), /*#__PURE__*/React.createElement("div", {
+  }, mBtn(multiSel.size > 1 ? t.filesBtn(multiSel.size) : t.saveCurrent, multiSel.size > 1 ? exportAllIndividual : exportCurrent, multiSel.size > 1 ? false : !sel, PURPLE)), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1
     }
-  }, mBtn(zipping ? `${t.zipGenerating} ${zipPct}%` : t.zipBtn(multiSel.size > 0 ? multiSel.size : files.length), exportZip, !files.length || zipping, "#4f46e5"))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 6
-    }
-  }, smBtn(t.filesBtn(multiSel.size > 0 ? multiSel.size : files.length), exportAllIndividual, !files.length)), zipping && /*#__PURE__*/React.createElement("div", {
+  }, mBtn(zipping ? `${t.zipGenerating} ${zipPct}%` : t.zipBtn(multiSel.size > 0 ? multiSel.size : files.length), exportZip, !files.length || zipping, "#4f46e5"))), zipping && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
       height: 4,
