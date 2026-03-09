@@ -1356,6 +1356,7 @@ const STRINGS = {
     downloadLabel: "Download",
     aiDetectionTitle: "AI Detection",
     aiDetectionBody: "This feature uses AI models that may slow down processing, especially on modest hardware or older browsers. Performance may vary depending on your device.",
+    dontShowWarning: "Don't show this warning again",
     cancelBtn: "Cancel",
     continueBtn: "Continue",
     announcementClose: "Got it",
@@ -1571,6 +1572,7 @@ const STRINGS = {
     downloadLabel: "Descargar",
     aiDetectionTitle: "Detección con Inteligencia Artificial",
     aiDetectionBody: "Esta función utiliza modelos de IA que pueden ralentizar el procesamiento, especialmente en equipos modestos o navegadores antiguos. El rendimiento puede variar según tu dispositivo.",
+    dontShowWarning: "No volver a mostrar este aviso",
     cancelBtn: "Cancelar",
     continueBtn: "Continuar",
     announcementClose: "Entendido",
@@ -1786,6 +1788,7 @@ const STRINGS = {
     downloadLabel: "Télécharger",
     aiDetectionTitle: "Détection par IA",
     aiDetectionBody: "Cette fonctionnalité utilise des modèles d'IA pouvant ralentir le traitement, notamment sur du matériel limité ou des navigateurs anciens. Les performances peuvent varier selon votre appareil.",
+    dontShowWarning: "Ne plus afficher cet avertissement",
     cancelBtn: "Annuler",
     continueBtn: "Continuer",
     announcementClose: "Compris",
@@ -2001,6 +2004,7 @@ const STRINGS = {
     downloadLabel: "Herunterladen",
     aiDetectionTitle: "KI-Erkennung",
     aiDetectionBody: "Diese Funktion verwendet KI-Modelle, die die Verarbeitung verlangsamen können, besonders auf schwächerer Hardware oder älteren Browsern. Die Leistung kann je nach Gerät variieren.",
+    dontShowWarning: "Diesen Hinweis nicht mehr anzeigen",
     cancelBtn: "Abbrechen",
     continueBtn: "Weiter",
     announcementClose: "Verstanden",
@@ -2216,6 +2220,7 @@ const STRINGS = {
     downloadLabel: "Baixar",
     aiDetectionTitle: "Detecção por IA",
     aiDetectionBody: "Esta função usa modelos de IA que podem deixar o processamento mais lento, especialmente em hardware modesto ou navegadores antigos. O desempenho pode variar conforme o dispositivo.",
+    dontShowWarning: "Não mostrar este aviso novamente",
     cancelBtn: "Cancelar",
     continueBtn: "Continuar",
     announcementClose: "Entendido",
@@ -2431,6 +2436,7 @@ const STRINGS = {
     downloadLabel: "Scarica",
     aiDetectionTitle: "Rilevamento IA",
     aiDetectionBody: "Questa funzione utilizza modelli di IA che potrebbero rallentare l'elaborazione, specialmente su hardware modesto o browser datati. Le prestazioni possono variare a seconda del dispositivo.",
+    dontShowWarning: "Non mostrare più questo avviso",
     cancelBtn: "Annulla",
     continueBtn: "Continua",
     announcementClose: "Capito",
@@ -2646,6 +2652,7 @@ const STRINGS = {
     downloadLabel: "下载",
     aiDetectionTitle: "AI 检测",
     aiDetectionBody: "此功能使用 AI 模型，可能会减慢处理速度，尤其是在性能较低的设备或旧版浏览器上。实际性能因设备而异。",
+    dontShowWarning: "不再显示此警告",
     cancelBtn: "取消",
     continueBtn: "继续",
     announcementClose: "知道了",
@@ -2861,6 +2868,7 @@ const STRINGS = {
     downloadLabel: "ダウンロード",
     aiDetectionTitle: "AI 検出",
     aiDetectionBody: "この機能は AI モデルを使用しており、処理が遅くなる場合があります（特に性能の低いハードウェアや古いブラウザでは顕著です）。パフォーマンスはデバイスにより異なります。",
+    dontShowWarning: "この警告を再表示しない",
     cancelBtn: "キャンセル",
     continueBtn: "続ける",
     announcementClose: "了解",
@@ -3076,6 +3084,7 @@ const STRINGS = {
     downloadLabel: "Скачать",
     aiDetectionTitle: "ИИ-обнаружение",
     aiDetectionBody: "Эта функция использует модели ИИ, которые могут замедлить обработку, особенно на слабом оборудовании или в старых браузерах. Производительность зависит от вашего устройства.",
+    dontShowWarning: "Больше не показывать это предупреждение",
     cancelBtn: "Отмена",
     continueBtn: "Продолжить",
     announcementClose: "Понятно",
@@ -6683,6 +6692,9 @@ function ZIRME() {
     show: false,
     mode: null
   });
+  const [mlDontShowAgain, setMlDontShowAgain] = useState(() => {
+    try { return localStorage.getItem("zirme-ml-dont-warn") === "true"; } catch (e) { return false; }
+  });
   const [showAnnouncement, setShowAnnouncement] = useState(() => {
     if (!ANNOUNCEMENT.enabled) return false;
     try {
@@ -6722,7 +6734,7 @@ function ZIRME() {
     done: 0,
     total: 0
   }); // smart crop batch progress
-  const [mlDetecting, setMlDetecting] = useState(false);
+  const mlDetecting = smartBatch.running && (settings.detectionMode === "face" || settings.detectionMode === "body");
   const [tick, setTick] = useState(0);
   const [cellH, setCellH] = useState(380);
   const [panelOpen, setPanelOpen] = useState(true);
@@ -8704,7 +8716,7 @@ function ZIRME() {
     return /*#__PURE__*/React.createElement("button", {
       key: mode,
       onClick: () => {
-        if (mode === "face" || mode === "body") {
+        if ((mode === "face" || mode === "body") && !mlDontShowAgain) {
           setMlWarningDialog({ show: true, mode });
         } else {
           setSettings(s => ({ ...s, detectionMode: mode, focalAuto: mode !== "manual" }));
@@ -9563,6 +9575,28 @@ function ZIRME() {
       lineHeight: 1.6
     }
   }, t.aiDetectionBody))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 20,
+      padding: "10px 12px",
+      background: "#181818",
+      borderRadius: 5,
+      border: "1px solid #2a2a2a"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    id: "ml-dont-warn",
+    checked: mlDontShowAgain,
+    onChange: e => {
+      setMlDontShowAgain(e.target.checked);
+      try { localStorage.setItem("zirme-ml-dont-warn", e.target.checked ? "true" : "false"); } catch (err) {}
+    }
+  }), /*#__PURE__*/React.createElement("label", {
+    htmlFor: "ml-dont-warn",
+    style: { fontSize: 12, color: "#888", cursor: "pointer", userSelect: "none" }
+  }, t.dontShowWarning)), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 10
