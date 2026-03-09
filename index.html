@@ -8460,21 +8460,6 @@ function ZIRME() {
     className: "sec-block"
   }, /*#__PURE__*/React.createElement("span", {
     className: "sec-title"
-  }, t.secThumbs), /*#__PURE__*/React.createElement("label", {
-    className: "lbl"
-  }, t.thumbSize(cellH)), /*#__PURE__*/React.createElement("input", {
-    type: "range",
-    min: 180,
-    max: 700,
-    value: cellH,
-    onChange: e => setCellH(+e.target.value),
-    style: {
-      marginBottom: 6
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "sec-block"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "sec-title"
   }, t.secComposition), /*#__PURE__*/React.createElement("label", {
     className: "lbl"
   }, t.secOutput), /*#__PURE__*/React.createElement("div", {
@@ -8615,11 +8600,10 @@ function ZIRME() {
       color: "#555",
       marginBottom: 4
     }
-  }, t.ratioLbl, ": ", oW / dv, ":", oH / dv), /*#__PURE__*/React.createElement("label", {
-    className: "lbl",
-    style: {
-      marginTop: 12
-    }
+  }, t.ratioLbl, ": ", oW / dv, ":", oH / dv)), /*#__PURE__*/React.createElement("div", {
+    className: "sec-block"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "sec-title"
   }, t.cropModeLbl), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "grid",
@@ -8751,97 +8735,24 @@ function ZIRME() {
             mode
           });
         } else {
-          // Capturar valores AHORA (antes de setState)
-          const currentMode = mode;
-          const currentFocalAuto = mode !== "manual";
-          const currentSettings = settingsRef.current;
-          const currentSelId = selIdRef.current;
-          const currentMultiSel = new Set(multiSelRef.current);
-
-          // Aplicar settings
           setSettings(s => ({
             ...s,
             detectionMode: mode,
             focalAuto: mode !== "manual"
           }));
-
-          // Ejecutar INMEDIATAMENTE con valores capturados
-          const {
-            w: oW,
-            h: oH,
-            focalPoint,
-            adjustToTargetSize,
-            poseNetEnabled
-          } = currentSettings;
-
-          // Determinar targets
-          let targets;
-          if (currentSelId && currentMultiSel.size === 0) {
-            targets = [currentSelId];
-          } else if (currentMultiSel.size > 0) {
-            targets = [...currentMultiSel];
-          } else {
-            targets = filesRef.current.map(f => f.id);
+          const currentSelId = selIdRef.current;
+          if (currentSelId) {
+            const f = filesRef.current.find(ff => ff.id === currentSelId);
+            if (f) {
+              const { w: oW, h: oH, focalPoint, adjustToTargetSize } = settingsRef.current;
+              let nc = await runDetection(f.ec, oW, oH, mode, mode !== "manual", adjustToTargetSize, true);
+              if (!nc || nc.w < 2) {
+                const { ax, ay } = focalPoint || { ax: 0.5, ay: 0.5 };
+                nc = focalCrop(f.ec.width, f.ec.height, oW, oH, ax, ay);
+              }
+              setCropForId(currentSelId, { ...nc, auto: true });
+            }
           }
-          if (!targets.length) return;
-          setMlDetecting(true);
-          setSmartBatch({
-            running: true,
-            done: 0,
-            total: targets.length
-          });
-          let applied = 0;
-          for (let i = 0; i < targets.length; i++) {
-            const id = targets[i];
-            const f = filesRef.current.find(ff => ff.id === id);
-            if (!f) {
-              setSmartBatch(s => ({
-                ...s,
-                done: s.done + 1
-              }));
-              continue;
-            }
-            let nc = null;
-            if (currentMode === "face") {
-              nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
-            } else if (currentMode === "body") {
-              nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true);
-            } else if (currentFocalAuto && currentMode === "auto") {
-              nc = await runSmartCrop(f.ec, oW, oH);
-            }
-            if (!nc || nc.w < 2 || nc.h < 2) {
-              const {
-                ax,
-                ay
-              } = focalPoint || {
-                ax: 0.5,
-                ay: 0.5
-              };
-              nc = focalCrop(f.ec.width, f.ec.height, oW, oH, ax, ay);
-            }
-            const crop = {
-              ...nc,
-              auto: true
-            };
-            setFiles(prev => prev.map(ff => ff.id === id ? {
-              ...ff,
-              crop
-            } : ff));
-            applied++;
-            setSmartBatch(s => ({
-              ...s,
-              done: s.done + 1
-            }));
-          }
-          setMlDetecting(false);
-          setSmartBatch({
-            running: false,
-            done: 0,
-            total: 0
-          });
-          const modeLabel = currentMode === "face" ? t.detFaces : currentMode === "body" ? t.detBodies : "";
-          const countMsg = targets.length === 1 ? t.toastProcessed1 : t.toastCroppedN(applied);
-          showToast(modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`);
         }
       },
       style: {
@@ -8958,52 +8869,16 @@ function ZIRME() {
       const active = fp.ax === ax && fp.ay === ay;
       return /*#__PURE__*/React.createElement("button", {
         key: i,
-        onClick: async () => {
-          // Actualizar punto focal
-          setSettings(s => ({
-            ...s,
-            focalPoint: {
-              ax,
-              ay
-            }
-          }));
-
-          // Aplicar crop INMEDIATAMENTE con nuevo punto focal
+        onClick: () => {
+          setSettings(s => ({ ...s, focalPoint: { ax, ay } }));
           const currentSelId = selIdRef.current;
-          const currentMultiSel = new Set(multiSelRef.current);
-          const {
-            w: oW,
-            h: oH
-          } = settingsRef.current;
-
-          // Determinar targets
-          let targets;
-          if (currentSelId && currentMultiSel.size === 0) {
-            targets = [currentSelId];
-          } else if (currentMultiSel.size > 0) {
-            targets = [...currentMultiSel];
-          } else {
-            targets = filesRef.current.map(f => f.id);
+          if (currentSelId) {
+            const f = filesRef.current.find(ff => ff.id === currentSelId);
+            if (f) {
+              const { w: oW, h: oH } = settingsRef.current;
+              setCropForId(currentSelId, { ...focalCrop(f.ec.width, f.ec.height, oW, oH, ax, ay), auto: true });
+            }
           }
-          if (!targets.length) return;
-
-          // Aplicar crop con el nuevo punto focal
-          for (let j = 0; j < targets.length; j++) {
-            const id = targets[j];
-            const f = filesRef.current.find(ff => ff.id === id);
-            if (!f) continue;
-            const nc = focalCrop(f.ec.width, f.ec.height, oW, oH, ax, ay);
-            const crop = {
-              ...nc,
-              auto: true
-            };
-            setFiles(prev => prev.map(ff => ff.id === id ? {
-              ...ff,
-              crop
-            } : ff));
-          }
-          const countMsg = targets.length === 1 ? t.toastProcessed1 : t.toastCroppedN(targets.length);
-          showToast(`✦ ${countMsg}`);
         },
         style: {
           aspectRatio: "1",
@@ -9029,6 +8904,71 @@ function ZIRME() {
       }));
     }));
   })()), /*#__PURE__*/React.createElement("div", {
+    className: "sec-block"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "sec-title"
+  }, t.secActions), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 500,
+      color: (selId || multiSel.size > 0) ? "#a78bfa" : "#666",
+      marginBottom: 8
+    }
+  }, (selId && multiSel.size === 0 ? 1 : multiSel.size) + " / " + files.length + " " + t.selectedLabel), /*#__PURE__*/React.createElement("button", {
+    onClick: (files.length > 0 && multiSel.size === files.length) ? () => { setSelId(null); setMultiSel(new Set()); } : selectAll,
+    disabled: !files.length,
+    style: {
+      width: "100%",
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      fontWeight: 500,
+      border: "1px solid " + ((files.length > 0 && multiSel.size === files.length) ? "#2e2e2e" : "rgba(124,92,255,0.3)"),
+      borderRadius: 5,
+      padding: "7px 10px",
+      cursor: files.length ? "pointer" : "not-allowed",
+      background: (files.length > 0 && multiSel.size === files.length) ? "transparent" : "rgba(124,92,255,0.08)",
+      color: files.length ? ((files.length > 0 && multiSel.size === files.length) ? "#aaa" : "#a78bfa") : "#555",
+      textAlign: "center",
+      marginBottom: 8,
+      opacity: files.length ? 1 : 0.5,
+      transition: "all .15s"
+    }
+  }, (files.length > 0 && multiSel.size === files.length) ? t.deselectAll : t.selectAll), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: clearAllCrops,
+    style: {
+      flex: "0 0 40%",
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      fontWeight: 500,
+      border: "1px solid #2e2e2e",
+      borderRadius: 5,
+      padding: "7px 10px",
+      cursor: "pointer",
+      background: "transparent",
+      color: "#aaa",
+      textAlign: "center"
+    }
+  }, t.clearAllCrops), /*#__PURE__*/React.createElement("button", {
+    onClick: applyFocalAll,
+    style: {
+      flex: "1 1 60%",
+      fontFamily: "Inter,sans-serif",
+      fontSize: 11,
+      fontWeight: 600,
+      border: "none",
+      borderRadius: 5,
+      padding: "7px 10px",
+      cursor: "pointer",
+      background: "#7c5cff",
+      color: "#fff",
+      textAlign: "center"
+    }
+  }, t.applyToAll))), /*#__PURE__*/React.createElement("div", {
     className: "sec-block"
   }, /*#__PURE__*/React.createElement("span", {
     className: "sec-title"
@@ -9188,165 +9128,18 @@ function ZIRME() {
     className: "sec-block"
   }, /*#__PURE__*/React.createElement("span", {
     className: "sec-title"
-  }, t.secActions), /*#__PURE__*/React.createElement("div", {
+  }, t.secThumbs), /*#__PURE__*/React.createElement("label", {
+    className: "lbl"
+  }, t.thumbSize(cellH)), /*#__PURE__*/React.createElement("input", {
+    type: "range",
+    min: 180,
+    max: 700,
+    value: cellH,
+    onChange: e => setCellH(+e.target.value),
     style: {
-      display: "flex",
-      gap: 8,
-      marginBottom: 8
+      marginBottom: 6
     }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: selectAll,
-    disabled: !files.length,
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 500,
-      border: "1px solid rgba(124,92,255,0.3)",
-      borderRadius: 5,
-      padding: "7px 10px",
-      cursor: files.length ? "pointer" : "not-allowed",
-      background: "rgba(124,92,255,0.08)",
-      color: files.length ? "#a78bfa" : "#555",
-      textAlign: "center",
-      opacity: files.length ? 1 : 0.5,
-      transition: "all .15s"
-    },
-    onMouseEnter: e => { if (files.length) { e.currentTarget.style.background = "rgba(124,92,255,0.15)"; e.currentTarget.style.borderColor = "rgba(124,92,255,0.5)"; } },
-    onMouseLeave: e => { e.currentTarget.style.background = "rgba(124,92,255,0.08)"; e.currentTarget.style.borderColor = "rgba(124,92,255,0.3)"; }
-  }, t.selectAll), /*#__PURE__*/React.createElement("button", {
-    onClick: () => { setSelId(null); setMultiSel(new Set()); },
-    disabled: !(selId || multiSel.size > 0),
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 500,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "7px 10px",
-      cursor: (selId || multiSel.size > 0) ? "pointer" : "not-allowed",
-      background: "transparent",
-      color: (selId || multiSel.size > 0) ? "#aaa" : "#444",
-      textAlign: "center",
-      opacity: (selId || multiSel.size > 0) ? 1 : 0.4
-    }
-  }, t.deselectAll)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8,
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: clearAllCrops,
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 500,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "7px 10px",
-      cursor: "pointer",
-      background: "transparent",
-      color: "#aaa",
-      textAlign: "center"
-    }
-  }, t.clearAllCrops), /*#__PURE__*/React.createElement("button", {
-    onClick: applyFocalAll,
-    style: {
-      flex: 1,
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 500,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "7px 10px",
-      cursor: "pointer",
-      background: "transparent",
-      color: "#aaa",
-      textAlign: "center"
-    }
-  }, t.applyToAll)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "#202020",
-      borderRadius: 5,
-      padding: "8px 10px",
-      fontSize: 10,
-      color: "#666"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 2
-    }
-  }, t.totalLbl), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 600,
-      color: "#888"
-    }
-  }, files.length)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: selId || multiSel.size > 0 ? "rgba(124,92,255,0.12)" : "#202020",
-      borderRadius: 5,
-      padding: "8px 10px",
-      fontSize: 10,
-      color: "#666",
-      transition: "all .2s"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 2
-    }
-  }, t.selectedLabel), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 600,
-      color: selId || multiSel.size > 0 ? "#a78bfa" : "#888"
-    }
-  }, selId && multiSel.size === 0 ? 1 : multiSel.size)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "#202020",
-      borderRadius: 5,
-      padding: "8px 10px",
-      fontSize: 10,
-      color: "#666"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 2
-    }
-  }, t.withCropLbl), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 600,
-      color: "#a78bfa"
-    }
-  }, manualCrop)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "#202020",
-      borderRadius: 5,
-      padding: "8px 10px",
-      fontSize: 10,
-      color: "#666"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 2
-    }
-  }, t.noCropLbl), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 600,
-      color: "#888"
-    }
-  }, autoCrop))))), panelTab === "export" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }))), panelTab === "export" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "sec-block"
   }, /*#__PURE__*/React.createElement("span", {
     className: "sec-title"
@@ -9868,94 +9661,21 @@ function ZIRME() {
   }, t.cancelBtn), /*#__PURE__*/React.createElement("button", {
     onClick: async () => {
       const currentMode = mlWarningDialog.mode;
-      const currentSettings = settingsRef.current;
       const currentSelId = selIdRef.current;
-      const currentMultiSel = new Set(multiSelRef.current);
-      setMlWarningDialog({
-        show: false,
-        mode: null
-      });
-      setSettings(s => ({
-        ...s,
-        detectionMode: currentMode,
-        focalAuto: true
-      }));
-
-      // Ejecutar INMEDIATAMENTE con valores capturados
-      const {
-        w: oW,
-        h: oH,
-        focalPoint,
-        adjustToTargetSize,
-        poseNetEnabled
-      } = currentSettings;
-
-      // Determinar targets
-      let targets;
-      if (currentSelId && currentMultiSel.size === 0) {
-        targets = [currentSelId];
-      } else if (currentMultiSel.size > 0) {
-        targets = [...currentMultiSel];
-      } else {
-        targets = filesRef.current.map(f => f.id);
+      setMlWarningDialog({ show: false, mode: null });
+      setSettings(s => ({ ...s, detectionMode: currentMode, focalAuto: true }));
+      if (currentSelId) {
+        const f = filesRef.current.find(ff => ff.id === currentSelId);
+        if (f) {
+          const { w: oW, h: oH, focalPoint, adjustToTargetSize } = settingsRef.current;
+          let nc = await runDetection(f.ec, oW, oH, currentMode, true, adjustToTargetSize, true);
+          if (!nc || nc.w < 2) {
+            const { ax, ay } = focalPoint || { ax: 0.5, ay: 0.5 };
+            nc = focalCrop(f.ec.width, f.ec.height, oW, oH, ax, ay);
+          }
+          setCropForId(currentSelId, { ...nc, auto: true });
+        }
       }
-      if (!targets.length) return;
-      setMlDetecting(true);
-      setSmartBatch({
-        running: true,
-        done: 0,
-        total: targets.length
-      });
-      let applied = 0;
-      for (let i = 0; i < targets.length; i++) {
-        const id = targets[i];
-        const f = filesRef.current.find(ff => ff.id === id);
-        if (!f) {
-          setSmartBatch(s => ({
-            ...s,
-            done: s.done + 1
-          }));
-          continue;
-        }
-        let nc = null;
-        if (currentMode === "face") {
-          nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
-        } else if (currentMode === "body") {
-          nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true);
-        }
-        if (!nc || nc.w < 2 || nc.h < 2) {
-          const {
-            ax,
-            ay
-          } = focalPoint || {
-            ax: 0.5,
-            ay: 0.5
-          };
-          nc = focalCrop(f.ec.width, f.ec.height, oW, oH, ax, ay);
-        }
-        const crop = {
-          ...nc,
-          auto: true
-        };
-        setFiles(prev => prev.map(ff => ff.id === id ? {
-          ...ff,
-          crop
-        } : ff));
-        applied++;
-        setSmartBatch(s => ({
-          ...s,
-          done: s.done + 1
-        }));
-      }
-      setMlDetecting(false);
-      setSmartBatch({
-        running: false,
-        done: 0,
-        total: 0
-      });
-      const modeLabel = currentMode === "face" ? t.detFaces : currentMode === "body" ? t.detBodies : "";
-      const countMsg = targets.length === 1 ? t.toastProcessed1 : t.toastCroppedN(applied);
-      showToast(modeLabel ? `✦ ${countMsg} (${modeLabel})` : `✦ ${countMsg}`);
     },
     style: {
       flex: 1,
