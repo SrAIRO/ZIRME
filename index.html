@@ -3391,6 +3391,12 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, pos
               let cropX = shoulderX - cropW / 2;
               let cropY = shoulderY;
 
+              // Scale down if crop exceeds canvas, preserving aspect ratio
+              if (cropW > canvas.width || cropH > canvas.height) {
+                const scale = Math.min(canvas.width / cropW, canvas.height / cropH);
+                cropW *= scale;
+                cropH *= scale;
+              }
               // Clamp
               cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
               cropY = Math.max(0, Math.min(cropY, canvas.height - cropH));
@@ -3454,6 +3460,12 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, pos
           let cropX = faceCenter - cropW / 2;
           let cropY = clavicleY;
 
+          // Scale down if crop exceeds canvas, preserving aspect ratio
+          if (cropW > canvas.width || cropH > canvas.height) {
+            const scale = Math.min(canvas.width / cropW, canvas.height / cropH);
+            cropW *= scale;
+            cropH *= scale;
+          }
           // Clamp
           cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
           cropY = Math.max(0, Math.min(cropY, canvas.height - cropH));
@@ -3517,6 +3529,12 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, pos
     let cropX = x + width / 2 - cropW / 2;
     let cropY = y;
 
+    // Scale down if crop exceeds canvas, preserving aspect ratio
+    if (cropW > canvas.width || cropH > canvas.height) {
+      const scale = Math.min(canvas.width / cropW, canvas.height / cropH);
+      cropW *= scale;
+      cropH *= scale;
+    }
     // Clamp
     cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
     cropY = Math.max(0, Math.min(cropY, canvas.height - cropH));
@@ -6987,15 +7005,23 @@ function ZIRME() {
         ec.width = img.naturalWidth;
         ec.height = img.naturalHeight;
         ec.getContext("2d").drawImage(img, 0, 0);
-        // Auto-crop on load — same logic as applyFocalAll, marked auto:true
+        // Auto-crop on load — respects detectionMode (body/face/auto), marked auto:true
         const {
           w: oW,
           h: oH,
           focalAuto,
-          focalPoint
+          focalPoint,
+          detectionMode,
+          adjustToTargetSize
         } = settingsRef.current;
         let crop = null;
-        if (focalAuto) {
+        if (detectionMode === "face") {
+          const nc = await detectFacesCrop(ec, oW, oH, adjustToTargetSize);
+          crop = nc && nc.w > 2 ? { ...nc, auto: true } : null;
+        } else if (detectionMode === "body") {
+          const nc = await detectBodyCrop(ec, oW, oH, adjustToTargetSize, false);
+          crop = nc && nc.w > 2 ? { ...nc, auto: true } : null;
+        } else if (focalAuto) {
           const nc = await runSmartCrop(ec, oW, oH);
           crop = nc && nc.w > 2 ? {
             ...nc,
