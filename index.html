@@ -3261,6 +3261,18 @@ async function loadPoseNet() {
     return false;
   }
 }
+// Scale a crop rectangle down to fit within canvas bounds, preserving aspect ratio.
+function scaleToFit(w, h, maxW, maxH) {
+  const scale = Math.min(1, maxW / w, maxH / h);
+  return { w: w * scale, h: h * scale };
+}
+// Dispatch crop detection based on the active mode. Returns null on failure/no-op.
+async function runDetection(canvas, oW, oH, detectionMode, focalAuto, adjustToTargetSize, poseNetEnabled) {
+  if (detectionMode === "face") return detectFacesCrop(canvas, oW, oH, adjustToTargetSize);
+  if (detectionMode === "body") return detectBodyCrop(canvas, oW, oH, adjustToTargetSize, poseNetEnabled);
+  if (focalAuto) return runSmartCrop(canvas, oW, oH);
+  return null;
+}
 async function detectFacesCrop(canvas, outW, outH, adjustToTargetSize = true) {
   const loaded = await loadFaceApi();
   if (!loaded) return null;
@@ -3302,11 +3314,7 @@ async function detectFacesCrop(canvas, outW, outH, adjustToTargetSize = true) {
       }
 
       // Si es más grande que el canvas, escalar
-      if (cropW > canvas.width || cropH > canvas.height) {
-        const scale = Math.min(canvas.width / cropW, canvas.height / cropH);
-        cropW = cropW * scale;
-        cropH = cropH * scale;
-      }
+      ({ w: cropW, h: cropH } = scaleToFit(cropW, cropH, canvas.width, canvas.height));
 
       // Centrar en el rostro (priorizar mostrar más espacio arriba)
       let cropX = box.x + box.width / 2 - cropW / 2;
@@ -3410,11 +3418,7 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, pos
               let cropY = shoulderY;
 
               // Scale down if crop exceeds canvas, preserving aspect ratio
-              if (cropW > canvas.width || cropH > canvas.height) {
-                const scale = Math.min(canvas.width / cropW, canvas.height / cropH);
-                cropW *= scale;
-                cropH *= scale;
-              }
+              ({ w: cropW, h: cropH } = scaleToFit(cropW, cropH, canvas.width, canvas.height));
               // Clamp
               cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
               cropY = Math.max(0, Math.min(cropY, canvas.height - cropH));
@@ -3479,11 +3483,7 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, pos
           let cropY = clavicleY;
 
           // Scale down if crop exceeds canvas, preserving aspect ratio
-          if (cropW > canvas.width || cropH > canvas.height) {
-            const scale = Math.min(canvas.width / cropW, canvas.height / cropH);
-            cropW *= scale;
-            cropH *= scale;
-          }
+          ({ w: cropW, h: cropH } = scaleToFit(cropW, cropH, canvas.width, canvas.height));
           // Clamp
           cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
           cropY = Math.max(0, Math.min(cropY, canvas.height - cropH));
@@ -3548,11 +3548,7 @@ async function detectBodyCrop(canvas, outW, outH, adjustToTargetSize = true, pos
     let cropY = y;
 
     // Scale down if crop exceeds canvas, preserving aspect ratio
-    if (cropW > canvas.width || cropH > canvas.height) {
-      const scale = Math.min(canvas.width / cropW, canvas.height / cropH);
-      cropW *= scale;
-      cropH *= scale;
-    }
+    ({ w: cropW, h: cropH } = scaleToFit(cropW, cropH, canvas.width, canvas.height));
     // Clamp
     cropX = Math.max(0, Math.min(cropX, canvas.width - cropW));
     cropY = Math.max(0, Math.min(cropY, canvas.height - cropH));
@@ -7032,20 +7028,8 @@ function ZIRME() {
           detectionMode,
           adjustToTargetSize
         } = settingsRef.current;
-        let crop = null;
-        if (detectionMode === "face") {
-          const nc = await detectFacesCrop(ec, oW, oH, adjustToTargetSize);
-          crop = nc && nc.w > 2 ? { ...nc, auto: true } : null;
-        } else if (detectionMode === "body") {
-          const nc = await detectBodyCrop(ec, oW, oH, adjustToTargetSize, false);
-          crop = nc && nc.w > 2 ? { ...nc, auto: true } : null;
-        } else if (focalAuto) {
-          const nc = await runSmartCrop(ec, oW, oH);
-          crop = nc && nc.w > 2 ? {
-            ...nc,
-            auto: true
-          } : null;
-        }
+        const nc0 = await runDetection(ec, oW, oH, detectionMode, focalAuto, adjustToTargetSize, false);
+        let crop = nc0 && nc0.w > 2 ? { ...nc0, auto: true } : null;
         if (!crop) {
           const {
             ax,
@@ -7165,14 +7149,7 @@ function ZIRME() {
         done: 0,
         total: 1
       });
-      let nc = null;
-      if (detectionMode === "face") {
-        nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
-      } else if (detectionMode === "body") {
-        nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true);
-      } else if (focalAuto && detectionMode === "auto") {
-        nc = await runSmartCrop(f.ec, oW, oH);
-      }
+      let nc = await runDetection(f.ec, oW, oH, detectionMode, focalAuto, adjustToTargetSize, true);
       if (!nc || nc.w < 2 || nc.h < 2) {
         const {
           ax,
@@ -7235,16 +7212,7 @@ function ZIRME() {
       const results = await Promise.all(batch.map(async id => {
         const f = filesRef.current.find(ff => ff.id === id);
         if (!f) return null;
-        let nc = null;
-
-        // Usar detección ML según el modo
-        if (detectionMode === "face") {
-          nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
-        } else if (detectionMode === "body") {
-          nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true);
-        } else if (focalAuto && detectionMode === "auto") {
-          nc = await runSmartCrop(f.ec, oW, oH);
-        }
+        let nc = await runDetection(f.ec, oW, oH, detectionMode, focalAuto, adjustToTargetSize, true);
         if (!nc || nc.w < 2 || nc.h < 2) {
           // Anchor fallback (or primary when focalAuto is off)
           const {
@@ -7305,16 +7273,7 @@ function ZIRME() {
       adjustToTargetSize,
       poseNetEnabled
     } = settingsRef.current;
-    let nc = null;
-
-    // Usar detección ML según el modo
-    if (detectionMode === "face") {
-      nc = await detectFacesCrop(f.ec, oW, oH, adjustToTargetSize);
-    } else if (detectionMode === "body") {
-      nc = await detectBodyCrop(f.ec, oW, oH, adjustToTargetSize, true);
-    } else if (focalAuto && detectionMode === "auto") {
-      nc = await runSmartCrop(f.ec, oW, oH);
-    }
+    let nc = await runDetection(f.ec, oW, oH, detectionMode, focalAuto, adjustToTargetSize, true);
     if (!nc || nc.w < 2) {
       const {
         ax,
@@ -7695,6 +7654,10 @@ function ZIRME() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 3000);
   }, [sel, renderFile]);
+  const getFilesToExport = () => {
+    const sel = multiSelRef.current;
+    return sel.size > 0 ? filesRef.current.filter(f => sel.has(f.id)) : filesRef.current;
+  };
   const exportZip = useCallback(async () => {
     if (!files.length) return;
     setZipping(true);
@@ -7707,9 +7670,7 @@ function ZIRME() {
         } = settingsRef.current,
         ext = fmt === "jpeg" ? "jpg" : fmt,
         cnt = {};
-      // Si hay imágenes multi-seleccionadas, exportar solo esas; si no, exportar todas
-      const sel = multiSelRef.current;
-      const filesToExport = sel.size > 0 ? filesRef.current.filter(f => sel.has(f.id)) : filesRef.current;
+      const filesToExport = getFilesToExport();
       const total = filesToExport.length;
       for (let i = 0; i < total; i++) {
         const f = filesToExport[i];
@@ -7754,8 +7715,7 @@ function ZIRME() {
   }, [files.length, renderFile, t]);
   const exportAllIndividual = useCallback(async () => {
     if (!files.length) return;
-    const sel = multiSelRef.current;
-    const filesToExport = sel.size > 0 ? filesRef.current.filter(f => sel.has(f.id)) : filesRef.current;
+    const filesToExport = getFilesToExport();
     const { fmt } = settingsRef.current;
     const ext = fmt === "jpeg" ? "jpg" : fmt;
     const cnt = {};
@@ -7765,11 +7725,12 @@ function ZIRME() {
       const blob = await new Promise(r => out.toBlob(r, mime, quality / 100));
       cnt[filename] = (cnt[filename] || 0) + 1;
       const finalName = cnt[filename] > 1 ? filename + "_" + cnt[filename] + "." + ext : filename + "." + ext;
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
+      a.href = url;
       a.download = finalName;
       a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+      URL.revokeObjectURL(url); // revoke immediately after click — browser has already queued the download
       if (i < filesToExport.length - 1) await new Promise(r => setTimeout(r, 150));
     }
     showToast(t.toastZipReady(filesToExport.length));
@@ -7800,24 +7761,6 @@ function ZIRME() {
       whiteSpace: "nowrap",
       transition: "opacity .12s",
       width: "100%"
-    }
-  }, label);
-  const smBtn = (label, onClick, disabled) => /*#__PURE__*/React.createElement("button", {
-    onClick: disabled ? undefined : onClick,
-    style: {
-      fontFamily: "Inter,sans-serif",
-      fontSize: 11,
-      fontWeight: 500,
-      border: "1px solid #2e2e2e",
-      borderRadius: 5,
-      padding: "6px 10px",
-      cursor: disabled ? "not-allowed" : "pointer",
-      background: "transparent",
-      color: disabled ? "#555" : "#aaa",
-      width: "100%",
-      marginBottom: 6,
-      textAlign: "left",
-      opacity: disabled ? 0.6 : 1
     }
   }, label);
   return /*#__PURE__*/React.createElement("div", {
@@ -9772,7 +9715,7 @@ function ZIRME() {
     style: {
       flex: 1
     }
-  }, mBtn(multiSel.size > 1 ? t.filesBtn(multiSel.size) : t.saveCurrent, multiSel.size > 1 ? exportAllIndividual : exportCurrent, multiSel.size > 1 ? false : !sel, PURPLE)), /*#__PURE__*/React.createElement("div", {
+  }, (isMultiSel => mBtn(isMultiSel ? t.filesBtn(multiSel.size) : t.saveCurrent, isMultiSel ? exportAllIndividual : exportCurrent, isMultiSel ? false : !sel, PURPLE))(multiSel.size > 1)), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1
     }
